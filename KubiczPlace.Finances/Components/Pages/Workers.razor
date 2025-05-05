@@ -1,0 +1,116 @@
+@page "/workers"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
+@inject KubiczPlace.Finances.Services.IServiceRecordService RecordService
+@rendermode InteractiveServer
+
+<PageTitle>Workers</PageTitle>
+
+<h3>Workers</h3>
+<p class="fw-semibold">Total combined income: @totalIncome.ToString("C")</p>
+
+@if (workers == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Notes</th>
+                <th>Share %</th>
+                <th>Total €</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var w in workers)
+            {
+                <tr>
+                    <td>@w.Name</td>
+                    <td>@w.Notes</td>
+                    <td>@w.DefaultSharePct</td>
+                    <td>@(incomeByWorker.TryGetValue(w.Id, out var inc) ? inc.ToString("C") : "-")</td>
+                    <td>
+                        <button class="btn btn-link" @onclick="() => Edit(w)">Edit</button>
+                        <button class="btn btn-link text-danger" @onclick="() => Delete(w.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <hr />
+    <h4>@(editWorker.Id == 0 ? "Add Worker" : "Edit Worker")</h4>
+    <EditForm Model="editWorker" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label>Name</label>
+            <InputText @bind-Value="editWorker.Name" class="form-control" />
+        </div>
+        <div class="mb-2">
+            <label>Notes</label>
+            <InputTextArea @bind-Value="editWorker.Notes" class="form-control" />
+        </div>
+        <div class="mb-2">
+            <label>Share %</label>
+            <InputNumber @bind-Value="editWorker.DefaultSharePct" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        @if (editWorker.Id != 0)
+        {
+            <button type="button" class="btn btn-secondary ms-2" @onclick="Reset">Cancel</button>
+        }
+    </EditForm>
+}
+
+@code {
+    List<Worker>? workers;
+    Worker editWorker = new();
+
+    List<ServiceRecord>? records;
+    Dictionary<int, decimal> incomeByWorker = new();
+    decimal totalIncome;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    async Task LoadData()
+    {
+        workers = (await WorkerService.GetAsync()).ToList();
+        records = (await RecordService.GetAsync()).ToList();
+        incomeByWorker = records
+            .GroupBy(r => r.WorkerId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.WorkerEarnings));
+        totalIncome = incomeByWorker.Values.Sum();
+    }
+
+    void Edit(Worker w)
+    {
+        editWorker = new Worker { Id = w.Id, Name = w.Name, Notes = w.Notes, DefaultSharePct = w.DefaultSharePct };
+    }
+
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(editWorker.Name)) return;
+        if (editWorker.Id == 0)
+            await WorkerService.AddAsync(editWorker);
+        else
+            await WorkerService.UpdateAsync(editWorker);
+        editWorker = new();
+        await LoadData();
+    }
+
+    async Task Delete(int id)
+    {
+        await WorkerService.DeleteAsync(id);
+        await LoadData();
+    }
+
+    void Reset() => editWorker = new();
+}

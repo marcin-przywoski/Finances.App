@@ -1,0 +1,101 @@
+@page "/products"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IProductService ProductService
+
+<h3>Products</h3>
+<a class="btn btn-outline-success mb-2" href="/export/products">
+    <span class="bi bi-file-earmark-excel"></span> Export to Excel
+</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Purchase Price</th>
+            <th>Sell Price</th>
+            <th>Stock</th>
+            <th>Share %</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (products is not null)
+        {
+            @foreach (var p in products)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td>@p.PurchasePrice</td>
+                    <td>@p.SellPrice</td>
+                    <td>@p.QuantityInStock</td>
+                    <td>@p.DefaultSharePct</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => Edit(p)">Edit</button>
+                        <button class="btn btn-sm btn-danger ms-1" @onclick="() => Delete(p.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<h5>@(edit.Id == 0 ? "Add" : "Edit") Product</h5>
+<div class="row g-2">
+    <div class="col-3">
+        <input class="form-control" placeholder="Name" @bind="edit.Name" />
+    </div>
+    <div class="col-2">
+        <input class="form-control" type="number" step="0.01" placeholder="Purchase" @bind="edit.PurchasePrice" />
+    </div>
+    <div class="col-2">
+        <input class="form-control" type="number" step="0.01" placeholder="Sell" @bind="edit.SellPrice" />
+    </div>
+    <div class="col-2">
+        <input class="form-control" type="number" placeholder="Stock" @bind="edit.QuantityInStock" />
+    </div>
+    <div class="col-1">
+        <input class="form-control" type="number" placeholder="%" @bind="edit.DefaultSharePct" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="Save">Save</button>
+        <button class="btn btn-outline-secondary ms-1" @onclick="Reset">Reset</button>
+    </div>
+</div>
+
+@code {
+    List<Product>? products;
+    Product edit = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() => products = (await ProductService.GetAsync()).ToList();
+
+    void Edit(Product p) => edit = new Product
+    {
+        Id = p.Id,
+        Name = p.Name,
+        PurchasePrice = p.PurchasePrice,
+        SellPrice = p.SellPrice,
+        QuantityInStock = p.QuantityInStock,
+        DefaultSharePct = p.DefaultSharePct
+    };
+
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(edit.Name)) return;
+        if (edit.Id == 0)
+            await ProductService.AddAsync(edit);
+        else
+            await ProductService.UpdateAsync(edit);
+        edit = new();
+        await Load();
+    }
+
+    async Task Delete(int id)
+    {
+        await ProductService.DeleteAsync(id);
+        await Load();
+    }
+
+    void Reset() => edit = new();
+}

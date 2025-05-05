@@ -3,6 +3,7 @@ using System;
 using KubiczPlace.Finances.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KubiczPlace.Finances.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250505215053_AddInvoices")]
+    partial class AddInvoices
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.3");
@@ -114,66 +117,6 @@ namespace KubiczPlace.Finances.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Invoices");
-                });
-
-            modelBuilder.Entity("KubiczPlace.Finances.Models.Product", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("DefaultSharePct")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("PurchasePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("QuantityInStock")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("SellPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Products");
-                });
-
-            modelBuilder.Entity("KubiczPlace.Finances.Models.ProductSale", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("PriceSold")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("WorkerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("WorkerSharePct")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("WorkerId");
-
-                    b.ToTable("ProductSales");
                 });
 
             modelBuilder.Entity("KubiczPlace.Finances.Models.ServiceItem", b =>
@@ -374,25 +317,6 @@ namespace KubiczPlace.Finances.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("KubiczPlace.Finances.Models.ProductSale", b =>
-                {
-                    b.HasOne("KubiczPlace.Finances.Models.Product", "Product")
-                        .WithMany("Sales")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("KubiczPlace.Finances.Models.Worker", "Worker")
-                        .WithMany()
-                        .HasForeignKey("WorkerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("Worker");
-                });
-
             modelBuilder.Entity("KubiczPlace.Finances.Models.ServiceRecord", b =>
                 {
                     b.HasOne("KubiczPlace.Finances.Models.ServiceItem", "ServiceItem")
@@ -461,11 +385,6 @@ namespace KubiczPlace.Finances.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("KubiczPlace.Finances.Models.Product", b =>
-                {
-                    b.Navigation("Sales");
                 });
 
             modelBuilder.Entity("KubiczPlace.Finances.Models.ServiceItem", b =>

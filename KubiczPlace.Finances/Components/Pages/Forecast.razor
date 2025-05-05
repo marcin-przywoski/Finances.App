@@ -1,0 +1,55 @@
+@page "/forecast"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IServiceRecordService RecordService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Revenue Forecast</h3>
+
+<canvas id="forecastChart" height="100"></canvas>
+
+@code {
+    List<string> labels = new();
+    List<double> actual = new();
+    List<double> forecast = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            await JS.InvokeVoidAsync("renderForecastChart", "forecastChart", labels, actual, forecast);
+        }
+    }
+
+    private async Task LoadData()
+    {
+        var records = (await RecordService.GetAsync()).ToList();
+        if (records.Count == 0) return;
+
+        // group by month
+        var grouped = records.GroupBy(r => new DateTime(r.Date.Year, r.Date.Month, 1))
+                              .OrderBy(g => g.Key)
+                              .Select(g => new { Period = g.Key, Amount = g.Sum(r => r.PricePaid) })
+                              .ToList();
+
+        labels = grouped.Select(g => g.Period.ToString("yyyy-MM")) .ToList();
+        actual = grouped.Select(g => (double)g.Amount).ToList();
+
+        // linear regression forecast
+        var x = Enumerable.Range(0, grouped.Count).Select(i => (double)i).ToArray();
+        var y = actual.ToArray();
+        if (x.Length < 2) return; // not enough data
+
+        var (intercept, slope) = MathNet.Numerics.Fit.Line(x, y);
+
+        int forecastMonths = 6;
+        for (int i = 1; i <= forecastMonths; i++)
+        {
+            labels.Add(grouped.Last().Period.AddMonths(i).ToString("yyyy-MM"));
+        }
+
+        var allX = Enumerable.Range(0, labels.Count).Select(i => (double)i).ToArray();
+        forecast = allX.Select(v => intercept + slope * v).ToList();
+    }
+}

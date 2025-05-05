@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\KubiczPlace.Finances\Models\**\*.cs" Link="Models\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\KubiczPlace.Finances\Services\IInvoiceService.cs" Link="Services\IInvoiceService.cs" />
+    <Compile Include="..\KubiczPlace.Finances\Services\IWorkerService.cs" Link="Services\IWorkerService.cs" />
+    <Compile Include="..\KubiczPlace.Finances\Services\IServiceItemService.cs" Link="Services\IServiceItemService.cs" />
+    <Compile Include="..\KubiczPlace.Finances\Services\IServiceRecordService.cs" Link="Services\IServiceRecordService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
+  </ItemGroup>
+
+</Project>

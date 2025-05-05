@@ -12,12 +12,31 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KubiczPlace.Finances.Client\KubiczPlace.Finances.Client.csproj" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.6.0" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="Services\IInvoiceService.cs" />
+    <Compile Remove="Services\IWorkerService.cs" />
+    <Compile Remove="Services\IServiceItemService.cs" />
+    <Compile Remove="Services\IServiceRecordService.cs" />
+    <ProjectReference Include="..\KubiczPlace.Finances.Shared\KubiczPlace.Finances.Shared.csproj" />
+    <ProjectReference Include="..\KubiczPlace.Finances.Client\KubiczPlace.Finances.Client.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,76 @@
+@page "/invoices"
+@using KubiczPlace.Finances.Models
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+@inject IInvoiceProcessor Processor
+@rendermode InteractiveServer
+
+<PageTitle>Invoices</PageTitle>
+
+<h3>Invoices</h3>
+
+<InputFile OnChange="Upload" accept="application/pdf" />
+
+@if (invoices == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-sm mt-3">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Number</th>
+                <th>Amount</th>
+                <th>Payer</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inv in invoices)
+            {
+                <tr>
+                    <td>@inv.UploadDate.ToShortDateString()</td>
+                    <td>@inv.Number</td>
+                    <td>@inv.Amount?.ToString("C")</td>
+                    <td>@inv.Payer</td>
+                    <td>
+                        <a href="/invoices/@inv.Id/file" target="_blank">Download</a>
+                        <button class="btn btn-link" @onclick="() => Reprocess(inv)">Re-run OCR</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    List<Invoice>? invoices;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() => invoices = await Db.Invoices.AsNoTracking().OrderByDescending(i => i.UploadDate).ToListAsync();
+
+    async Task Upload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(long.MaxValue).CopyToAsync(ms);
+        var inv = new Invoice { FileName = file.Name, Content = ms.ToArray() };
+        await Processor.ProcessAsync(inv);
+        Db.Invoices.Add(inv);
+        await Db.SaveChangesAsync();
+        await Load();
+    }
+
+    async Task Reprocess(Invoice inv)
+    {
+        var entity = await Db.Invoices.FindAsync(inv.Id);
+        if (entity == null) return;
+        await Processor.ProcessAsync(entity);
+        await Db.SaveChangesAsync();
+        await Load();
+    }
+}

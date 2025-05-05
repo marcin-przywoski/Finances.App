@@ -1,0 +1,156 @@
+@page "/records"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IServiceRecordService RecordService
+@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
+@inject KubiczPlace.Finances.Services.IServiceItemService ItemService
+@rendermode InteractiveServer
+
+<PageTitle>Service Records</PageTitle>
+
+<div class="d-flex align-items-center mb-2">
+    <h3 class="me-3 mb-0">Service Records</h3>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="Refresh" title="Fetch latest data"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+</div>
+
+@if (records == null || workers == null || services == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Worker</th>
+                <th>Service</th>
+                <th>Paid</th>
+                <th>Share %</th>
+                <th>Worker €</th>
+                <th>Salon €</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in records)
+            {
+                <tr>
+                    <td>@r.Date.ToShortDateString()</td>
+                    <td>@r.Worker?.Name</td>
+                    <td>@r.ServiceItem?.Name</td>
+                    <td>@r.PricePaid.ToString("C")</td>
+                    <td>@r.WorkerSharePct</td>
+                    <td>@r.WorkerEarnings.ToString("C")</td>
+                    <td>@r.SalonEarnings.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-link" @onclick="() => Edit(r)">Edit</button>
+                        <button class="btn btn-link text-danger" @onclick="() => Delete(r.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <hr />
+    <h4>@(edit.Id == 0 ? "Add Record" : "Edit Record")</h4>
+    <EditForm Model="edit" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="row g-2">
+            <div class="col">
+                <label>Date</label>
+                <InputDate @bind-Value="edit.Date" class="form-control" />
+            </div>
+            <div class="col">
+                <label>Worker</label>
+                <InputSelect @bind-Value="edit.WorkerId" class="form-select">
+                    <option value="">--select--</option>
+                    @foreach (var w in workers)
+                    {
+                        <option value="@w.Id">@w.Name</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col">
+                <label>Service</label>
+                <InputSelect @bind-Value="edit.ServiceItemId" class="form-select">
+                    <option value="">--select--</option>
+                    @foreach (var s in services)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="col">
+                <label>Paid</label>
+                <InputNumber @bind-Value="edit.PricePaid" class="form-control" />
+            </div>
+            <div class="col">
+                <label>Share %</label>
+                <InputNumber @bind-Value="edit.WorkerSharePct" class="form-control" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Save</button>
+        @if (edit.Id != 0)
+        {
+            <button type="button" class="btn btn-secondary ms-2 mt-2" @onclick="Reset">Cancel</button>
+        }
+    </EditForm>
+}
+
+@code {
+    List<ServiceRecord>? records;
+    List<Worker>? workers;
+    List<ServiceItem>? services;
+    ServiceRecord edit = new() { Date = DateTime.Today };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        workers = (await WorkerService.GetAsync()).ToList();
+        services = (await ItemService.GetAsync()).ToList();
+        records = (await RecordService.GetAsync()).ToList();
+    }
+
+    void Edit(ServiceRecord r)
+    {
+        edit = new ServiceRecord
+        {
+            Id = r.Id,
+            Date = r.Date,
+            WorkerId = r.WorkerId,
+            ServiceItemId = r.ServiceItemId,
+            PricePaid = r.PricePaid,
+            WorkerSharePct = r.WorkerSharePct
+        };
+    }
+
+    async Task Save()
+    {
+        if (edit.WorkerId == 0 || edit.ServiceItemId == 0) return;
+        if (edit.Id == 0)
+        {
+            if (edit.WorkerSharePct == 0)
+                edit.WorkerSharePct = workers.First(w => w.Id == edit.WorkerId).DefaultSharePct;
+            await RecordService.AddAsync(edit);
+        }
+        else
+            await RecordService.UpdateAsync(edit);
+        edit = new ServiceRecord { Date = DateTime.Today };
+        await Load();
+    }
+
+    async Task Delete(int id)
+    {
+        await RecordService.DeleteAsync(id);
+        await Load();
+    }
+
+    void Reset() => edit = new ServiceRecord { Date = DateTime.Today };
+
+    async Task Refresh()
+    {
+        await Load();
+    }
+}

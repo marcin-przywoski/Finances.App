@@ -1,4 +1,29 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+
+<head>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#7952b3" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="/js/forecastChart.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js').then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                const banner = document.getElementById('update-banner');
+                                if (banner) banner.hidden = false;
+                            }
+                        });
+                    });
+                });
+            });
+        }
+    </script>
+</head>
 
 <div class="page">
     <div class="sidebar">
@@ -21,3 +46,42 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+<div id="update-banner" class="alert alert-info text-center position-fixed top-0 start-50 translate-middle-x mt-2 p-2" style="z-index:2100; width:max-content;" hidden>
+    A new version is available.
+    <button class="btn btn-sm btn-primary ms-2" onclick="location.reload()">Reload</button>
+</div>
+
+<div class="alert text-center position-fixed bottom-0 start-50 translate-middle-x mb-2 p-2"
+     style="z-index:2000; width:max-content;"
+     hidden="@Online">
+    <span class="badge bg-danger">Offline mode</span>
+</div>
+
+@code {
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    bool Online = true;
+    IJSObjectReference? _module;
+
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (first)
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "/js/connectivity.js");
+            await _module.InvokeVoidAsync("registerConnectivityHandler", DotNetObjectReference.Create(this));
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+            await _module.DisposeAsync();
+    }
+
+    [JSInvokable]
+    public void SetOnlineStatus(bool isOnline)
+    {
+        Online = isOnline;
+        StateHasChanged();
+    }
+}

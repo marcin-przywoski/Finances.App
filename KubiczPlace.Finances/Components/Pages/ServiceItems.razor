@@ -1,0 +1,88 @@
+@page "/services"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IServiceItemService ItemService
+@rendermode InteractiveServer
+
+<PageTitle>Service Items</PageTitle>
+
+<h3>Service Items</h3>
+
+@if (items == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Base Price</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in items)
+            {
+                <tr>
+                    <td>@s.Name</td>
+                    <td>@s.BasePrice.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-link" @onclick="() => Edit(s)">Edit</button>
+                        <button class="btn btn-link text-danger" @onclick="() => Delete(s.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <hr />
+    <h4>@(editItem.Id == 0 ? "Add Service" : "Edit Service")</h4>
+    <EditForm Model="editItem" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-2">
+            <label>Name</label>
+            <InputText @bind-Value="editItem.Name" class="form-control" />
+        </div>
+        <div class="mb-2">
+            <label>Base Price</label>
+            <InputNumber @bind-Value="editItem.BasePrice" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        @if (editItem.Id != 0)
+        {
+            <button type="button" class="btn btn-secondary ms-2" @onclick="Reset">Cancel</button>
+        }
+    </EditForm>
+}
+
+@code {
+    List<ServiceItem>? items;
+    ServiceItem editItem = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() => items = (await ItemService.GetAsync()).ToList();
+
+    void Edit(ServiceItem s) => editItem = new ServiceItem { Id = s.Id, Name = s.Name, BasePrice = s.BasePrice };
+
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(editItem.Name)) return;
+        if (editItem.Id == 0)
+            await ItemService.AddAsync(editItem);
+        else
+            await ItemService.UpdateAsync(editItem);
+        editItem = new();
+        await Load();
+    }
+
+    async Task Delete(int id)
+    {
+        await ItemService.DeleteAsync(id);
+        await Load();
+    }
+
+    void Reset() => editItem = new();
+}

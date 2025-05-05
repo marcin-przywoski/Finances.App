@@ -1,0 +1,51 @@
+@page "/dashboard"
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard</PageTitle>
+
+<h3>Earnings per Worker</h3>
+<canvas id="earningsChart" height="120"></canvas>
+
+@code {
+    IJSObjectReference? _module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var data = await Db.ServiceRecords
+                .Include(r => r.Worker)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var grouped = data
+                .GroupBy(r => r.Worker!.Name)
+                .Select(g => new
+                {
+                    Name = g.Key,
+                    WorkerTotal = g.Sum(x => x.WorkerEarnings),
+                    SalonTotal = g.Sum(x => x.SalonEarnings)
+                })
+                .OrderByDescending(x => x.WorkerTotal + x.SalonTotal)
+                .ToList();
+
+            var labels = grouped.Select(g => g.Name).ToList();
+            var workerData = grouped.Select(g => g.WorkerTotal).ToList();
+            var salonData = grouped.Select(g => g.SalonTotal).ToList();
+
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/chartInterop.js");
+            await _module.InvokeVoidAsync("renderEarningsChart", "earningsChart", labels, workerData, salonData);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+        }
+    }
+}

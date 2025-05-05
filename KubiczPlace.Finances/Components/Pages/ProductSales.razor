@@ -1,0 +1,131 @@
+@page "/product-sales"
+@using KubiczPlace.Finances.Models
+@inject KubiczPlace.Finances.Services.IProductSaleService SaleService
+@inject KubiczPlace.Finances.Services.IProductService ProductService
+@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
+
+<h3>Product Sales</h3>
+<a class="btn btn-outline-success mb-2" href="/export/productsales">
+    <span class="bi bi-file-earmark-excel"></span> Export to Excel
+</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th>Worker</th>
+            <th>Price</th>
+            <th>Worker %</th>
+            <th>Worker Earn</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (sales is not null)
+        {
+            @foreach (var s in sales)
+            {
+                <tr>
+                    <td>@s.Date.ToShortDateString()</td>
+                    <td>@s.Product?.Name</td>
+                    <td>@s.Worker?.Name</td>
+                    <td>@s.PriceSold</td>
+                    <td>@s.WorkerSharePct</td>
+                    <td>@s.WorkerEarnings</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => Edit(s)">Edit</button>
+                        <button class="btn btn-sm btn-danger ms-1" @onclick="() => Delete(s.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<h5>@(edit.Id == 0 ? "Add" : "Edit") Sale</h5>
+<div class="row g-2">
+    <div class="col-2">
+        <input class="form-control" type="date" @bind-value="edit.Date" />
+    </div>
+    <div class="col-3">
+        <select class="form-select" @bind="edit.ProductId">
+            <option value="0">Product</option>
+            @foreach (var p in products)
+            {
+                <option value="@p.Id">@p.Name (@p.QuantityInStock)</option>
+            }
+        </select>
+    </div>
+    <div class="col-3">
+        <select class="form-select" @bind="edit.WorkerId">
+            <option value="0">Worker</option>
+            @foreach (var w in workers)
+            {
+                <option value="@w.Id">@w.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-2">
+        <input class="form-control" type="number" step="0.01" placeholder="Price" @bind="edit.PriceSold" />
+    </div>
+    <div class="col-1">
+        <input class="form-control" type="number" placeholder="%" @bind="edit.WorkerSharePct" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="Save">Save</button>
+        <button class="btn btn-outline-secondary ms-1" @onclick="Reset">Reset</button>
+    </div>
+</div>
+
+@code {
+    List<ProductSale>? sales;
+    List<Product> products = new();
+    List<Worker> workers = new();
+    ProductSale edit = new() { Date = DateTime.Today };
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load()
+    {
+        sales = (await SaleService.GetAsync()).ToList();
+        products = (await ProductService.GetAsync()).ToList();
+        workers = (await WorkerService.GetAsync()).ToList();
+    }
+
+    void Edit(ProductSale s)
+    {
+        edit = new ProductSale
+        {
+            Id = s.Id,
+            Date = s.Date,
+            ProductId = s.ProductId,
+            WorkerId = s.WorkerId,
+            PriceSold = s.PriceSold,
+            WorkerSharePct = s.WorkerSharePct
+        };
+    }
+
+    async Task Save()
+    {
+        if (edit.ProductId == 0 || edit.WorkerId == 0) return;
+        if (edit.Id == 0)
+        {
+            if (edit.WorkerSharePct == 0)
+                edit.WorkerSharePct = products.First(p => p.Id == edit.ProductId).DefaultSharePct;
+            await SaleService.AddAsync(edit);
+        }
+        else
+            await SaleService.UpdateAsync(edit);
+        edit = new ProductSale { Date = DateTime.Today };
+        await Load();
+    }
+
+    async Task Delete(int id)
+    {
+        await SaleService.DeleteAsync(id);
+        await Load();
+    }
+
+    void Reset() => edit = new ProductSale { Date = DateTime.Today };
+}
