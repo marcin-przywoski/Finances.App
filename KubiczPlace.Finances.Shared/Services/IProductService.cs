@@ -1,6 +1,6 @@
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 
-namespace KubiczPlace.Finances.Services;
+namespace KubiczPlace.Finances.Shared.Services;
 
 public interface IProductService
 {

@@ -1,6 +1,6 @@
-namespace KubiczPlace.Finances.Services;
+namespace KubiczPlace.Finances.Shared.Services;
 
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 
 public interface IInvoiceProcessor
 {

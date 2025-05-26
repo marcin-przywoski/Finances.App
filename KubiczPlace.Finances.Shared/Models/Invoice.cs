@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace KubiczPlace.Finances.Models;
+namespace KubiczPlace.Finances.Shared.Models;
 
 public class Invoice
 {

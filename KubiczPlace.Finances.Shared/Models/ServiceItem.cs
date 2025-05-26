@@ -1,4 +1,4 @@
-namespace KubiczPlace.Finances.Models;
+namespace KubiczPlace.Finances.Shared.Models;
 
 public class ServiceItem
 {

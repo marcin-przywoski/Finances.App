@@ -30,11 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Models\**\*.cs" />
-    <Compile Remove="Services\IInvoiceService.cs" />
-    <Compile Remove="Services\IWorkerService.cs" />
-    <Compile Remove="Services\IServiceItemService.cs" />
-    <Compile Remove="Services\IServiceRecordService.cs" />
     <ProjectReference Include="..\KubiczPlace.Finances.Shared\KubiczPlace.Finances.Shared.csproj" />
     <ProjectReference Include="..\KubiczPlace.Finances.Client\KubiczPlace.Finances.Client.csproj" />
   </ItemGroup>

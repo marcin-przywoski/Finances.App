@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
-namespace KubiczPlace.Finances.Models;
+namespace KubiczPlace.Finances.Shared.Models;
 
 public class Product
 {
