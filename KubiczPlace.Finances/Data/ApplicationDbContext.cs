@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 
 namespace KubiczPlace.Finances.Data;
 

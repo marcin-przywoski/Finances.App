@@ -1,6 +1,7 @@
 using KubiczPlace.Finances.Data;
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 using Microsoft.EntityFrameworkCore;
+using KubiczPlace.Finances.Shared.Services;
 
 namespace KubiczPlace.Finances.Services;
 

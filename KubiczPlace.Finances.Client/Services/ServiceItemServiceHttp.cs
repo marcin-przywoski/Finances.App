@@ -1,8 +1,8 @@
 namespace KubiczPlace.Finances.Client.Services;
 
 using System.Net.Http.Json;
-using KubiczPlace.Finances.Models;
-using KubiczPlace.Finances.Services;
+using KubiczPlace.Finances.Shared.Models;
+using KubiczPlace.Finances.Shared.Services;
 using KubiczPlace.Finances.Client.Services;
 
 public class ServiceItemServiceHttp(HttpClient http, BrowserStorage storage) : IServiceItemService

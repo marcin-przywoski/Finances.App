@@ -1,8 +1,7 @@
 @page "/records"
-@using KubiczPlace.Finances.Models
-@inject KubiczPlace.Finances.Services.IServiceRecordService RecordService
-@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
-@inject KubiczPlace.Finances.Services.IServiceItemService ItemService
+@inject IServiceRecordService RecordService
+@inject IWorkerService WorkerService
+@inject IServiceItemService ItemService
 @rendermode InteractiveServer
 
 <PageTitle>Service Records</PageTitle>

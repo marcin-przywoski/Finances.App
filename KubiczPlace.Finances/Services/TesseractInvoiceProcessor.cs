@@ -1,9 +1,10 @@
 namespace KubiczPlace.Finances.Services;
 
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 using ImageMagick;
 using Tesseract;
 using System.Text.RegularExpressions;
+using KubiczPlace.Finances.Shared.Services;
 
 public class TesseractInvoiceProcessor : IInvoiceProcessor
 {

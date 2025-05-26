@@ -1,7 +1,6 @@
 @page "/workers"
-@using KubiczPlace.Finances.Models
-@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
-@inject KubiczPlace.Finances.Services.IServiceRecordService RecordService
+@inject IWorkerService WorkerService
+@inject IServiceRecordService RecordService
 @rendermode InteractiveServer
 
 <PageTitle>Workers</PageTitle>

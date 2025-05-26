@@ -1,8 +1,9 @@
 namespace KubiczPlace.Finances.Services;
 
 using KubiczPlace.Finances.Data;
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 using Microsoft.EntityFrameworkCore;
+using KubiczPlace.Finances.Shared.Services;
 
 /// <summary>
 /// Server-side implementation of IWorkerService that operates directly on the DbContext.

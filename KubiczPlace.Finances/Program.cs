@@ -6,8 +6,9 @@ using KubiczPlace.Finances.Components;
 using KubiczPlace.Finances.Components.Account;
 using KubiczPlace.Finances.Data;
 using KubiczPlace.Finances.Services;
-using KubiczPlace.Finances.Models;
+using KubiczPlace.Finances.Shared.Models;
 using ClosedXML.Excel;
+using KubiczPlace.Finances.Shared.Services;
 
 namespace KubiczPlace.Finances;
 

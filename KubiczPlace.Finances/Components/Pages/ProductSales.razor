@@ -1,8 +1,8 @@
 @page "/product-sales"
-@using KubiczPlace.Finances.Models
-@inject KubiczPlace.Finances.Services.IProductSaleService SaleService
-@inject KubiczPlace.Finances.Services.IProductService ProductService
-@inject KubiczPlace.Finances.Services.IWorkerService WorkerService
+@inject IProductSaleService SaleService
+@inject IProductService ProductService
+@inject IWorkerService WorkerService
+@rendermode InteractiveServer
 
 <h3>Product Sales</h3>
 <a class="btn btn-outline-success mb-2" href="/export/productsales">
