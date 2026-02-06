@@ -12,6 +12,7 @@ public class FinanceDbContext : DbContext
     public DbSet<Worker> Workers { get; set; }
     public DbSet<Service> Services { get; set; }
     public DbSet<ServiceRecord> ServiceRecords { get; set; }
+    public DbSet<Product> Products { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,10 @@ public class FinanceDbContext : DbContext
             .WithMany() // Assuming a Service can be part of many ServiceRecords
             .HasForeignKey(sr => sr.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Product>()
+            .Property(p => p.Price)
+            .HasColumnType("decimal(18, 2)");
 
         // Seed data
         modelBuilder.Entity<Worker>().HasData(
