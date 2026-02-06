@@ -1,0 +1,109 @@
+@page "/workers"
+@using KubiczPlace.Finances.Shared
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<h3>Workers</h3>
+
+@if (workers == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Default Commission (%)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var worker in workers)
+            {
+                <tr>
+                    <td>@worker.Id</td>
+                    <td>@worker.Name</td>
+                    <td>@worker.DefaultCommissionPercentage</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" @onclick="() => EditWorker(worker.Id)">Edit</button>
+                        <button class="btn btn-sm btn-danger " @onclick="() => DeleteWorker(worker.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h4>Add New Worker</h4>
+<EditForm Model="@newWorker" OnValidSubmit="@HandleAddWorker">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name:</label>
+        <InputText id="name" class="form-control" @bind-Value="newWorker.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label for="commission" class="form-label">Default Commission (%):</label>
+        <InputNumber id="commission" class="form-control" @bind-Value="newWorker.DefaultCommissionPercentage" />
+    </div>
+
+    <button type="submit" class="btn btn-success">Add Worker</button>
+</EditForm>
+
+@code {
+    private List<Worker>? workers;
+    private Worker newWorker = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkers();
+    }
+
+    private async Task LoadWorkers()
+    {
+        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+    }
+
+    private async Task HandleAddWorker()
+    {
+        var response = await Http.PostAsJsonAsync("api/workers", newWorker);
+        if (response.IsSuccessStatusCode)
+        {
+            newWorker = new Worker(); // Reset form
+            await LoadWorkers(); // Refresh list
+        }
+        else
+        {
+            // Handle error (e.g., display a message)
+            Console.WriteLine($"Error adding worker: {response.ReasonPhrase}");
+        }
+    }
+
+    private void EditWorker(int workerId)
+    {
+        // Navigate to an edit page or open a modal
+        // For now, let's just log it
+        Console.WriteLine($"Edit worker with ID: {workerId}");
+        // NavigationManager.NavigateTo($"/workers/edit/{workerId}"); // Example navigation
+    }
+
+    private async Task DeleteWorker(int workerId)
+    {
+        // Add confirmation dialog before deleting
+        var response = await Http.DeleteAsync($"api/workers/{workerId}");
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadWorkers(); // Refresh list
+        }
+        else
+        {
+            // Handle error
+            Console.WriteLine($"Error deleting worker: {response.ReasonPhrase}");
+        }
+    }
+}

@@ -37,12 +37,18 @@ public class Program
             options.UseSqlite(connectionString));
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+        var financeConnectionString = builder.Configuration.GetConnectionString("FinanceConnection") ?? throw new InvalidOperationException("Connection string 'FinanceConnection' not found.");
+        builder.Services.AddDbContext<FinanceDbContext>(options =>
+            options.UseSqlite(financeConnectionString));
+
         builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
         builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+        builder.Services.AddControllers();
 
         var app = builder.Build();
 
@@ -63,6 +69,7 @@ public class Program
 
         app.UseAntiforgery();
 
+        app.MapControllers();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode()
