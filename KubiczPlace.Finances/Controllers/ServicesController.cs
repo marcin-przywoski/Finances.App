@@ -90,10 +90,16 @@ namespace KubiczPlace.Finances.Controllers
                 return NotFound();
             }
 
-            _context.Services.Remove(service);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            try
+            {
+                _context.Services.Remove(service);
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (DbUpdateException)
+            {
+                return Conflict(new { message = "Cannot delete service with existing service records." });
+            }
         }
 
         private bool ServiceExists(int id)
