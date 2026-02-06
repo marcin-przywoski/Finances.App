@@ -33,9 +33,16 @@ public class FinanceDbContext : DbContext
         modelBuilder.Entity<ServiceRecord>()
             .Property(sr => sr.CommissionPercentageApplied)
             .HasColumnType("decimal(5, 2)");
-            
-        // You can add more configurations here, like relationships, constraints, etc.
-        // For example, setting up relationships explicitly (though EF Core can infer them by convention):
+
+        modelBuilder.Entity<ServiceRecord>()
+            .Property(sr => sr.Tips)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<ServiceRecord>()
+            .Ignore(sr => sr.WorkerShare);
+
+        modelBuilder.Entity<ServiceRecord>()
+            .Ignore(sr => sr.SalonShare);
         modelBuilder.Entity<ServiceRecord>()
             .HasOne(sr => sr.Worker)
             .WithMany() // Assuming a Worker can have many ServiceRecords
@@ -47,5 +54,20 @@ public class FinanceDbContext : DbContext
             .WithMany() // Assuming a Service can be part of many ServiceRecords
             .HasForeignKey(sr => sr.ServiceId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Seed data
+        modelBuilder.Entity<Worker>().HasData(
+            new Worker { Id = 1, Name = "Jan Kowalski", DefaultCommissionPercentage = 50 },
+            new Worker { Id = 2, Name = "Anna Nowak", DefaultCommissionPercentage = 45 },
+            new Worker { Id = 3, Name = "Piotr Wiśniewski", DefaultCommissionPercentage = 55 }
+        );
+
+        modelBuilder.Entity<Service>().HasData(
+            new Service { Id = 1, Name = "Strzyżenie męskie", BasePrice = 50 },
+            new Service { Id = 2, Name = "Strzyżenie damskie", BasePrice = 80 },
+            new Service { Id = 3, Name = "Broda", BasePrice = 30 },
+            new Service { Id = 4, Name = "Koloryzacja", BasePrice = 150 },
+            new Service { Id = 5, Name = "Strzyżenie + Broda", BasePrice = 70 }
+        );
     }
 }

@@ -5,8 +5,6 @@ using KubiczPlace.Finances.Shared;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using KubiczPlace.Finances.Shared.Models;
-
 namespace KubiczPlace.Finances.Controllers
 {
     [Route("api/[controller]")]

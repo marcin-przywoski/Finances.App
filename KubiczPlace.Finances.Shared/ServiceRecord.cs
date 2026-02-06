@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace KubiczPlace.Finances.Shared;
 
@@ -12,12 +13,23 @@ public class ServiceRecord
     public int ServiceId { get; set; }
     public Service? Service { get; set; }
 
+    [Required]
     public DateTime DatePerformed { get; set; }
+
+    [Range(0, 100000)]
     public decimal AmountPaid { get; set; }
+
+    [Range(0, 100)]
     public decimal CommissionPercentageApplied { get; set; }
+
+    [Range(0, 100000)]
+    public decimal Tips { get; set; }
+
+    [MaxLength(100)]
+    public string? ClientName { get; set; }
+
     public string? Notes { get; set; }
 
-    // Calculated properties (logic to be implemented later)
-    // public decimal WorkerShare => AmountPaid * (CommissionPercentageApplied / 100);
-    // public decimal SalonShare => AmountPaid - WorkerShare;
+    public decimal WorkerShare => AmountPaid * (CommissionPercentageApplied / 100);
+    public decimal SalonShare => AmountPaid - WorkerShare;
 }
