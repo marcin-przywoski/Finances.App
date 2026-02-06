@@ -65,6 +65,13 @@ public class Program
             app.UseHsts();
         }
 
+        // Auto-migrate finance database
+        using (var scope = app.Services.CreateScope())
+        {
+            var financeDb = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+            financeDb.Database.Migrate();
+        }
+
         app.UseHttpsRedirection();
 
         app.UseAntiforgery();
