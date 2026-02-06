@@ -1,0 +1,71 @@
+<div class="date-range-filter">
+    <button class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Today</button>
+    <button class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>This Week</button>
+    <button class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>This Month</button>
+    <button class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Custom</button>
+
+    @if (ActivePreset == "custom")
+    {
+        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@From?.ToString("yyyy-MM-dd")" @onchange="OnFromChanged" />
+        <span style="color: var(--text-muted);">to</span>
+        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@To?.ToString("yyyy-MM-dd")" @onchange="OnToChanged" />
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime? From { get; set; }
+    [Parameter] public DateTime? To { get; set; }
+    [Parameter] public EventCallback<(DateTime? From, DateTime? To)> OnRangeChanged { get; set; }
+
+    private string ActivePreset { get; set; } = "month";
+
+    protected override void OnInitialized()
+    {
+        SetPreset("month");
+    }
+
+    private async Task SetPreset(string preset)
+    {
+        ActivePreset = preset;
+        var today = DateTime.Today;
+
+        switch (preset)
+        {
+            case "today":
+                From = today;
+                To = today;
+                break;
+            case "week":
+                var diff = (7 + (today.DayOfWeek - DayOfWeek.Monday)) % 7;
+                From = today.AddDays(-diff);
+                To = today;
+                break;
+            case "month":
+                From = new DateTime(today.Year, today.Month, 1);
+                To = today;
+                break;
+            case "custom":
+                return;
+        }
+
+        await OnRangeChanged.InvokeAsync((From, To));
+    }
+
+    private async Task OnFromChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            From = date;
+            await OnRangeChanged.InvokeAsync((From, To));
+        }
+    }
+
+    private async Task OnToChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            To = date;
+            await OnRangeChanged.InvokeAsync((From, To));
+        }
+    }
+}

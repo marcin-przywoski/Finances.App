@@ -1,0 +1,17 @@
+<div class="stat-card">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="stat-icon" style="background-color: @IconBg; color: @IconColor;">
+            @IconContent
+        </div>
+    </div>
+    <div class="stat-value">@Value</div>
+    <div class="stat-label">@Label</div>
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public string IconBg { get; set; } = "#ccfbf1";
+    [Parameter] public string IconColor { get; set; } = "#0d9488";
+}
