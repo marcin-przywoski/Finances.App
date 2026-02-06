@@ -19,9 +19,9 @@
 
     private string ActivePreset { get; set; } = "month";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        SetPreset("month");
+        await SetPreset("month");
     }
 
     private async Task SetPreset(string preset)

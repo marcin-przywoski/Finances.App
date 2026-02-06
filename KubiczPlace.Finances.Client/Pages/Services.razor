@@ -1,30 +1,30 @@
-@page "/workers"
+@page "/services"
 @rendermode InteractiveWebAssembly
 @inject HttpClient Http
 @inject ToastService Toast
 
-<PageTitle>Workers</PageTitle>
+<PageTitle>Services</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Workers</h2>
-        <p class="text-muted mb-0">Manage your team members and their commission rates.</p>
+        <h2 class="mb-1" style="font-weight: 700;">Services</h2>
+        <p class="text-muted mb-0">Manage the services your shop offers and their base prices.</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Worker
+        Add Service
     </button>
 </div>
 
-@if (workers == null)
+@if (services == null)
 {
     <LoadingSpinner />
 }
-else if (workers.Count == 0)
+else if (services.Count == 0)
 {
     <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No workers yet. Add your first team member to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Worker</button></div>
+        <p class="text-muted mb-3">No services yet. Add your first service to get started.</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Service</button></div>
     </div>
 }
 else
@@ -34,22 +34,20 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Commission %</th>
-                        <th>Linked User</th>
+                        <th>Service Name</th>
+                        <th>Base Price</th>
                         <th style="width: 140px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var worker in workers)
+                    @foreach (var svc in services)
                     {
                         <tr>
-                            <td class="fw-semibold">@worker.Name</td>
-                            <td>@worker.DefaultCommissionPercentage%</td>
-                            <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
+                            <td class="fw-semibold">@svc.Name</td>
+                            <td>@svc.BasePrice.ToString("C")</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
                             </td>
                         </tr>
                     }
@@ -65,21 +63,21 @@ else
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Worker" : "Add Worker")</h5>
+                    <h5 class="modal-title">@(isEditing ? "Edit Service" : "Add Service")</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">Service Name</label>
                             <InputText class="form-control" @bind-Value="formModel.Name" />
                             <ValidationMessage For="() => formModel.Name" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Default Commission (%)</label>
-                            <InputNumber class="form-control" @bind-Value="formModel.DefaultCommissionPercentage" />
-                            <ValidationMessage For="() => formModel.DefaultCommissionPercentage" />
+                            <label class="form-label">Base Price</label>
+                            <InputNumber class="form-control" @bind-Value="formModel.BasePrice" />
+                            <ValidationMessage For="() => formModel.BasePrice" />
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -95,7 +93,7 @@ else
 }
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Worker"
+               Title="Delete Service"
                Message="@($"Are you sure you want to delete {deleteTarget?.Name}? This cannot be undone.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
@@ -104,33 +102,33 @@ else
 <Toast />
 
 @code {
-    private List<Worker>? workers;
-    private Worker formModel = new();
-    private Worker? deleteTarget;
+    private List<Service>? services;
+    private Service formModel = new();
+    private Service? deleteTarget;
     private bool showModal, isEditing, saving, showDeleteConfirm;
     private int editId;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadWorkers();
+        await LoadServices();
     }
 
-    private async Task LoadWorkers()
+    private async Task LoadServices()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
     }
 
     private void OpenAddModal()
     {
-        formModel = new Worker();
+        formModel = new Service();
         isEditing = false;
         showModal = true;
     }
 
-    private void OpenEditModal(Worker w)
+    private void OpenEditModal(Service s)
     {
-        formModel = new Worker { Id = w.Id, Name = w.Name, DefaultCommissionPercentage = w.DefaultCommissionPercentage, ApplicationUserId = w.ApplicationUserId };
-        editId = w.Id;
+        formModel = new Service { Id = s.Id, Name = s.Name, BasePrice = s.BasePrice };
+        editId = s.Id;
         isEditing = true;
         showModal = true;
     }
@@ -144,36 +142,36 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/workers/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker updated");
-                else Toast.Show("Failed to update worker", ToastLevel.Error);
+                var resp = await Http.PutAsJsonAsync($"api/services/{editId}", formModel);
+                if (resp.IsSuccessStatusCode) Toast.Show("Service updated");
+                else Toast.Show("Failed to update service", ToastLevel.Error);
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/workers", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker added");
-                else Toast.Show("Failed to add worker", ToastLevel.Error);
+                var resp = await Http.PostAsJsonAsync("api/services", formModel);
+                if (resp.IsSuccessStatusCode) Toast.Show("Service added");
+                else Toast.Show("Failed to add service", ToastLevel.Error);
             }
-            await LoadWorkers();
+            await LoadServices();
             showModal = false;
         }
         finally { saving = false; }
     }
 
-    private void ConfirmDelete(Worker w)
+    private void ConfirmDelete(Service s)
     {
-        deleteTarget = w;
+        deleteTarget = s;
         showDeleteConfirm = true;
     }
 
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/workers/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Worker deleted");
-        else Toast.Show("Failed to delete worker. It may have related records.", ToastLevel.Error);
+        var resp = await Http.DeleteAsync($"api/services/{deleteTarget.Id}");
+        if (resp.IsSuccessStatusCode) Toast.Show("Service deleted");
+        else Toast.Show("Failed to delete service. It may have related records.", ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
-        await LoadWorkers();
+        await LoadServices();
     }
 }

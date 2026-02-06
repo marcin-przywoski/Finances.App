@@ -1,0 +1,179 @@
+@page "/record"
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject ToastService Toast
+@inject WorkerContextService WorkerContext
+@inject NavigationManager Nav
+
+<PageTitle>Record Service</PageTitle>
+
+<div class="mb-4">
+    <h2 class="mb-1" style="font-weight: 700;">Record a Service</h2>
+    <p class="text-muted mb-0">Log a completed service for a client.</p>
+</div>
+
+@if (workers == null || services == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <div class="card p-4" style="max-width: 640px;">
+        <EditForm Model="@record" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Worker</label>
+                    <select class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
+                        <option value="0">-- Select Worker --</option>
+                        @foreach (var w in workers)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Service</label>
+                    <select class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
+                        <option value="0">-- Select Service --</option>
+                        @foreach (var s in services)
+                        {
+                            <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Date</label>
+                    <InputDate class="form-control" @bind-Value="record.DatePerformed" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Client Name</label>
+                    <InputText class="form-control" @bind-Value="record.ClientName" placeholder="Optional" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Amount Paid</label>
+                    <InputNumber class="form-control" @bind-Value="record.AmountPaid" />
+                    <ValidationMessage For="() => record.AmountPaid" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Commission %</label>
+                    <InputNumber class="form-control" @bind-Value="record.CommissionPercentageApplied" />
+                    <ValidationMessage For="() => record.CommissionPercentageApplied" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Tips</label>
+                    <InputNumber class="form-control" @bind-Value="record.Tips" />
+                    <ValidationMessage For="() => record.Tips" />
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Notes</label>
+                    <InputTextArea class="form-control" @bind-Value="record.Notes" rows="2" placeholder="Optional notes..." />
+                </div>
+            </div>
+
+            <hr class="my-3" />
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    @if (record.AmountPaid > 0 && record.CommissionPercentageApplied > 0)
+                    {
+                        var workerShare = record.AmountPaid * (record.CommissionPercentageApplied / 100);
+                        var salonShare = record.AmountPaid - workerShare;
+                        <span class="text-muted" style="font-size: 0.875rem;">
+                            Worker: <strong>@workerShare.ToString("C")</strong> &middot; Salon: <strong>@salonShare.ToString("C")</strong>
+                        </span>
+                    }
+                </div>
+                <button type="submit" class="btn btn-primary" disabled="@saving">
+                    @(saving ? "Saving..." : "Save Record")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+<Toast />
+
+@code {
+    private List<Worker>? workers;
+    private List<Service>? services;
+    private ServiceRecord record = new() { DatePerformed = DateTime.Today };
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+
+        await WorkerContext.InitializeAsync();
+        if (WorkerContext.SelectedWorkerId.HasValue && workers != null)
+        {
+            var w = workers.FirstOrDefault(x => x.Id == WorkerContext.SelectedWorkerId.Value);
+            if (w != null)
+            {
+                record.WorkerId = w.Id;
+                record.CommissionPercentageApplied = w.DefaultCommissionPercentage;
+            }
+        }
+    }
+
+    private void OnWorkerChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            record.WorkerId = id;
+            var w = workers?.FirstOrDefault(x => x.Id == id);
+            if (w != null)
+                record.CommissionPercentageApplied = w.DefaultCommissionPercentage;
+        }
+    }
+
+    private void OnServiceChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            record.ServiceId = id;
+            var s = services?.FirstOrDefault(x => x.Id == id);
+            if (s != null)
+                record.AmountPaid = s.BasePrice;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (record.WorkerId == 0 || record.ServiceId == 0)
+        {
+            Toast.Show("Please select a worker and a service.", ToastLevel.Error);
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/servicerecords", record);
+            if (resp.IsSuccessStatusCode)
+            {
+                Toast.Show("Service recorded successfully!");
+                record = new ServiceRecord
+                {
+                    DatePerformed = DateTime.Today,
+                    WorkerId = record.WorkerId,
+                    CommissionPercentageApplied = record.CommissionPercentageApplied
+                };
+            }
+            else
+            {
+                Toast.Show("Failed to save record.", ToastLevel.Error);
+            }
+        }
+        finally { saving = false; }
+    }
+}

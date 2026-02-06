@@ -1,0 +1,151 @@
+@page "/history"
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject WorkerContextService WorkerContext
+@inject ToastService Toast
+
+<PageTitle>History</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1" style="font-weight: 700;">Service History</h2>
+        <p class="text-muted mb-0">View and filter past service records.</p>
+    </div>
+</div>
+
+<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+
+@if (allRecords == null)
+{
+    <LoadingSpinner />
+}
+else
+{
+    var filtered = GetFilteredRecords();
+
+    @if (filtered.Count == 0)
+    {
+        <div class="card p-5 text-center mt-3">
+            <p class="text-muted mb-0">No records found for the selected period.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card mt-3">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th @onclick='() => SetSort("date")' style="cursor:pointer;">
+                                Date @SortIcon("date")
+                            </th>
+                            <th>Worker</th>
+                            <th>Service</th>
+                            <th>Client</th>
+                            <th @onclick='() => SetSort("amount")' style="cursor:pointer;">
+                                Amount @SortIcon("amount")
+                            </th>
+                            <th>Commission</th>
+                            <th>Tips</th>
+                            <th @onclick='() => SetSort("worker_share")' style="cursor:pointer;">
+                                Worker Share @SortIcon("worker_share")
+                            </th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in filtered)
+                        {
+                            <tr>
+                                <td>@r.DatePerformed.ToString("yyyy-MM-dd")</td>
+                                <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
+                                <td>@(r.Service?.Name ?? "—")</td>
+                                <td class="text-muted">@(r.ClientName ?? "—")</td>
+                                <td>@r.AmountPaid.ToString("C")</td>
+                                <td>@r.CommissionPercentageApplied%</td>
+                                <td>@r.Tips.ToString("C")</td>
+                                <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
+                                <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold" style="background-color: var(--body-bg);">
+                            <td colspan="4">Totals</td>
+                            <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
+                            <td></td>
+                            <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
+                            <td>@filtered.Sum(r => r.WorkerShare).ToString("C")</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    }
+}
+
+<Toast />
+
+@code {
+    private List<ServiceRecord>? allRecords;
+    private DateTime? dateFrom;
+    private DateTime? dateTo;
+    private string sortColumn = "date";
+    private bool sortAsc = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await WorkerContext.InitializeAsync();
+        allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
+    }
+
+    private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
+    {
+        dateFrom = range.From;
+        dateTo = range.To;
+    }
+
+    private List<ServiceRecord> GetFilteredRecords()
+    {
+        if (allRecords == null) return new();
+
+        var q = allRecords.AsEnumerable();
+
+        if (WorkerContext.SelectedWorkerId.HasValue)
+            q = q.Where(r => r.WorkerId == WorkerContext.SelectedWorkerId.Value);
+
+        if (dateFrom.HasValue)
+            q = q.Where(r => r.DatePerformed.Date >= dateFrom.Value.Date);
+
+        if (dateTo.HasValue)
+            q = q.Where(r => r.DatePerformed.Date <= dateTo.Value.Date);
+
+        q = sortColumn switch
+        {
+            "date" => sortAsc ? q.OrderBy(r => r.DatePerformed) : q.OrderByDescending(r => r.DatePerformed),
+            "amount" => sortAsc ? q.OrderBy(r => r.AmountPaid) : q.OrderByDescending(r => r.AmountPaid),
+            "worker_share" => sortAsc ? q.OrderBy(r => r.WorkerShare) : q.OrderByDescending(r => r.WorkerShare),
+            _ => q.OrderByDescending(r => r.DatePerformed)
+        };
+
+        return q.ToList();
+    }
+
+    private void SetSort(string column)
+    {
+        if (sortColumn == column)
+            sortAsc = !sortAsc;
+        else
+        {
+            sortColumn = column;
+            sortAsc = true;
+        }
+    }
+
+    private string SortIcon(string column)
+    {
+        if (sortColumn != column) return "";
+        return sortAsc ? "▲" : "▼";
+    }
+}
