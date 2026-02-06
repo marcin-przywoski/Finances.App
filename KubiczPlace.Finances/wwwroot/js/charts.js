@@ -84,6 +84,80 @@ window.financeCharts = {
         });
     },
 
+    renderForecastChart: function (canvasId, historicalLabels, actualData, trendData, forecastLabels, forecastData) {
+        this._destroy(canvasId);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+
+        const allLabels = [...historicalLabels, ...forecastLabels];
+        const actualPadded = [...actualData, ...forecastLabels.map(() => null)];
+        const trendPadded = [...trendData, ...forecastLabels.map(() => null)];
+        const forecastPadded = [...historicalLabels.map(() => null)];
+        // Connect forecast to last trend point
+        if (trendData.length > 0) forecastPadded[forecastPadded.length - 1] = trendData[trendData.length - 1];
+        forecastPadded.push(...forecastData);
+
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: allLabels,
+                datasets: [
+                    {
+                        label: 'Actual Revenue',
+                        data: actualPadded,
+                        borderColor: '#0d9488',
+                        backgroundColor: '#0d948820',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    },
+                    {
+                        label: 'Trend',
+                        data: trendPadded,
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        borderDash: [4, 4],
+                        fill: false,
+                        tension: 0,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Forecast',
+                        data: forecastPadded,
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b15',
+                        borderWidth: 2,
+                        borderDash: [6, 3],
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 2,
+                        pointStyle: 'triangle'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                if (ctx.raw === null) return null;
+                                return ctx.dataset.label + ': ' + ctx.raw.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 15 } }
+                }
+            }
+        });
+    },
+
     _destroy: function (canvasId) {
         if (this.instances[canvasId]) {
             this.instances[canvasId].destroy();

@@ -134,6 +134,85 @@ public class AnalyticsController : ControllerBase
         return Ok(data);
     }
 
+    [HttpGet("forecast")]
+    public async Task<IActionResult> GetForecast([FromQuery] int? workerId, [FromQuery] int forecastDays = 14)
+    {
+        // Use last 90 days of data for the regression model
+        var cutoff = DateTime.Today.AddDays(-90);
+        var q = _context.ServiceRecords.AsQueryable();
+
+        if (workerId.HasValue)
+            q = q.Where(r => r.WorkerId == workerId.Value);
+
+        q = q.Where(r => r.DatePerformed.Date >= cutoff);
+
+        var raw = await q.ToListAsync();
+
+        // Group by day
+        var daily = raw
+            .GroupBy(r => r.DatePerformed.Date)
+            .Select(g => new { date = g.Key, revenue = (double)g.Sum(r => r.AmountPaid) })
+            .OrderBy(x => x.date)
+            .ToList();
+
+        if (daily.Count < 2)
+            return Ok(new { historical = Array.Empty<object>(), forecast = Array.Empty<object>(), slope = 0.0, intercept = 0.0, rSquared = 0.0 });
+
+        // Linear regression: y = slope * x + intercept
+        var baseDate = daily.First().date;
+        var xs = daily.Select(d => (double)(d.date - baseDate).Days).ToArray();
+        var ys = daily.Select(d => d.revenue).ToArray();
+        int n = xs.Length;
+
+        double sumX = xs.Sum();
+        double sumY = ys.Sum();
+        double sumXY = xs.Zip(ys, (x, y) => x * y).Sum();
+        double sumX2 = xs.Sum(x => x * x);
+
+        double slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        double intercept = (sumY - slope * sumX) / n;
+
+        // R-squared
+        double meanY = sumY / n;
+        double ssTotal = ys.Sum(y => (y - meanY) * (y - meanY));
+        double ssResidual = xs.Zip(ys, (x, y) => { double predicted = slope * x + intercept; return (y - predicted) * (y - predicted); }).Sum();
+        double rSquared = ssTotal > 0 ? 1.0 - ssResidual / ssTotal : 0.0;
+
+        // Historical points with trend line
+        var historical = daily.Select(d =>
+        {
+            double dayIndex = (d.date - baseDate).Days;
+            return new
+            {
+                date = d.date.ToString("yyyy-MM-dd"),
+                actual = d.revenue,
+                trend = Math.Max(0, slope * dayIndex + intercept)
+            };
+        }).ToList();
+
+        // Forecast future days
+        var lastDate = daily.Last().date;
+        var forecast = Enumerable.Range(1, forecastDays).Select(i =>
+        {
+            var futureDate = lastDate.AddDays(i);
+            double dayIndex = (futureDate - baseDate).Days;
+            return new
+            {
+                date = futureDate.ToString("yyyy-MM-dd"),
+                predicted = Math.Max(0, slope * dayIndex + intercept)
+            };
+        }).ToList();
+
+        return Ok(new
+        {
+            historical,
+            forecast,
+            slope = Math.Round(slope, 2),
+            intercept = Math.Round(intercept, 2),
+            rSquared = Math.Round(rSquared, 4)
+        });
+    }
+
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecent([FromQuery] int count = 5)
     {
