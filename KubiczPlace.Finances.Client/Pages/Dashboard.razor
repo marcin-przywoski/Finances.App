@@ -121,13 +121,20 @@ else
             recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>("api/analytics/recent?count=6");
         }
         catch { }
-        finally { loading = false; }
+        finally
+        {
+            loading = false;
+            needsChartRender = true;
+        }
     }
+
+    private bool needsChartRender;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (needsChartRender)
         {
+            needsChartRender = false;
             await RenderChart();
         }
     }

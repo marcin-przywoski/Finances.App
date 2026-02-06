@@ -178,7 +178,7 @@ else
     private ServicePopularity[]? serviceData;
     private DailyEarning[]? dailyData;
     private ForecastResult? forecastResult;
-    private bool chartsRendered;
+    private bool needsChartRender;
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,7 +193,6 @@ else
         dateFrom = range.From;
         dateTo = range.To;
         await LoadData();
-        await RenderCharts();
     }
 
     private async Task OnForecastDaysChanged(ChangeEventArgs e)
@@ -202,7 +201,7 @@ else
         {
             forecastDays = days;
             await LoadForecast();
-            await RenderForecastChart();
+            needsChartRender = true;
         }
     }
 
@@ -218,7 +217,11 @@ else
             await LoadForecast();
         }
         catch { }
-        finally { loading = false; }
+        finally
+        {
+            loading = false;
+            needsChartRender = true;
+        }
     }
 
     private async Task LoadForecast()
@@ -232,10 +235,10 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender || !chartsRendered)
+        if (needsChartRender)
         {
+            needsChartRender = false;
             await RenderCharts();
-            chartsRendered = true;
         }
     }
 
