@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using KubiczPlace.Finances.Client.Pages;
+using KubiczPlace.Finances.Client.Services;
 using KubiczPlace.Finances.Components;
 using KubiczPlace.Finances.Components.Account;
 using KubiczPlace.Finances.Data;
@@ -19,6 +20,8 @@ public class Program
             .AddInteractiveServerComponents()
             .AddInteractiveWebAssemblyComponents()
             .AddAuthenticationStateSerialization();
+
+        builder.Services.AddHttpClient();
 
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddScoped<IdentityUserAccessor>();
@@ -47,6 +50,9 @@ public class Program
             .AddDefaultTokenProviders();
 
         builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+        builder.Services.AddScoped<ToastService>();
+        builder.Services.AddScoped<WorkerContextService>();
 
         builder.Services.AddControllers();
 
