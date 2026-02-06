@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -53,6 +54,11 @@ public class Program
 
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
+        builder.Services.AddScoped(sp =>
+        {
+            var nav = sp.GetRequiredService<NavigationManager>();
+            return new HttpClient { BaseAddress = new Uri(nav.BaseUri) };
+        });
 
         builder.Services.AddControllers();
 

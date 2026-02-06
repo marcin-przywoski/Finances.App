@@ -62,7 +62,9 @@ public class AnalyticsController : ControllerBase
         if (to.HasValue)
             q = q.Where(r => r.DatePerformed.Date <= to.Value.Date);
 
-        var data = await q
+        var raw = await q.ToListAsync();
+
+        var data = raw
             .GroupBy(r => r.DatePerformed.Date)
             .Select(g => new
             {
@@ -71,7 +73,7 @@ public class AnalyticsController : ControllerBase
                 tips = g.Sum(r => r.Tips)
             })
             .OrderBy(x => x.date)
-            .ToListAsync();
+            .ToList();
 
         return Ok(data);
     }
@@ -88,8 +90,10 @@ public class AnalyticsController : ControllerBase
         if (to.HasValue)
             q = q.Where(r => r.DatePerformed.Date <= to.Value.Date);
 
-        var data = await q
-            .GroupBy(r => r.Worker!.Name)
+        var raw = await q.ToListAsync();
+
+        var data = raw
+            .GroupBy(r => r.Worker?.Name ?? "Unknown")
             .Select(g => new
             {
                 worker = g.Key,
@@ -97,7 +101,7 @@ public class AnalyticsController : ControllerBase
                 tips = g.Sum(r => r.Tips)
             })
             .OrderByDescending(x => x.revenue)
-            .ToListAsync();
+            .ToList();
 
         return Ok(data);
     }
@@ -114,8 +118,10 @@ public class AnalyticsController : ControllerBase
         if (to.HasValue)
             q = q.Where(r => r.DatePerformed.Date <= to.Value.Date);
 
-        var data = await q
-            .GroupBy(r => r.Service!.Name)
+        var raw = await q.ToListAsync();
+
+        var data = raw
+            .GroupBy(r => r.Service?.Name ?? "Unknown")
             .Select(g => new
             {
                 service = g.Key,
@@ -123,7 +129,7 @@ public class AnalyticsController : ControllerBase
                 revenue = g.Sum(r => r.AmountPaid)
             })
             .OrderByDescending(x => x.count)
-            .ToListAsync();
+            .ToList();
 
         return Ok(data);
     }
@@ -131,23 +137,24 @@ public class AnalyticsController : ControllerBase
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecent([FromQuery] int count = 5)
     {
-        var data = await _context.ServiceRecords
+        var raw = await _context.ServiceRecords
             .Include(r => r.Worker)
             .Include(r => r.Service)
             .OrderByDescending(r => r.DatePerformed)
             .ThenByDescending(r => r.Id)
             .Take(count)
-            .Select(r => new
-            {
-                r.Id,
-                date = r.DatePerformed.ToString("yyyy-MM-dd"),
-                worker = r.Worker!.Name,
-                service = r.Service!.Name,
-                r.AmountPaid,
-                r.Tips,
-                r.ClientName
-            })
             .ToListAsync();
+
+        var data = raw.Select(r => new
+        {
+            r.Id,
+            date = r.DatePerformed.ToString("yyyy-MM-dd"),
+            worker = r.Worker?.Name ?? "Unknown",
+            service = r.Service?.Name ?? "Unknown",
+            r.AmountPaid,
+            r.Tips,
+            r.ClientName
+        }).ToList();
 
         return Ok(data);
     }
