@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using KubiczPlace.Finances.PlaywrightTests.Infrastructure;
 using Microsoft.Playwright;
@@ -12,11 +13,17 @@ public sealed class PwaUpdateFlowTests
     public async Task Update_check_keeps_installed_build_until_reload_and_switches_after_apply()
     {
         var repositoryRoot = FindRepositoryRoot();
-        var publishDirectory = await PublishClientAsync(repositoryRoot);
-        var siteRoot = ResolveSiteRoot(publishDirectory);
-        var initialVersion = ReadManifestVersion(siteRoot);
+        var sandboxRoot = CreatePublishSandbox(repositoryRoot);
+        var firstPublishDirectory = await PublishClientAsync(sandboxRoot, "v1");
+        var firstSiteRoot = ResolveSiteRoot(firstPublishDirectory);
+        var initialVersion = ReadManifestVersion(firstSiteRoot);
 
-        await using var server = new StaticSiteServer(siteRoot);
+        PromoteSandboxRelease(sandboxRoot);
+        var secondPublishDirectory = await PublishClientAsync(sandboxRoot, "v2");
+        var secondSiteRoot = ResolveSiteRoot(secondPublishDirectory);
+        var updatedVersion = ReadManifestVersion(secondSiteRoot);
+
+        await using var server = new StaticSiteServer(firstSiteRoot);
         server.Start();
 
         using var playwright = await Playwright.CreateAsync();
@@ -37,14 +44,28 @@ public sealed class PwaUpdateFlowTests
         var currentBuildValue = page.Locator("dl.row dd").First;
         await WaitForTextAsync(currentBuildValue, initialVersion);
 
-        var updatedVersion = PromotePublishedVersion(siteRoot, initialVersion);
+        server.SwitchSiteRoot(secondSiteRoot);
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Check for updates" }).ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Reload to update" }).WaitForAsync();
+
+        var reloadButton = page.GetByRole(AriaRole.Button, new() { Name = "Reload to update" });
+        try
+        {
+            await reloadButton.WaitForAsync(new LocatorWaitForOptions
+            {
+                State = WaitForSelectorState.Visible,
+                Timeout = 30000
+            });
+        }
+        catch (TimeoutException ex)
+        {
+            var diagnostics = await ReadUpdateDiagnosticsAsync(page);
+            throw new Xunit.Sdk.XunitException($"The update button never appeared. Diagnostics: {diagnostics}", ex);
+        }
 
         Assert.Equal(initialVersion, (await currentBuildValue.InnerTextAsync()).Trim());
 
-        await page.GetByRole(AriaRole.Button, new() { Name = "Reload to update" }).ClickAsync();
+        await reloadButton.ClickAsync();
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         await WaitForTextAsync(currentBuildValue, updatedVersion);
     }
@@ -82,9 +103,9 @@ public sealed class PwaUpdateFlowTests
         throw new DirectoryNotFoundException("Could not find the repository root for the PWA smoke test.");
     }
 
-    private static async Task<string> PublishClientAsync(string repositoryRoot)
+    private static async Task<string> PublishClientAsync(string repositoryRoot, string outputName)
     {
-        var publishDirectory = Path.Combine(Path.GetTempPath(), $"kubiczplace-finances-pwa-{Guid.NewGuid():N}");
+        var publishDirectory = Path.Combine(Path.GetTempPath(), $"kubiczplace-finances-pwa-{Guid.NewGuid():N}", outputName);
         Directory.CreateDirectory(publishDirectory);
 
         var projectPath = Path.Combine(repositoryRoot, "KubiczPlace.Finances.Client", "KubiczPlace.Finances.Client.csproj");
@@ -109,6 +130,14 @@ public sealed class PwaUpdateFlowTests
         throw new InvalidOperationException($"dotnet publish failed for the PWA smoke test.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}");
     }
 
+    private static string CreatePublishSandbox(string repositoryRoot)
+    {
+        var sandboxRoot = Path.Combine(Path.GetTempPath(), $"kubiczplace-finances-sandbox-{Guid.NewGuid():N}");
+        CopyProjectTree(Path.Combine(repositoryRoot, "KubiczPlace.Finances.Client"), Path.Combine(sandboxRoot, "KubiczPlace.Finances.Client"));
+        CopyProjectTree(Path.Combine(repositoryRoot, "KubiczPlace.Finances.Shared"), Path.Combine(sandboxRoot, "KubiczPlace.Finances.Shared"));
+        return sandboxRoot;
+    }
+
     private static string ResolveSiteRoot(string publishDirectory)
     {
         var wwwrootPath = Path.Combine(publishDirectory, "wwwroot");
@@ -131,25 +160,32 @@ public sealed class PwaUpdateFlowTests
         return match.Groups["version"].Value;
     }
 
-    private static string PromotePublishedVersion(string siteRoot, string currentVersion)
+    private static void PromoteSandboxRelease(string sandboxRoot)
     {
-        var assetsManifestPath = Path.Combine(siteRoot, "service-worker-assets.js");
-        var nextVersion = $"smoke-{DateTime.UtcNow:yyyyMMddHHmmss}";
-        var contents = File.ReadAllText(assetsManifestPath);
+        var markerPath = Path.Combine(sandboxRoot, "KubiczPlace.Finances.Client", "wwwroot", "smoke-update.txt");
+        var markerValue = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        File.WriteAllText(markerPath, markerValue);
+    }
 
-        var versionRegex = new Regex("(\"version\"\\s*:\\s*\")(?<version>[^\"]+)(\")");
-        var updatedContents = versionRegex.Replace(
-            contents,
-            match => $"{match.Groups[1].Value}{nextVersion}{match.Groups[3].Value}",
-            1);
+    private static void CopyProjectTree(string sourcePath, string destinationPath)
+    {
+        var sourceDirectory = new DirectoryInfo(sourcePath);
+        Directory.CreateDirectory(destinationPath);
 
-        if (updatedContents == contents || !updatedContents.Contains(nextVersion, StringComparison.Ordinal))
+        foreach (var directory in sourceDirectory.GetDirectories())
         {
-            throw new InvalidOperationException($"The smoke test could not replace service worker version '{currentVersion}'.");
+            if (directory.Name is "bin" or "obj")
+            {
+                continue;
+            }
+
+            CopyProjectTree(directory.FullName, Path.Combine(destinationPath, directory.Name));
         }
 
-        File.WriteAllText(assetsManifestPath, updatedContents);
-        return nextVersion;
+        foreach (var file in sourceDirectory.GetFiles())
+        {
+            file.CopyTo(Path.Combine(destinationPath, file.Name), true);
+        }
     }
 
     private static async Task WaitForTextAsync(ILocator locator, string expectedText)
@@ -169,5 +205,25 @@ public sealed class PwaUpdateFlowTests
 
         var finalText = (await locator.InnerTextAsync()).Trim();
         throw new Xunit.Sdk.XunitException($"Expected text '{expectedText}' but found '{finalText}'.");
+    }
+
+    private static async Task<string> ReadUpdateDiagnosticsAsync(IPage page)
+    {
+        return await page.EvaluateAsync<string>(@"async () => {
+            const registration = await navigator.serviceWorker.getRegistration();
+            const values = Array.from(document.querySelectorAll('dl.row dd')).map(node => node.textContent?.trim() ?? null);
+
+            return JSON.stringify({
+                hasController: Boolean(navigator.serviceWorker?.controller),
+                waitingState: registration?.waiting?.state ?? null,
+                installingState: registration?.installing?.state ?? null,
+                activeState: registration?.active?.state ?? null,
+                buildValue: values[0] ?? null,
+                lastCheckedValue: values[1] ?? null,
+                lastAppliedValue: values[2] ?? null,
+                statusBadge: document.querySelector('.badge')?.textContent?.trim() ?? null,
+                bodyText: document.body.innerText
+            });
+        }");
     }
 }

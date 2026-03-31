@@ -7,7 +7,7 @@ internal sealed class StaticSiteServer : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly HttpListener _listener = new();
-    private readonly string _siteRootPath;
+    private string _siteRootPath;
     private Task? _listenerTask;
 
     public StaticSiteServer(string siteRootPath)
@@ -18,6 +18,11 @@ internal sealed class StaticSiteServer : IAsyncDisposable
     }
 
     public Uri BaseUri { get; }
+
+    public void SwitchSiteRoot(string siteRootPath)
+    {
+        _siteRootPath = siteRootPath;
+    }
 
     public void Start()
     {
@@ -70,6 +75,7 @@ internal sealed class StaticSiteServer : IAsyncDisposable
     {
         try
         {
+            var siteRootPath = _siteRootPath;
             var requestedPath = context.Request.Url?.AbsolutePath ?? "/";
             var relativePath = Uri.UnescapeDataString(requestedPath.TrimStart('/'));
 
@@ -78,7 +84,7 @@ internal sealed class StaticSiteServer : IAsyncDisposable
                 relativePath = "index.html";
             }
 
-            var candidatePath = Path.Combine(_siteRootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var candidatePath = Path.Combine(siteRootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
             if (Directory.Exists(candidatePath))
             {
                 candidatePath = Path.Combine(candidatePath, "index.html");
@@ -86,7 +92,7 @@ internal sealed class StaticSiteServer : IAsyncDisposable
 
             if (!File.Exists(candidatePath) && !Path.HasExtension(relativePath))
             {
-                candidatePath = Path.Combine(_siteRootPath, "index.html");
+                candidatePath = Path.Combine(siteRootPath, "index.html");
             }
 
             if (!File.Exists(candidatePath))
