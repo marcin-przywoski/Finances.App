@@ -81,8 +81,11 @@ else
                 </div>
 
                 <dl class="row mb-3 small">
-                    <dt class="col-5 text-muted">Current build</dt>
+                    <dt class="col-5 text-muted">Installed build</dt>
                     <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
+
+                    <dt class="col-5 text-muted">Available build</dt>
+                    <dd class="col-7">@GetAvailableBuildLabel()</dd>
 
                     <dt class="col-5 text-muted">Last checked</dt>
                     <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
@@ -91,7 +94,7 @@ else
                     <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
 
                     <dt class="col-5 text-muted">Backup schema</dt>
-                    <dd class="col-7">v@summary.SchemaVersion</dd>
+                    <dd class="col-7">v@(summary.SchemaVersion)</dd>
                 </dl>
 
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
@@ -107,6 +110,41 @@ else
                         <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
                     }
                 </div>
+
+                @if (GetDisplayedRelease() is { } release)
+                {
+                    <div class="border rounded-3 p-3 bg-light-subtle mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <h6 class="fw-semibold mb-1">@GetReleaseHeading()</h6>
+                                @if (!string.IsNullOrWhiteSpace(release.Title))
+                                {
+                                    <p class="mb-1 fw-semibold">@release.Title</p>
+                                }
+                            </div>
+
+                            @if (release.PublishedUtc is not null)
+                            {
+                                <span class="small text-muted">@release.PublishedUtc.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(release.Summary))
+                        {
+                            <p class="text-muted mb-2">@release.Summary</p>
+                        }
+
+                        @if (release.Changes.Count > 0)
+                        {
+                            <ul class="mb-0 text-muted" style="padding-left: 1rem;">
+                                @foreach (var change in release.Changes)
+                                {
+                                    <li>@change</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
 
                 <h6 class="fw-semibold mb-3">Privacy and Install Notes</h6>
                 <ul class="mb-0 text-muted" style="padding-left: 1rem;">
@@ -343,6 +381,11 @@ else
             return "Update ready";
         }
 
+        if (PwaUpdate.State.JustUpdated)
+        {
+            return "Updated";
+        }
+
         return PwaUpdate.State.IsOfflineReady ? "Up to date" : "Initializing";
     }
 
@@ -351,6 +394,25 @@ else
         return string.IsNullOrWhiteSpace(PwaUpdate.State.CurrentVersion)
             ? "Detecting..."
             : PwaUpdate.State.CurrentVersion!;
+    }
+
+    private string GetAvailableBuildLabel()
+    {
+        return string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableVersion)
+            ? "No pending update"
+            : PwaUpdate.State.AvailableVersion!;
+    }
+
+    private PwaReleaseInfo? GetDisplayedRelease()
+    {
+        return PwaUpdate.State.AvailableRelease ?? PwaUpdate.State.InstalledRelease;
+    }
+
+    private string GetReleaseHeading()
+    {
+        return PwaUpdate.State.AvailableRelease is not null
+            ? "What changed"
+            : "Current release";
     }
 
     private static string FormatDateTime(DateTimeOffset? value)

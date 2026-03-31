@@ -9,6 +9,9 @@ namespace KubiczPlace.Finances.PlaywrightTests;
 
 public sealed class PwaUpdateFlowTests
 {
+    private const string UpdatedReleaseTitle = "Smoke-test update rollout";
+    private const string UpdatedReleaseSummary = "Confirms that pending PWA updates expose human-readable release notes before reload.";
+
     [Fact]
     public async Task Update_check_keeps_installed_build_until_reload_and_switches_after_apply()
     {
@@ -62,6 +65,8 @@ public sealed class PwaUpdateFlowTests
             var diagnostics = await ReadUpdateDiagnosticsAsync(page);
             throw new Xunit.Sdk.XunitException($"The update button never appeared. Diagnostics: {diagnostics}", ex);
         }
+
+        await page.GetByText(UpdatedReleaseTitle, new PageGetByTextOptions { Exact = true }).WaitForAsync();
 
         Assert.Equal(initialVersion, (await currentBuildValue.InnerTextAsync()).Trim());
 
@@ -165,6 +170,21 @@ public sealed class PwaUpdateFlowTests
         var markerPath = Path.Combine(sandboxRoot, "KubiczPlace.Finances.Client", "wwwroot", "smoke-update.txt");
         var markerValue = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         File.WriteAllText(markerPath, markerValue);
+
+                var releasePath = Path.Combine(sandboxRoot, "KubiczPlace.Finances.Client", "wwwroot", "pwa-release.json");
+                File.WriteAllText(releasePath, $$"""
+                {
+                    "releaseId": "smoke-test-update",
+                    "publishedUtc": "{{DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)}}",
+                    "title": "{{UpdatedReleaseTitle}}",
+                    "summary": "{{UpdatedReleaseSummary}}",
+                    "changes": [
+                        "Publishes a second build for the Playwright smoke test.",
+                        "Keeps the installed build label unchanged until the update is applied.",
+                        "Shows the release note inside the App Updates card before reload."
+                    ]
+                }
+                """);
     }
 
     private static void CopyProjectTree(string sourcePath, string destinationPath)

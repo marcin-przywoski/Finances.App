@@ -28,7 +28,12 @@
                     <span class="pwa-banner-badge">Update</span>
                     <div>
                         <h2>A newer offline version is ready</h2>
-                        <p>Reload once to switch to the latest cached files and keep the installed app in sync.</p>
+                        <p>@GetUpdateMessage()</p>
+
+                        @if (!string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableRelease?.Title))
+                        {
+                            <small class="d-block opacity-75">@PwaUpdate.State.AvailableRelease!.Title</small>
+                        }
                     </div>
                 </div>
                 <div class="pwa-banner-actions">
@@ -98,6 +103,13 @@
     private void DismissUpdate()
     {
         updateDismissed = true;
+    }
+
+    private string GetUpdateMessage()
+    {
+        return string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableVersion)
+            ? "Reload once to switch to the latest cached files and keep the installed app in sync."
+            : $"Reload once to switch this browser to offline build {PwaUpdate.State.AvailableVersion}.";
     }
 
     private void HandlePwaStateChanged()

@@ -1,9 +1,12 @@
 globalThis.financePwa = (() => {
-    const versionStorageKey = 'kubiczplace.finances.pwa.currentVersion';
+    const installedVersionStorageKey = 'kubiczplace.finances.pwa.installedVersion';
+    const installedReleaseStorageKey = 'kubiczplace.finances.pwa.installedRelease';
+    const pendingUpdateStorageKey = 'kubiczplace.finances.pwa.pendingUpdate';
     const lastAppliedUpdateStorageKey = 'kubiczplace.finances.pwa.lastAppliedUpdateUtc';
     let deferredInstallPrompt = null;
     let dotNetHelper = null;
     let readyRegistrationObserved = false;
+    let observedRegistration = null;
     let registration = null;
     let trackedInstallingWorker = null;
     let reloadPending = false;
@@ -14,9 +17,80 @@ globalThis.financePwa = (() => {
         isOfflineReady: false,
         isCheckingForUpdates: false,
         justUpdated: false,
-        currentVersion: null,
+        currentVersion: globalThis.localStorage.getItem(installedVersionStorageKey),
+        availableVersion: null,
+        installedRelease: null,
+        availableRelease: null,
         lastCheckedUtc: null,
         lastAppliedUpdateUtc: globalThis.localStorage.getItem(lastAppliedUpdateStorageKey)
+    };
+
+    const normalizeString = value => typeof value === 'string' && value.trim() ? value.trim() : null;
+
+    const parseStoredJson = storageKey => {
+        try {
+            const rawValue = globalThis.localStorage.getItem(storageKey);
+            return rawValue ? JSON.parse(rawValue) : null;
+        } catch {
+            return null;
+        }
+    };
+
+    const normalizeRelease = value => {
+        if (!value || typeof value !== 'object') {
+            return null;
+        }
+
+        const release = {
+            releaseId: normalizeString(value.releaseId),
+            title: normalizeString(value.title),
+            summary: normalizeString(value.summary),
+            publishedUtc: normalizeString(value.publishedUtc),
+            changes: Array.isArray(value.changes)
+                ? value.changes
+                    .map(normalizeString)
+                    .filter(change => change !== null)
+                : []
+        };
+
+        if (!release.releaseId && !release.title && !release.summary && !release.publishedUtc && release.changes.length === 0) {
+            return null;
+        }
+
+        return release;
+    };
+
+    const readStoredRelease = () => normalizeRelease(parseStoredJson(installedReleaseStorageKey));
+
+    const writeStoredRelease = release => {
+        if (release) {
+            globalThis.localStorage.setItem(installedReleaseStorageKey, JSON.stringify(release));
+            return;
+        }
+
+        globalThis.localStorage.removeItem(installedReleaseStorageKey);
+    };
+
+    const readPendingUpdate = () => {
+        const pendingUpdate = parseStoredJson(pendingUpdateStorageKey);
+        if (!pendingUpdate || typeof pendingUpdate !== 'object') {
+            return null;
+        }
+
+        const version = normalizeString(pendingUpdate.version);
+        const release = normalizeRelease(pendingUpdate.release);
+        return version || release ? { version, release } : null;
+    };
+
+    const writePendingUpdate = metadata => {
+        globalThis.localStorage.setItem(pendingUpdateStorageKey, JSON.stringify({
+            version: metadata?.version ?? null,
+            release: metadata?.release ?? null
+        }));
+    };
+
+    const clearPendingUpdate = () => {
+        globalThis.localStorage.removeItem(pendingUpdateStorageKey);
     };
 
     const onBeforeInstallPrompt = event => {
@@ -30,12 +104,14 @@ globalThis.financePwa = (() => {
         void syncState();
     };
 
-    const onControllerChange = () => {
-        if (!reloadPending) {
-            return;
-        }
+    const onControllerChange = async () => {
+        const latestMetadata = await loadLatestMetadata();
+        const justUpdated = completePendingUpdate(latestMetadata);
+        await syncState(latestMetadata, justUpdated);
 
-        globalThis.location.reload();
+        if (reloadPending) {
+            globalThis.location.reload();
+        }
     };
 
     const onVisibilityChange = () => {
@@ -51,7 +127,7 @@ globalThis.financePwa = (() => {
         return match ? match[1] : null;
     };
 
-    const loadCurrentVersion = async () => {
+    const loadLatestVersion = async () => {
         try {
             const response = await fetch('service-worker-assets.js', { cache: 'no-cache' });
             if (!response.ok) {
@@ -64,24 +140,67 @@ globalThis.financePwa = (() => {
         }
     };
 
-    const trackAppliedVersion = version => {
-        if (!version) {
-            state.justUpdated = false;
+    const loadLatestRelease = async () => {
+        try {
+            const response = await fetch('pwa-release.json', { cache: 'no-cache' });
+            if (!response.ok) {
+                return null;
+            }
+
+            return normalizeRelease(await response.json());
+        } catch {
+            return null;
+        }
+    };
+
+    const loadLatestMetadata = async () => ({
+        version: await loadLatestVersion(),
+        release: await loadLatestRelease()
+    });
+
+    const persistInstalledMetadata = (metadata, markApplied) => {
+        if (metadata?.version) {
+            globalThis.localStorage.setItem(installedVersionStorageKey, metadata.version);
+        }
+
+        writeStoredRelease(metadata?.release ?? null);
+
+        if (!markApplied) {
+            return false;
+        }
+
+        const appliedAt = new Date().toISOString();
+        globalThis.localStorage.setItem(lastAppliedUpdateStorageKey, appliedAt);
+        state.lastAppliedUpdateUtc = appliedAt;
+        return true;
+    };
+
+    const hydrateInitialInstall = latestMetadata => {
+        const installedVersion = globalThis.localStorage.getItem(installedVersionStorageKey);
+        if (installedVersion || !navigator.serviceWorker?.controller || !latestMetadata.version) {
             return;
         }
 
-        const previousVersion = globalThis.localStorage.getItem(versionStorageKey);
-        if (previousVersion && previousVersion !== version) {
-            const now = new Date().toISOString();
-            state.justUpdated = true;
-            state.lastAppliedUpdateUtc = now;
-            globalThis.localStorage.setItem(lastAppliedUpdateStorageKey, now);
-        } else {
-            state.justUpdated = false;
-            state.lastAppliedUpdateUtc = globalThis.localStorage.getItem(lastAppliedUpdateStorageKey);
+        persistInstalledMetadata(latestMetadata, false);
+    };
+
+    const completePendingUpdate = latestMetadata => {
+        const pendingUpdate = readPendingUpdate();
+        if (!pendingUpdate || !navigator.serviceWorker?.controller || registration?.waiting) {
+            return false;
         }
 
-        globalThis.localStorage.setItem(versionStorageKey, version);
+        const effectiveVersion = latestMetadata.version ?? pendingUpdate.version;
+        const effectiveRelease = latestMetadata.release ?? pendingUpdate.release;
+        const installedVersion = globalThis.localStorage.getItem(installedVersionStorageKey);
+
+        clearPendingUpdate();
+
+        if (!effectiveVersion || effectiveVersion === installedVersion) {
+            return false;
+        }
+
+        return persistInstalledMetadata({ version: effectiveVersion, release: effectiveRelease }, true);
     };
 
     const invokeStateUpdate = async () => {
@@ -102,6 +221,11 @@ globalThis.financePwa = (() => {
         }
 
         registration = reg;
+        if (reg === observedRegistration) {
+            return;
+        }
+
+        observedRegistration = reg;
 
         if (reg.waiting && navigator.serviceWorker.controller) {
             void syncState();
@@ -122,17 +246,25 @@ globalThis.financePwa = (() => {
         });
     };
 
-    const syncState = async () => {
+    const syncState = async (latestMetadataOverride, forcedJustUpdated = false) => {
+        const latestMetadata = latestMetadataOverride ?? await loadLatestMetadata();
+        hydrateInitialInstall(latestMetadata);
+
+        const updateAvailable = Boolean(registration?.waiting && navigator.serviceWorker.controller);
         state = {
             ...state,
             installAvailable: !isStandalone() && deferredInstallPrompt !== null,
-            updateAvailable: Boolean(registration?.waiting && navigator.serviceWorker.controller),
+            updateAvailable,
             isStandalone: isStandalone(),
-            isOfflineReady: Boolean(navigator.serviceWorker?.controller),
-            currentVersion: await loadCurrentVersion()
+            isOfflineReady: Boolean(navigator.serviceWorker?.controller || registration?.active),
+            justUpdated: forcedJustUpdated,
+            currentVersion: globalThis.localStorage.getItem(installedVersionStorageKey),
+            availableVersion: updateAvailable ? latestMetadata.version : null,
+            installedRelease: readStoredRelease(),
+            availableRelease: updateAvailable ? latestMetadata.release : null,
+            lastAppliedUpdateUtc: globalThis.localStorage.getItem(lastAppliedUpdateStorageKey)
         };
 
-        trackAppliedVersion(state.currentVersion);
         await invokeStateUpdate();
     };
 
@@ -229,7 +361,7 @@ globalThis.financePwa = (() => {
             }
 
             await registration.update();
-            return await waitForUpdateResult(silent ? 1500 : 4000);
+            return await waitForUpdateResult(silent ? 2500 : 10000);
         } finally {
             state = {
                 ...state,
@@ -284,14 +416,10 @@ globalThis.financePwa = (() => {
                 return false;
             }
 
+            const latestMetadata = await loadLatestMetadata();
+            writePendingUpdate(latestMetadata);
             reloadPending = true;
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            globalThis.setTimeout(() => {
-                if (reloadPending) {
-                    globalThis.location.reload();
-                }
-            }, 4000);
-
             return true;
         },
 

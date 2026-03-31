@@ -4,6 +4,13 @@ using Microsoft.JSInterop;
 
 namespace KubiczPlace.Finances.Client.Services;
 
+public sealed record PwaReleaseInfo(
+    string? ReleaseId,
+    string? Title,
+    string? Summary,
+    DateTimeOffset? PublishedUtc,
+    IReadOnlyList<string> Changes);
+
 public sealed record PwaUpdateState(
     bool InstallAvailable,
     bool UpdateAvailable,
@@ -12,10 +19,13 @@ public sealed record PwaUpdateState(
     bool IsCheckingForUpdates,
     bool JustUpdated,
     string? CurrentVersion,
+    string? AvailableVersion,
+    PwaReleaseInfo? InstalledRelease,
+    PwaReleaseInfo? AvailableRelease,
     DateTimeOffset? LastCheckedUtc,
     DateTimeOffset? LastAppliedUpdateUtc)
 {
-    public static PwaUpdateState Empty { get; } = new(false, false, false, false, false, false, null, null, null);
+    public static PwaUpdateState Empty { get; } = new(false, false, false, false, false, false, null, null, null, null, null, null);
 }
 
 public sealed class PwaUpdateService : IAsyncDisposable
@@ -108,9 +118,22 @@ public sealed class PwaUpdateService : IAsyncDisposable
         }
         catch (JSDisconnectedException)
         {
+            return;
         }
 
         _dotNetRef?.Dispose();
+    }
+
+    private static DateTimeOffset? ParseDateTimeOffset(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+            ? parsed.ToUniversalTime()
+            : null;
     }
 
     private sealed class PwaUpdateStateDto
@@ -122,6 +145,9 @@ public sealed class PwaUpdateService : IAsyncDisposable
         public bool IsCheckingForUpdates { get; set; }
         public bool JustUpdated { get; set; }
         public string? CurrentVersion { get; set; }
+        public string? AvailableVersion { get; set; }
+        public PwaReleaseInfoDto? InstalledRelease { get; set; }
+        public PwaReleaseInfoDto? AvailableRelease { get; set; }
         public string? LastCheckedUtc { get; set; }
         public string? LastAppliedUpdateUtc { get; set; }
 
@@ -135,20 +161,49 @@ public sealed class PwaUpdateService : IAsyncDisposable
                 IsCheckingForUpdates,
                 JustUpdated,
                 string.IsNullOrWhiteSpace(CurrentVersion) ? null : CurrentVersion,
-                ParseDateTimeOffset(LastCheckedUtc),
-                ParseDateTimeOffset(LastAppliedUpdateUtc));
+                string.IsNullOrWhiteSpace(AvailableVersion) ? null : AvailableVersion,
+                InstalledRelease?.ToReleaseInfo(),
+                AvailableRelease?.ToReleaseInfo(),
+                PwaUpdateService.ParseDateTimeOffset(LastCheckedUtc),
+                PwaUpdateService.ParseDateTimeOffset(LastAppliedUpdateUtc));
         }
+    }
 
-        private static DateTimeOffset? ParseDateTimeOffset(string? value)
+    private sealed class PwaReleaseInfoDto
+    {
+        public string? ReleaseId { get; set; }
+        public string? Title { get; set; }
+        public string? Summary { get; set; }
+        public string? PublishedUtc { get; set; }
+        public List<string>? Changes { get; set; }
+
+        public PwaReleaseInfo? ToReleaseInfo()
         {
-            if (string.IsNullOrWhiteSpace(value))
+            var normalizedReleaseId = Normalize(ReleaseId);
+            var normalizedTitle = Normalize(Title);
+            var normalizedSummary = Normalize(Summary);
+            var normalizedChanges = (Changes ?? [])
+                .Select(Normalize)
+                .Where(value => value is not null)
+                .Cast<string>()
+                .ToArray();
+            var publishedUtc = PwaUpdateService.ParseDateTimeOffset(PublishedUtc);
+
+            if (normalizedReleaseId is null
+                && normalizedTitle is null
+                && normalizedSummary is null
+                && publishedUtc is null
+                && normalizedChanges.Length == 0)
             {
                 return null;
             }
 
-            return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
-                ? parsed.ToUniversalTime()
-                : null;
+            return new PwaReleaseInfo(normalizedReleaseId, normalizedTitle, normalizedSummary, publishedUtc, normalizedChanges);
+        }
+
+        private static string? Normalize(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
     }
 }

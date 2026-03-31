@@ -1,0 +1,11 @@
+{
+  "releaseId": "2026-03-31-standalone-pwa",
+  "publishedUtc": "2026-03-31T00:00:00Z",
+  "title": "Standalone browser-only release",
+  "summary": "The finance tracker now runs entirely in the browser as an installable PWA.",
+  "changes": [
+    "All finance data stays in this browser profile unless the user exports it.",
+    "Offline caching, install prompts, and manual update checks are enabled.",
+    "JSON import and export let the same data move between browsers and devices."
+  ]
+}

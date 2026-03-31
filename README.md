@@ -54,7 +54,8 @@ Deploy the contents of that `wwwroot` folder to any static host.
 
 - The app can be installed from supported browsers and will cache its static assets for offline use.
 - The service worker only provides the full offline experience after the first successful online load.
-- The `Data` page now includes a manual update workflow: check for updates, see the current offline build, and reload once when a new build is ready.
+- The `Data` page now includes a manual update workflow: check for updates, compare the installed build with the pending build, and reload once when a new build is ready.
+- Human-readable release notes come from `KubiczPlace.Finances.Client/wwwroot/pwa-release.json`; update that file whenever you publish a new build if you want the PWA to show "What changed" details.
 - When a newer build becomes active, the app shows a confirmation toast so the user knows the installed PWA actually switched over.
 - Export a backup before clearing browser data or moving to another device.
 
