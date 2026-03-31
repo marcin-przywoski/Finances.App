@@ -23,10 +23,11 @@ public sealed record ForecastResult(HistoricalPointResult[] Historical, Forecast
 
 public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
 
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, DateTime LastUpdatedUtc);
+public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int SchemaVersion, DateTime LastUpdatedUtc);
 
 public sealed class LocalFinanceStore
 {
+    private const int CurrentSchemaVersion = 1;
     private const string StorageKey = "kubiczplace.finances.snapshot";
     private readonly IJSRuntime _js;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
@@ -454,6 +455,7 @@ public sealed class LocalFinanceStore
             _snapshot.Services.Count,
             _snapshot.Products.Count,
             _snapshot.ServiceRecords.Count,
+            _snapshot.SchemaVersion,
             _snapshot.LastUpdatedUtc);
     }
 
@@ -486,6 +488,7 @@ public sealed class LocalFinanceStore
             throw new InvalidDataException("The selected file does not contain finance data.");
         }
 
+        MigrateSnapshot(imported);
         NormalizeSnapshot(imported);
         ValidateSnapshot(imported);
 
@@ -534,6 +537,7 @@ public sealed class LocalFinanceStore
             return;
         }
 
+        MigrateSnapshot(_snapshot);
         NormalizeSnapshot(_snapshot);
     }
 
@@ -546,6 +550,7 @@ public sealed class LocalFinanceStore
 
     private async Task SaveAsync()
     {
+        _snapshot!.SchemaVersion = CurrentSchemaVersion;
         var json = JsonSerializer.Serialize(_snapshot, _jsonOptions);
         await _js.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
     }
@@ -692,12 +697,25 @@ public sealed class LocalFinanceStore
             record.DatePerformed = record.DatePerformed == default ? DateTime.Today : record.DatePerformed.Date;
         }
 
-        snapshot.SchemaVersion = Math.Max(1, snapshot.SchemaVersion);
+        snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductId = Math.Max(snapshot.NextProductId, snapshot.Products.Select(product => product.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceRecordId = Math.Max(snapshot.NextServiceRecordId, snapshot.ServiceRecords.Select(record => record.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
+    }
+
+    private static void MigrateSnapshot(FinanceSnapshot snapshot)
+    {
+        if (snapshot.SchemaVersion <= 0)
+        {
+            snapshot.SchemaVersion = 1;
+        }
+
+        if (snapshot.SchemaVersion < CurrentSchemaVersion)
+        {
+            snapshot.SchemaVersion = CurrentSchemaVersion;
+        }
     }
 
     private static void ValidateSnapshot(FinanceSnapshot snapshot)

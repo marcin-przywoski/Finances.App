@@ -20,6 +20,7 @@ static class Program
         });
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
+        builder.Services.AddScoped<PwaUpdateService>();
 
         await builder.Build().RunAsync();
     }

@@ -1,5 +1,5 @@
-@implements IAsyncDisposable
-@inject IJSRuntime JS
+@implements IDisposable
+@inject PwaUpdateService PwaUpdate
 
 @if (ShowInstallBanner || ShowUpdateBanner)
 {
@@ -41,7 +41,6 @@
 }
 
 @code {
-    private DotNetObjectReference<PwaBanner>? dotNetRef;
     private bool installAvailable;
     private bool installDismissed;
     private bool isStandalone;
@@ -58,38 +57,37 @@
             return;
         }
 
-        dotNetRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("financePwa.register", dotNetRef);
+        await PwaUpdate.EnsureInitializedAsync();
+        ApplyState();
     }
 
-    [JSInvokable]
-    public Task UpdateState(bool nextInstallAvailable, bool nextUpdateAvailable, bool nextIsStandalone)
+    private void ApplyState()
     {
-        if (nextInstallAvailable && !installAvailable)
+        var state = PwaUpdate.State;
+
+        if (state.InstallAvailable && !installAvailable)
         {
             installDismissed = false;
         }
 
-        if (nextUpdateAvailable && !updateAvailable)
+        if (state.UpdateAvailable && !updateAvailable)
         {
             updateDismissed = false;
         }
 
-        installAvailable = nextInstallAvailable;
-        updateAvailable = nextUpdateAvailable;
-        isStandalone = nextIsStandalone;
-
-        return InvokeAsync(StateHasChanged);
+        installAvailable = state.InstallAvailable;
+        updateAvailable = state.UpdateAvailable;
+        isStandalone = state.IsStandalone;
     }
 
     private async Task PromptInstallAsync()
     {
-        await JS.InvokeVoidAsync("financePwa.promptInstall");
+        await PwaUpdate.PromptInstallAsync();
     }
 
     private async Task ApplyUpdateAsync()
     {
-        await JS.InvokeVoidAsync("financePwa.applyUpdate");
+        await PwaUpdate.ApplyUpdateAsync();
     }
 
     private void DismissInstall()
@@ -102,16 +100,19 @@
         updateDismissed = true;
     }
 
-    public async ValueTask DisposeAsync()
+    private void HandlePwaStateChanged()
     {
-        try
-        {
-            await JS.InvokeVoidAsync("financePwa.dispose");
-        }
-        catch (JSDisconnectedException)
-        {
-        }
+        ApplyState();
+        _ = InvokeAsync(StateHasChanged);
+    }
 
-        dotNetRef?.Dispose();
+    protected override void OnInitialized()
+    {
+        PwaUpdate.OnChange += HandlePwaStateChanged;
+    }
+
+    public void Dispose()
+    {
+        PwaUpdate.OnChange -= HandlePwaStateChanged;
     }
 }

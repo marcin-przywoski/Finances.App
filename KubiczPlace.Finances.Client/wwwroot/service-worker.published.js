@@ -1,23 +1,23 @@
 // Caution: offline support makes updates cache-sensitive. Keep a backup flow in the UI.
 
-self.importScripts('./service-worker-assets.js');
-self.addEventListener('install', event => event.waitUntil(onInstall()));
-self.addEventListener('activate', event => event.waitUntil(onActivate()));
-self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
-self.addEventListener('message', event => onMessage(event));
+globalThis.importScripts('./service-worker-assets.js');
+globalThis.addEventListener('install', event => event.waitUntil(onInstall()));
+globalThis.addEventListener('activate', event => event.waitUntil(onActivate()));
+globalThis.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+globalThis.addEventListener('message', event => onMessage(event));
 
 const cacheNamePrefix = 'kubiczplace-finances-offline-';
-const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
+const cacheName = `${cacheNamePrefix}${globalThis.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm$/, /\.html$/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/, /\.svg$/ ];
 const offlineAssetsExclude = [ /^service-worker\.js$/ ];
-const appBaseUrl = new URL('./', self.location.href);
+const appBaseUrl = new URL('./', globalThis.location.href);
 const indexUrl = new URL('index.html', appBaseUrl).href;
-const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, appBaseUrl).href);
+const manifestUrlList = globalThis.assetsManifest.assets.map(asset => new URL(asset.url, appBaseUrl).href);
 
 async function onInstall() {
     console.info('Service worker: install');
 
-    const assetsRequests = self.assetsManifest.assets
+    const assetsRequests = globalThis.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(new URL(asset.url, appBaseUrl).href, { integrity: asset.hash, cache: 'no-cache' }));
@@ -34,7 +34,7 @@ async function onActivate() {
         .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)
         .map(key => caches.delete(key)));
 
-    await self.clients.claim();
+    await globalThis.clients.claim();
 }
 
 async function onFetch(event) {
@@ -44,7 +44,7 @@ async function onFetch(event) {
 
     const cache = await caches.open(cacheName);
     const shouldServeIndexHtml = event.request.mode === 'navigate'
-        && !manifestUrlList.some(url => url === event.request.url);
+        && !manifestUrlList.includes(event.request.url);
     const cachedResponse = await cache.match(shouldServeIndexHtml ? indexUrl : event.request);
 
     return cachedResponse || fetch(event.request);
@@ -52,6 +52,6 @@ async function onFetch(event) {
 
 function onMessage(event) {
     if (event.data?.type === 'SKIP_WAITING') {
-        self.skipWaiting();
+        globalThis.skipWaiting();
     }
 }

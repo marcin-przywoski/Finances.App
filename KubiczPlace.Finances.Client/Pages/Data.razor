@@ -1,7 +1,9 @@
 @page "/data"
+@implements IDisposable
 @inject LocalFinanceStore Store
 @inject WorkerContextService WorkerContext
 @inject IJSRuntime JS
+@inject PwaUpdateService PwaUpdate
 @inject ToastService Toast
 
 <PageTitle>Data</PageTitle>
@@ -70,11 +72,47 @@ else
 
         <div class="col-lg-5">
             <div class="card p-4 h-100">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h6 class="fw-semibold mb-1">App Updates</h6>
+                        <p class="text-muted mb-0">Check for a newer offline build, then reload once to switch the installed PWA to it.</p>
+                    </div>
+                    <span class="badge rounded-pill @(PwaUpdate.State.UpdateAvailable ? "text-bg-primary" : "text-bg-light")">@GetPwaStatusLabel()</span>
+                </div>
+
+                <dl class="row mb-3 small">
+                    <dt class="col-5 text-muted">Current build</dt>
+                    <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
+
+                    <dt class="col-5 text-muted">Last checked</dt>
+                    <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
+
+                    <dt class="col-5 text-muted">Last applied</dt>
+                    <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
+
+                    <dt class="col-5 text-muted">Backup schema</dt>
+                    <dd class="col-7">v@summary.SchemaVersion</dd>
+                </dl>
+
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? "Checking..." : "Check for updates")</button>
+
+                    @if (PwaUpdate.State.UpdateAvailable)
+                    {
+                        <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">Reload to update</button>
+                    }
+
+                    @if (PwaUpdate.State.InstallAvailable && !PwaUpdate.State.IsStandalone)
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
+                    }
+                </div>
+
                 <h6 class="fw-semibold mb-3">Privacy and Install Notes</h6>
                 <ul class="mb-0 text-muted" style="padding-left: 1rem;">
                     <li>Your data is stored only in this browser's local storage.</li>
                     <li>No server-side account or database is used in this branch.</li>
-                    <li>You can install this build as a PWA from the browser menu for a more app-like offline experience.</li>
+                    <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
                     <li>Use exported backups if you want to keep data across devices or browsers.</li>
                     <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
                 </ul>
@@ -95,11 +133,23 @@ else
 @code {
     private DataStateSummary? summary;
     private bool busy;
+    private bool pwaBusy;
     private bool showResetConfirm;
 
     protected override async Task OnInitializedAsync()
     {
+        PwaUpdate.OnChange += HandlePwaStateChanged;
         await RefreshSummaryAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await PwaUpdate.EnsureInitializedAsync();
     }
 
     private async Task RefreshSummaryAsync()
@@ -199,5 +249,122 @@ else
     {
         var workers = await Store.GetWorkersAsync();
         await WorkerContext.EnsureWorkerExistsAsync(workers.Select(worker => worker.Id));
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (busy || pwaBusy)
+        {
+            return;
+        }
+
+        pwaBusy = true;
+
+        try
+        {
+            var updateReady = await PwaUpdate.CheckForUpdatesAsync();
+            Toast.Show(updateReady
+                ? "A newer offline build is ready. Reload to apply it."
+                : "You already have the latest available offline build.");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            pwaBusy = false;
+        }
+    }
+
+    private async Task ApplyUpdateAsync()
+    {
+        if (busy || pwaBusy)
+        {
+            return;
+        }
+
+        pwaBusy = true;
+
+        try
+        {
+            var updateStarted = await PwaUpdate.ApplyUpdateAsync();
+            if (!updateStarted)
+            {
+                Toast.Show("No pending update was found.", ToastLevel.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            pwaBusy = false;
+        }
+    }
+
+    private async Task PromptInstallAsync()
+    {
+        if (busy || pwaBusy)
+        {
+            return;
+        }
+
+        pwaBusy = true;
+
+        try
+        {
+            var accepted = await PwaUpdate.PromptInstallAsync();
+            if (!accepted)
+            {
+                Toast.Show("The install prompt is not available right now.", ToastLevel.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            pwaBusy = false;
+        }
+    }
+
+    private string GetPwaStatusLabel()
+    {
+        if (pwaBusy || PwaUpdate.State.IsCheckingForUpdates)
+        {
+            return "Checking";
+        }
+
+        if (PwaUpdate.State.UpdateAvailable)
+        {
+            return "Update ready";
+        }
+
+        return PwaUpdate.State.IsOfflineReady ? "Up to date" : "Initializing";
+    }
+
+    private string GetBuildLabel()
+    {
+        return string.IsNullOrWhiteSpace(PwaUpdate.State.CurrentVersion)
+            ? "Detecting..."
+            : PwaUpdate.State.CurrentVersion!;
+    }
+
+    private static string FormatDateTime(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "Not yet";
+    }
+
+    private void HandlePwaStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PwaUpdate.OnChange -= HandlePwaStateChanged;
     }
 }
