@@ -66,7 +66,7 @@ public sealed class PwaUpdateFlowTests
             throw new Xunit.Sdk.XunitException($"The update button never appeared. Diagnostics: {diagnostics}", ex);
         }
 
-        await page.GetByText(UpdatedReleaseTitle, new PageGetByTextOptions { Exact = true }).WaitForAsync();
+        await page.GetByText(UpdatedReleaseTitle, new PageGetByTextOptions { Exact = true }).First.WaitForAsync();
 
         Assert.Equal(initialVersion, (await currentBuildValue.InnerTextAsync()).Trim());
 

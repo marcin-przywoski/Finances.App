@@ -9,7 +9,7 @@ globalThis.addEventListener('message', event => onMessage(event));
 const cacheNamePrefix = 'kubiczplace-finances-offline-';
 const cacheName = `${cacheNamePrefix}${globalThis.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm$/, /\.html$/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/, /\.svg$/ ];
-const offlineAssetsExclude = [ /^service-worker\.js$/ ];
+const offlineAssetsExclude = [ /^service-worker\.js$/, /^pwa-release\.json$/ ];
 const appBaseUrl = new URL('./', globalThis.location.href);
 const indexUrl = new URL('index.html', appBaseUrl).href;
 const manifestUrlList = globalThis.assetsManifest.assets.map(asset => new URL(asset.url, appBaseUrl).href);
