@@ -66,6 +66,18 @@ else
         </div>
     </div>
 
+    <!-- Combined Revenue Timeline -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Services vs Products Revenue</h6>
+                <div style="height: 300px;">
+                    <canvas id="combinedTimelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Breakdowns -->
     <div class="row g-3 mt-1">
         <div class="col-lg-6">
@@ -82,6 +94,35 @@ else
                 <div style="height: 300px;">
                     <canvas id="servicePopularityChart"></canvas>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day of Week + Top Products -->
+    <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Revenue by Day of Week</h6>
+                <div style="height: 280px;">
+                    <canvas id="dayOfWeekAnalyticsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Top Products</h6>
+                @if (topProducts != null && topProducts.Length > 0)
+                {
+                    <div style="height: 280px;">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
+                        <p class="text-muted mb-0">No product sales in this period.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -103,12 +144,21 @@ else
                     <div class="list-group list-group-flush">
                         @foreach (var s in serviceData.OrderByDescending(x => x.Revenue).Take(5))
                         {
-                            <div class="list-group-item px-0 d-flex justify-content-between" style="border-color: var(--border-color);">
-                                <div>
-                                    <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
-                                    <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
+                            <div class="list-group-item px-0" style="border-color: var(--border-color);">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
+                                    </div>
+                                    <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
                                 </div>
-                                <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
+                                @if (serviceData.Max(x => x.Revenue) > 0)
+                                {
+                                    var pct = (double)s.Revenue / (double)serviceData.Max(x => x.Revenue) * 100;
+                                    <div class="progress-bar-custom">
+                                        <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
@@ -135,16 +185,30 @@ else
                                     <th>Revenue</th>
                                     <th>Tips</th>
                                     <th>Total</th>
+                                    <th>Share</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                @{
+                                    var grandTotal = workerData.Sum(w => w.Revenue + w.Tips);
+                                }
                                 @foreach (var w in workerData)
                                 {
+                                    var total = w.Revenue + w.Tips;
+                                    var share = grandTotal > 0 ? (total / grandTotal * 100) : 0;
                                     <tr>
                                         <td class="fw-semibold">@w.Worker</td>
                                         <td>@w.Revenue.ToString("C")</td>
                                         <td>@w.Tips.ToString("C")</td>
-                                        <td class="fw-semibold">@((w.Revenue + w.Tips).ToString("C"))</td>
+                                        <td class="fw-semibold">@total.ToString("C")</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress-bar-custom" style="width: 80px;">
+                                                    <div class="progress-fill" style="width: @($"{share:F0}")%;"></div>
+                                                </div>
+                                                <span class="text-muted" style="font-size: 0.75rem;">@share.ToString("F1")%</span>
+                                            </div>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -154,6 +218,7 @@ else
                                     <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
                                     <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
                                     <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -177,6 +242,9 @@ else
     private ServicePopularity[]? serviceData;
     private DailyEarning[]? dailyData;
     private ForecastResult? forecastResult;
+    private DayOfWeekEntry[]? dayOfWeekData;
+    private TopProduct[]? topProducts;
+    private CombinedTimeline? combinedTimeline;
     private bool needsChartRender;
 
     protected override async Task OnInitializedAsync()
@@ -214,6 +282,15 @@ else
             serviceData = await Http.GetFromJsonAsync<ServicePopularity[]>($"api/analytics/service-popularity{qs}");
             dailyData = await Http.GetFromJsonAsync<DailyEarning[]>($"api/analytics/daily-earnings{qs}");
             await LoadForecast();
+
+            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
+            catch { dayOfWeekData = []; }
+
+            try { topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}"); }
+            catch { topProducts = []; }
+
+            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}"); }
+            catch { }
         }
         catch { }
         finally
@@ -247,6 +324,17 @@ else
         {
             await RenderForecastChart();
 
+            if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+            {
+                var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
+                var datasets = new object[]
+                {
+                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
+                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                };
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
+            }
+
             if (workerData != null && workerData.Length > 0)
             {
                 var labels = workerData.Select(w => w.Worker).ToArray();
@@ -263,6 +351,22 @@ else
                 var labels = serviceData.Select(s => s.Service).ToArray();
                 var data = serviceData.Select(s => (decimal)s.Count).ToArray();
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart", "servicePopularityChart", labels, data, (string[]?)null);
+            }
+
+            if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+            {
+                var labels = dayOfWeekData.Select(d => d.Day).ToArray();
+                var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
+                var colors = dayOfWeekData.Select(d => d.Count > 0 ? "#0d9488" : "#e5e7eb").ToArray();
+                await JS.InvokeVoidAsync("financeCharts.renderBarChart", "dayOfWeekAnalyticsChart", labels,
+                    new object[] { new { label = "Revenue", data = data, color = "#0d9488" } });
+            }
+
+            if (topProducts != null && topProducts.Length > 0)
+            {
+                var labels = topProducts.Select(p => p.Product).ToArray();
+                var data = topProducts.Select(p => p.Revenue).ToArray();
+                await JS.InvokeVoidAsync("financeCharts.renderHorizontalBarChart", "topProductsChart", labels, data, (string[]?)null);
             }
 
             if (dailyData != null && dailyData.Length > 0)
@@ -311,4 +415,8 @@ else
     private record HistoricalPoint(string Date, double Actual, double Trend);
     private record ForecastPoint(string Date, double Predicted);
     private record ForecastResult(HistoricalPoint[] Historical, ForecastPoint[] Forecast, double Slope, double Intercept, double RSquared);
+    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
+    private record TopProduct(string Product, int Quantity, decimal Revenue);
+    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
+    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 }

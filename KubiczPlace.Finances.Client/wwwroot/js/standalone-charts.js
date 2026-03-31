@@ -161,6 +161,88 @@ window.financeCharts = {
         });
     },
 
+    renderStackedBarChart: function (canvasId, labels, datasets) {
+        this._destroy(canvasId);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets.map((dataset, index) => ({
+                    label: dataset.label,
+                    data: dataset.data,
+                    backgroundColor: dataset.color || this._colors(index),
+                    borderRadius: 4
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, grid: { display: false } },
+                    y: { stacked: true, beginAtZero: true, grid: { color: '#e5e7eb' } }
+                }
+            }
+        });
+    },
+
+    renderHorizontalBarChart: function (canvasId, labels, data, colors) {
+        this._destroy(canvasId);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors || labels.map((_, index) => this._colors(index)),
+                    borderRadius: 4,
+                    barThickness: 20
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    },
+
+    renderMiniBarChart: function (canvasId, labels, data, highlightIndex) {
+        this._destroy(canvasId);
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        const colors = data.map((_, i) => i === highlightIndex ? '#0d9488' : '#0d948840');
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { display: false, beginAtZero: true }
+                }
+            }
+        });
+    },
+
     _destroy: function (canvasId) {
         if (this.instances[canvasId]) {
             this.instances[canvasId].destroy();

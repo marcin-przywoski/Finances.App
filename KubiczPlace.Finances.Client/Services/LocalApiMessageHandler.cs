@@ -254,6 +254,10 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
             "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, ReadInt(query, "forecastDays", 14))),
             "recent" => JsonResponse(await _store.GetRecentAsync(ReadInt(query, "count", 5))),
             "productsales-revenue" => JsonResponse(new { revenue = await _store.GetProductSalesRevenueAsync(from, to) }),
+            "month-comparison" => JsonResponse(await _store.GetMonthComparisonAsync(workerId)),
+            "revenue-by-dayofweek" => JsonResponse(await _store.GetRevenueByDayOfWeekAsync(workerId, from, to)),
+            "top-products" => JsonResponse(await _store.GetTopProductsAsync(from, to, ReadInt(query, "count", 5))),
+            "combined-timeline" => JsonResponse(await _store.GetCombinedTimelineAsync(workerId, from, to)),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         };
     }

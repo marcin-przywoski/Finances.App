@@ -25,6 +25,20 @@ public sealed record RecentRecordResult(int Id, string Date, string Worker, stri
 
 public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc);
 
+public sealed record MonthComparisonResult(
+    decimal CurrentRevenue, decimal PreviousRevenue,
+    decimal CurrentTips, decimal PreviousTips,
+    int CurrentCount, int PreviousCount,
+    decimal CurrentAvgTicket, decimal PreviousAvgTicket);
+
+public sealed record DayOfWeekResult(string Day, decimal Revenue, int Count);
+
+public sealed record TopProductResult(string Product, int Quantity, decimal Revenue);
+
+public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
+
+public sealed record CombinedTimelineResult(IReadOnlyList<CombinedTimelinePoint> Points);
+
 public sealed class LocalFinanceStore
 {
     private const int CurrentSchemaVersion = 1;
@@ -544,6 +558,92 @@ public sealed class LocalFinanceStore
                 record.Tips,
                 record.ClientName))
             .ToList();
+    }
+
+    public async Task<MonthComparisonResult> GetMonthComparisonAsync(int? workerId)
+    {
+        await EnsureLoadedAsync();
+
+        var today = DateTime.Today;
+        var currentStart = new DateTime(today.Year, today.Month, 1);
+        var previousStart = currentStart.AddMonths(-1);
+        var previousEnd = currentStart.AddDays(-1);
+
+        var currentRecords = FilterStoredRecords(workerId, currentStart, today).ToList();
+        var previousRecords = FilterStoredRecords(workerId, previousStart, previousEnd).ToList();
+
+        var currentRevenue = currentRecords.Sum(r => r.AmountPaid);
+        var previousRevenue = previousRecords.Sum(r => r.AmountPaid);
+        var currentTips = currentRecords.Sum(r => r.Tips);
+        var previousTips = previousRecords.Sum(r => r.Tips);
+        var currentCount = currentRecords.Count;
+        var previousCount = previousRecords.Count;
+        var currentAvgTicket = currentCount > 0 ? currentRevenue / currentCount : 0;
+        var previousAvgTicket = previousCount > 0 ? previousRevenue / previousCount : 0;
+
+        return new MonthComparisonResult(
+            currentRevenue, previousRevenue,
+            currentTips, previousTips,
+            currentCount, previousCount,
+            currentAvgTicket, previousAvgTicket);
+    }
+
+    public async Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? from, DateTime? to)
+    {
+        await EnsureLoadedAsync();
+
+        var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        var records = FilterStoredRecords(workerId, from, to).ToList();
+
+        return dayNames.Select((name, i) =>
+        {
+            var dow = i == 6 ? DayOfWeek.Sunday : (DayOfWeek)(i + 1);
+            var dayRecords = records.Where(r => r.DatePerformed.DayOfWeek == dow).ToList();
+            return new DayOfWeekResult(name, dayRecords.Sum(r => r.AmountPaid), dayRecords.Count);
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(DateTime? from, DateTime? to, int count = 5)
+    {
+        await EnsureLoadedAsync();
+
+        var productNames = _snapshot!.Products.ToDictionary(p => p.Id, p => p.Name);
+        var query = _snapshot.ProductSales.AsEnumerable();
+        if (from.HasValue) query = query.Where(s => s.DateSold.Date >= from.Value.Date);
+        if (to.HasValue) query = query.Where(s => s.DateSold.Date <= to.Value.Date);
+
+        return query
+            .GroupBy(s => productNames.GetValueOrDefault(s.ProductId, "Unknown"))
+            .Select(g => new TopProductResult(g.Key, g.Sum(s => s.Quantity), g.Sum(s => s.UnitPrice * s.Quantity)))
+            .OrderByDescending(r => r.Revenue)
+            .Take(Math.Max(1, count))
+            .ToList();
+    }
+
+    public async Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? from, DateTime? to)
+    {
+        await EnsureLoadedAsync();
+
+        var servicesByDay = FilterStoredRecords(workerId, from, to)
+            .GroupBy(r => r.DatePerformed.Date)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
+
+        var productQuery = _snapshot!.ProductSales.AsEnumerable();
+        if (from.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date >= from.Value.Date);
+        if (to.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date <= to.Value.Date);
+        var productsByDay = productQuery
+            .GroupBy(s => s.DateSold.Date)
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.UnitPrice * s.Quantity));
+
+        var allDates = servicesByDay.Keys.Union(productsByDay.Keys).OrderBy(d => d).ToList();
+
+        var points = allDates.Select(d => new CombinedTimelinePoint(
+            d.ToString("yyyy-MM-dd"),
+            servicesByDay.GetValueOrDefault(d, 0),
+            productsByDay.GetValueOrDefault(d, 0)
+        )).ToList();
+
+        return new CombinedTimelineResult(points);
     }
 
     public async Task<DataStateSummary> GetDataStateSummaryAsync()

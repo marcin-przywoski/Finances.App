@@ -193,6 +193,33 @@ h1:focus {
     font-weight: 500;
 }
 
+.stat-card .stat-subtitle {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+}
+
+/* ===== Trend Indicator ===== */
+.stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+}
+
+.stat-trend.trend-up {
+    color: #059669;
+    background-color: #d1fae5;
+}
+
+.stat-trend.trend-down {
+    color: #dc2626;
+    background-color: #fee2e2;
+}
+
 /* ===== Tables ===== */
 .data-table {
     width: 100%;
@@ -420,7 +447,74 @@ h1:focus {
     height: 100%;
     border-radius: 999px;
     background-color: var(--primary);
-    transition: width 0.5s ease;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Page content fade-in ===== */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.row {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+/* ===== Empty state ===== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-state svg {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    max-width: 280px;
+}
+
+/* ===== Chart card improvements ===== */
+.card h6 {
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+
+/* ===== Mobile improvements ===== */
+@media (max-width: 576px) {
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.25rem;
+    }
+
+    .date-range-filter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .date-range-filter .btn-preset {
+        flex: 1;
+        text-align: center;
+    }
+
+    .summary-bar {
+        gap: 1rem;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
 
 /* ===== Utility ===== */
