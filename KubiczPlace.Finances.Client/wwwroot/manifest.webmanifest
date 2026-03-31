@@ -1,0 +1,23 @@
+{
+  "name": "KubiczPlace Finances",
+  "short_name": "Finances",
+  "id": "./",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#0d9488",
+  "description": "Private salon finance tracker that stores data only in the current browser.",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
