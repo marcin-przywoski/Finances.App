@@ -253,6 +253,7 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
             "service-popularity" => JsonResponse(await _store.GetServicePopularityAsync(from, to)),
             "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, ReadInt(query, "forecastDays", 14))),
             "recent" => JsonResponse(await _store.GetRecentAsync(ReadInt(query, "count", 5))),
+            "productsales-revenue" => JsonResponse(new { revenue = await _store.GetProductSalesRevenueAsync(from, to) }),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         };
     }

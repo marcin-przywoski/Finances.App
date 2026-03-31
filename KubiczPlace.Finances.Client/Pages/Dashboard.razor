@@ -47,6 +47,16 @@ else
         </div>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <StatCard Value="@productSalesRevenue" Label="Product Sales" IconBg="#ede9fe" IconColor="#7c3aed">
+                <IconContent>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </IconContent>
+            </StatCard>
+        </div>
+    </div>
+
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card p-3">
@@ -89,6 +99,7 @@ else
     private string totalTips = "0";
     private string workerShare = "0";
     private string recordCount = "0";
+    private string productSalesRevenue = "0";
     private RecentRecord[]? recentRecords;
 
     protected override async Task OnInitializedAsync()
@@ -118,6 +129,13 @@ else
             }
 
             recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>("api/analytics/recent?count=6");
+
+            try
+            {
+                var psResult = await Http.GetFromJsonAsync<ProductSalesRevenueDto>($"api/analytics/productsales-revenue{qs}");
+                productSalesRevenue = psResult?.Revenue.ToString("C") ?? "0";
+            }
+            catch { productSalesRevenue = "$0.00"; }
         }
         catch { }
         finally
@@ -170,4 +188,5 @@ else
     private record SummaryDto(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
     private record DailyEarning(string Date, decimal Revenue, decimal Tips);
     private record RecentRecord(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
+    private record ProductSalesRevenueDto(decimal Revenue);
 }
