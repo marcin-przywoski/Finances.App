@@ -6,6 +6,7 @@ globalThis.financePwa = (() => {
     let deferredInstallPrompt = null;
     let dotNetHelper = null;
     let readyRegistrationObserved = false;
+    let browserListenersAttached = false;
     let observedRegistration = null;
     let registration = null;
     let trackedInstallingWorker = null;
@@ -117,6 +118,36 @@ globalThis.financePwa = (() => {
     const onVisibilityChange = () => {
         if (globalThis.document.visibilityState === 'visible') {
             void checkForUpdates(true);
+        }
+    };
+
+    const ensureBrowserEventListeners = () => {
+        if (browserListenersAttached) {
+            return;
+        }
+
+        browserListenersAttached = true;
+        globalThis.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+        globalThis.addEventListener('appinstalled', onAppInstalled);
+        globalThis.document.addEventListener('visibilitychange', onVisibilityChange);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+        }
+    };
+
+    const removeBrowserEventListeners = () => {
+        if (!browserListenersAttached) {
+            return;
+        }
+
+        browserListenersAttached = false;
+        globalThis.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+        globalThis.removeEventListener('appinstalled', onAppInstalled);
+        globalThis.document.removeEventListener('visibilitychange', onVisibilityChange);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
         }
     };
 
@@ -372,16 +403,12 @@ globalThis.financePwa = (() => {
         }
     };
 
+    ensureBrowserEventListeners();
+
     return {
         register: async dotNetReference => {
             dotNetHelper = dotNetReference;
-            globalThis.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-            globalThis.addEventListener('appinstalled', onAppInstalled);
-            globalThis.document.addEventListener('visibilitychange', onVisibilityChange);
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-            }
+            ensureBrowserEventListeners();
 
             await ensureServiceWorkerObservation();
         },
@@ -424,13 +451,7 @@ globalThis.financePwa = (() => {
         },
 
         dispose: () => {
-            globalThis.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-            globalThis.removeEventListener('appinstalled', onAppInstalled);
-            globalThis.document.removeEventListener('visibilitychange', onVisibilityChange);
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-            }
+            removeBrowserEventListeners();
 
             dotNetHelper = null;
         }
