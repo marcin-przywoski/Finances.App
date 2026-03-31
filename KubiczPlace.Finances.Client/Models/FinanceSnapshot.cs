@@ -10,8 +10,10 @@ public sealed class FinanceSnapshot
     public int NextServiceId { get; set; }
     public int NextProductId { get; set; }
     public int NextServiceRecordId { get; set; }
+    public int NextProductSaleId { get; set; }
     public List<Worker> Workers { get; set; } = [];
     public List<Service> Services { get; set; } = [];
     public List<Product> Products { get; set; } = [];
     public List<ServiceRecord> ServiceRecords { get; set; } = [];
+    public List<ProductSale> ProductSales { get; set; } = [];
 }

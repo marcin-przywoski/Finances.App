@@ -48,6 +48,7 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
             "services" => await HandleServicesAsync(request, segments, cancellationToken),
             "products" => await HandleProductsAsync(request, segments, cancellationToken),
             "servicerecords" => await HandleServiceRecordsAsync(request, segments, cancellationToken),
+            "productsales" => await HandleProductSalesAsync(request, segments, cancellationToken),
             "analytics" => await HandleAnalyticsAsync(request, segments),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         };
@@ -156,6 +157,41 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
         if (request.Method == HttpMethod.Delete && TryParseId(segments, 2, out id))
         {
             await _store.DeleteProductAsync(id);
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
+    private async Task<HttpResponseMessage> HandleProductSalesAsync(HttpRequestMessage request, string[] segments, CancellationToken cancellationToken)
+    {
+        if (request.Method == HttpMethod.Get && segments.Length == 2)
+        {
+            return JsonResponse(await _store.GetProductSalesAsync());
+        }
+
+        if (request.Method == HttpMethod.Get && TryParseId(segments, 2, out var id))
+        {
+            var sale = (await _store.GetProductSalesAsync()).FirstOrDefault(item => item.Id == id);
+            return sale is null ? new HttpResponseMessage(HttpStatusCode.NotFound) : JsonResponse(sale);
+        }
+
+        if (request.Method == HttpMethod.Post && segments.Length == 2)
+        {
+            var sale = await ReadBodyAsync<ProductSale>(request, cancellationToken);
+            return JsonResponse(await _store.AddProductSaleAsync(sale), HttpStatusCode.Created);
+        }
+
+        if (request.Method == HttpMethod.Put && TryParseId(segments, 2, out id))
+        {
+            var sale = await ReadBodyAsync<ProductSale>(request, cancellationToken);
+            await _store.UpdateProductSaleAsync(id, sale);
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
+        if (request.Method == HttpMethod.Delete && TryParseId(segments, 2, out id))
+        {
+            await _store.DeleteProductSaleAsync(id);
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
 
