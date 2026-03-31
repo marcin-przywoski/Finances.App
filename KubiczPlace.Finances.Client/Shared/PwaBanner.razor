@@ -1,0 +1,117 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (ShowInstallBanner || ShowUpdateBanner)
+{
+    <div class="pwa-banner-stack">
+        @if (ShowInstallBanner)
+        {
+            <section class="pwa-banner pwa-banner-install" role="status" aria-live="polite">
+                <div class="pwa-banner-copy">
+                    <span class="pwa-banner-badge">PWA</span>
+                    <div>
+                        <h2>Install this app on the device</h2>
+                        <p>Keep the finance tracker in a native-looking window and reopen it from your home screen or desktop.</p>
+                    </div>
+                </div>
+                <div class="pwa-banner-actions">
+                    <button type="button" class="btn btn-primary" @onclick="PromptInstallAsync">Install app</button>
+                    <button type="button" class="btn btn-light" @onclick="DismissInstall">Later</button>
+                </div>
+            </section>
+        }
+
+        @if (ShowUpdateBanner)
+        {
+            <section class="pwa-banner pwa-banner-update" role="status" aria-live="polite">
+                <div class="pwa-banner-copy">
+                    <span class="pwa-banner-badge">Update</span>
+                    <div>
+                        <h2>A newer offline version is ready</h2>
+                        <p>Reload once to switch to the latest cached files and keep the installed app in sync.</p>
+                    </div>
+                </div>
+                <div class="pwa-banner-actions">
+                    <button type="button" class="btn btn-primary" @onclick="ApplyUpdateAsync">Reload now</button>
+                    <button type="button" class="btn btn-light" @onclick="DismissUpdate">Later</button>
+                </div>
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private DotNetObjectReference<PwaBanner>? dotNetRef;
+    private bool installAvailable;
+    private bool installDismissed;
+    private bool isStandalone;
+    private bool updateAvailable;
+    private bool updateDismissed;
+
+    private bool ShowInstallBanner => installAvailable && !installDismissed && !isStandalone;
+    private bool ShowUpdateBanner => updateAvailable && !updateDismissed;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        dotNetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("financePwa.register", dotNetRef);
+    }
+
+    [JSInvokable]
+    public Task UpdateState(bool nextInstallAvailable, bool nextUpdateAvailable, bool nextIsStandalone)
+    {
+        if (nextInstallAvailable && !installAvailable)
+        {
+            installDismissed = false;
+        }
+
+        if (nextUpdateAvailable && !updateAvailable)
+        {
+            updateDismissed = false;
+        }
+
+        installAvailable = nextInstallAvailable;
+        updateAvailable = nextUpdateAvailable;
+        isStandalone = nextIsStandalone;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PromptInstallAsync()
+    {
+        await JS.InvokeVoidAsync("financePwa.promptInstall");
+    }
+
+    private async Task ApplyUpdateAsync()
+    {
+        await JS.InvokeVoidAsync("financePwa.applyUpdate");
+    }
+
+    private void DismissInstall()
+    {
+        installDismissed = true;
+    }
+
+    private void DismissUpdate()
+    {
+        updateDismissed = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("financePwa.dispose");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        dotNetRef?.Dispose();
+    }
+}

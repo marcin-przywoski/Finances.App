@@ -4,6 +4,7 @@ self.importScripts('./service-worker-assets.js');
 self.addEventListener('install', event => event.waitUntil(onInstall()));
 self.addEventListener('activate', event => event.waitUntil(onActivate()));
 self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+self.addEventListener('message', event => onMessage(event));
 
 const cacheNamePrefix = 'kubiczplace-finances-offline-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
@@ -32,6 +33,8 @@ async function onActivate() {
     await Promise.all(cacheKeys
         .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)
         .map(key => caches.delete(key)));
+
+    await self.clients.claim();
 }
 
 async function onFetch(event) {
@@ -45,4 +48,10 @@ async function onFetch(event) {
     const cachedResponse = await cache.match(shouldServeIndexHtml ? indexUrl : event.request);
 
     return cachedResponse || fetch(event.request);
+}
+
+function onMessage(event) {
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 }
