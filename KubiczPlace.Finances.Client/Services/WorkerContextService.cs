@@ -48,4 +48,14 @@ public class WorkerContextService
         }
         OnChange?.Invoke();
     }
+
+    public async Task EnsureWorkerExistsAsync(IEnumerable<int> validWorkerIds)
+    {
+        await InitializeAsync();
+
+        if (_selectedWorkerId.HasValue && !validWorkerIds.Contains(_selectedWorkerId.Value))
+        {
+            await SetWorkerAsync(null);
+        }
+    }
 }
