@@ -4,234 +4,456 @@
 
 <PageTitle>Analytics</PageTitle>
 
-<div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Analytics</h2>
-    <p class="text-muted mb-0">Revenue trends, forecasting, and detailed breakdowns.</p>
-</div>
+<div class="analytics-page">
+    <section class="analytics-hero">
+        <div class="analytics-hero-copy">
+            <span class="analytics-hero-kicker">Performance intelligence</span>
+            <h1 class="analytics-hero-title">Analytics dashboard</h1>
+            <p class="analytics-hero-description">Revenue trends, forecasting, and detailed breakdowns for the selected period.</p>
+            <div class="analytics-hero-pill">
+                <span class="analytics-hero-pill-label">Selected window</span>
+                <strong>@CurrentRangeLabel</strong>
+            </div>
+        </div>
+        <div class="analytics-toolbar">
+            <div class="analytics-toolbar-group">
+                <span class="analytics-toolbar-label">Date range</span>
+                <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+            </div>
+            <div class="analytics-toolbar-group analytics-toolbar-group-compact">
+                <label class="analytics-toolbar-label" for="forecastDays">Forecast horizon</label>
+                <select id="forecastDays" class="form-select form-select-sm analytics-forecast-select" value="@forecastDays" @onchange="OnForecastDaysChanged">
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                </select>
+            </div>
+        </div>
+    </section>
 
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+    @if (loading)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="row g-3 analytics-metrics">
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@TotalRevenueForRange.ToString("C")" Label="Revenue in Range" Subtitle="Current selection">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@TotalTipsForRange.ToString("C")" Label="Tips in Range" IconBg="#dbeafe" IconColor="#2563eb" Subtitle="Gratuities captured">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 21s-6.716-4.35-9.193-8.14A5.5 5.5 0 0 1 12 5.67a5.5 5.5 0 0 1 9.193 7.19C18.716 16.65 12 21 12 21Z" />
+                        </svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@TotalServiceCount.ToString()" Label="Services Logged" IconBg="#fef3c7" IconColor="#d97706" Subtitle="Tracked appointments">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 6h10" />
+                            <path d="M7 12h10" />
+                            <path d="M7 18h6" />
+                            <path d="M18 17l1.5 1.5L23 15" />
+                        </svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@AverageDailyRevenue.ToString("C")" Label="Average Day" IconBg="#d1fae5" IconColor="#059669" Subtitle="Recorded-day revenue">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 17 9 11 13 15 21 7" />
+                            <polyline points="14 7 21 7 21 14" />
+                        </svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+        </div>
 
-@if (loading)
-{
-    <LoadingSpinner />
-}
-else
-{
-    <!-- Forecast Section -->
-    <div class="row g-3 mt-1">
-        <div class="col-12">
-            <div class="card p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h6 class="fw-semibold mb-0">Revenue Forecast</h6>
-                        <small class="text-muted">Linear regression on last 90 days &middot; @forecastDays-day projection</small>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="text-muted" style="font-size: 0.8rem;">Forecast days:</label>
-                        <select class="form-select form-select-sm" style="width: 80px;" value="@forecastDays" @onchange="OnForecastDaysChanged">
-                            <option value="7">7</option>
-                            <option value="14">14</option>
-                            <option value="30">30</option>
-                        </select>
-                    </div>
-                </div>
-                @if (forecastResult != null && forecastResult.Historical.Length > 0)
-                {
-                    <div class="row mb-3">
-                        <div class="col-auto">
-                            <span class="badge" style="background-color: #0d948820; color: #0d9488; font-size: 0.8rem; padding: 6px 12px;">
-                                Slope: @forecastResult.Slope.ToString("F2")/day
-                            </span>
+        <div class="row g-3 mt-1">
+            <div class="col-12 col-xxl-8">
+                <section class="card analytics-panel analytics-panel-spotlight">
+                    <div class="analytics-panel-header analytics-panel-header-split">
+                        <div>
+                            <p class="analytics-panel-eyebrow">Forecast</p>
+                            <h2>Revenue forecast</h2>
+                            <p>Linear regression on the last 90 days with a @forecastDays-day projection.</p>
                         </div>
-                        <div class="col-auto">
-                            <span class="badge" style="background-color: #6366f120; color: #6366f1; font-size: 0.8rem; padding: 6px 12px;">
-                                R&sup2;: @forecastResult.RSquared.ToString("F4")
-                            </span>
-                        </div>
-                        <div class="col-auto">
-                            @{
-                                var direction = forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Downward" : "Flat";
-                                var dirColor = forecastResult.Slope > 0 ? "#10b981" : forecastResult.Slope < 0 ? "#ef4444" : "#6b7280";
-                            }
-                            <span class="badge" style="background-color: @(dirColor)20; color: @dirColor; font-size: 0.8rem; padding: 6px 12px;">
-                                Trend: @direction
-                            </span>
-                        </div>
-                    </div>
-                }
-                <div style="height: 340px;">
-                    <canvas id="forecastChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Combined Revenue Timeline -->
-    <div class="row g-3 mt-1">
-        <div class="col-12">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Services vs Products Revenue</h6>
-                <div style="height: 300px;">
-                    <canvas id="combinedTimelineChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Breakdowns -->
-    <div class="row g-3 mt-1">
-        <div class="col-lg-6">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue by Worker</h6>
-                <div style="height: 300px;">
-                    <canvas id="revenueByWorkerChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Service Popularity</h6>
-                <div style="height: 300px;">
-                    <canvas id="servicePopularityChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Day of Week + Top Products -->
-    <div class="row g-3 mt-1">
-        <div class="col-lg-6">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue by Day of Week</h6>
-                <div style="height: 280px;">
-                    <canvas id="dayOfWeekAnalyticsChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Products</h6>
-                @if (topProducts != null && topProducts.Length > 0)
-                {
-                    <div style="height: 280px;">
-                        <canvas id="topProductsChart"></canvas>
-                    </div>
-                }
-                else
-                {
-                    <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
-                        <p class="text-muted mb-0">No product sales in this period.</p>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-1">
-        <div class="col-lg-8">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Daily Revenue</h6>
-                <div style="height: 300px;">
-                    <canvas id="dailyTrendChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Services by Revenue</h6>
-                @if (serviceData != null && serviceData.Length > 0)
-                {
-                    <div class="list-group list-group-flush">
-                        @foreach (var s in serviceData.OrderByDescending(x => x.Revenue).Take(5))
+                        @if (forecastResult != null && forecastResult.Historical.Length > 0)
                         {
-                            <div class="list-group-item px-0" style="border-color: var(--border-color);">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <div>
-                                        <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
-                                    </div>
-                                    <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
-                                </div>
-                                @if (serviceData.Max(x => x.Revenue) > 0)
-                                {
-                                    var pct = (double)s.Revenue / (double)serviceData.Max(x => x.Revenue) * 100;
-                                    <div class="progress-bar-custom">
-                                        <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
-                                    </div>
-                                }
+                            <div class="analytics-chip-list">
+                                <span class="analytics-chip analytics-chip-surface">
+                                    Slope
+                                    <strong>@forecastResult.Slope.ToString("F2")/day</strong>
+                                </span>
+                                <span class="analytics-chip analytics-chip-surface">
+                                    R<sup>2</sup>
+                                    <strong>@forecastResult.RSquared.ToString("F4")</strong>
+                                </span>
+                                <span class="analytics-chip @ForecastTrendChipClass">
+                                    Trend
+                                    <strong>@ForecastDirectionLabel</strong>
+                                </span>
                             </div>
                         }
                     </div>
-                }
-                else
-                {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No data for this period.</p>
-                }
+                    @if (forecastResult != null && forecastResult.Historical.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-forecast">
+                            <canvas id="forecastChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>The forecast needs more history before it can surface a reliable projection.</p>
+                        </div>
+                    }
+                </section>
             </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-1 mb-4">
-        <div class="col-12">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Commission Report</h6>
-                @if (workerData != null && workerData.Length > 0)
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Worker</th>
-                                    <th>Revenue</th>
-                                    <th>Tips</th>
-                                    <th>Total</th>
-                                    <th>Share</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @{
-                                    var grandTotal = workerData.Sum(w => w.Revenue + w.Tips);
-                                }
-                                @foreach (var w in workerData)
-                                {
-                                    var total = w.Revenue + w.Tips;
-                                    var share = grandTotal > 0 ? (total / grandTotal * 100) : 0;
-                                    <tr>
-                                        <td class="fw-semibold">@w.Worker</td>
-                                        <td>@w.Revenue.ToString("C")</td>
-                                        <td>@w.Tips.ToString("C")</td>
-                                        <td class="fw-semibold">@total.ToString("C")</td>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <div class="progress-bar-custom" style="width: 80px;">
-                                                    <div class="progress-fill" style="width: @($"{share:F0}")%;"></div>
-                                                </div>
-                                                <span class="text-muted" style="font-size: 0.75rem;">@share.ToString("F1")%</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                            <tfoot>
-                                <tr class="fw-bold" style="background-color: var(--body-bg);">
-                                    <td>Total</td>
-                                    <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
-                                    <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
-                                    <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+            <div class="col-12 col-xxl-4">
+                <section class="card analytics-panel analytics-panel-highlights">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Highlights</p>
+                        <h2>What stands out</h2>
+                        <p>Quick signals from the selected range.</p>
                     </div>
-                }
-                else
-                {
-                    <p class="text-muted mb-0">No data for this period.</p>
-                }
+                    @{
+                        var topWorker = TopWorker;
+                        var topService = TopService;
+                        var strongestDay = StrongestDay;
+                        var finalForecastPoint = FinalForecastPoint;
+                    }
+                    @if (HasHighlights)
+                    {
+                        <div class="analytics-highlight-list">
+                            @if (topWorker != null)
+                            {
+                                <div class="analytics-highlight-item">
+                                    <span class="analytics-highlight-label">Top worker</span>
+                                    <strong class="analytics-highlight-value">@topWorker.Worker</strong>
+                                    <span class="analytics-highlight-meta">@((topWorker.Revenue + topWorker.Tips).ToString("C")) total revenue and tips</span>
+                                </div>
+                            }
+                            @if (topService != null)
+                            {
+                                <div class="analytics-highlight-item">
+                                    <span class="analytics-highlight-label">Top service</span>
+                                    <strong class="analytics-highlight-value">@topService.Service</strong>
+                                    <span class="analytics-highlight-meta">@topService.Revenue.ToString("C") from @topService.Count visits</span>
+                                </div>
+                            }
+                            @if (strongestDay != null)
+                            {
+                                <div class="analytics-highlight-item">
+                                    <span class="analytics-highlight-label">Strongest weekday</span>
+                                    <strong class="analytics-highlight-value">@strongestDay.Day</strong>
+                                    <span class="analytics-highlight-meta">@strongestDay.Revenue.ToString("C") across @strongestDay.Count bookings</span>
+                                </div>
+                            }
+                            @if (finalForecastPoint != null)
+                            {
+                                <div class="analytics-highlight-item">
+                                    <span class="analytics-highlight-label">Forecast outlook</span>
+                                    <strong class="analytics-highlight-value">@ForecastDirectionLabel</strong>
+                                    <span class="analytics-highlight-meta">@finalForecastPoint.Predicted.ToString("C") projected by @finalForecastPoint.Date</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state analytics-empty-state-compact">
+                            <p>Not enough data to surface highlights yet.</p>
+                        </div>
+                    }
+                </section>
             </div>
         </div>
-    </div>
-}
+
+        <div class="row g-3 mt-1">
+            <div class="col-xl-8">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header analytics-panel-header-split">
+                        <div>
+                            <p class="analytics-panel-eyebrow">Composition</p>
+                            <h2>Services vs products revenue</h2>
+                            <p>How the revenue mix changed across the selected window.</p>
+                        </div>
+                        @if (combinedTimeline != null && combinedTimeline.Points.Length > 0)
+                        {
+                            <div class="analytics-inline-summary">
+                                <div>
+                                    <span>Services</span>
+                                    <strong>@TotalServiceRevenue.ToString("C")</strong>
+                                </div>
+                                <div>
+                                    <span>Products</span>
+                                    <strong>@TotalProductRevenue.ToString("C")</strong>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (combinedTimeline != null && combinedTimeline.Points.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-regular">
+                            <canvas id="combinedTimelineChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>There is no revenue mix to compare for this period yet.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-xl-4">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Leaderboard</p>
+                        <h2>Top services by revenue</h2>
+                        <p>Highest-earning services for the selected range.</p>
+                    </div>
+                    @if (serviceData != null && serviceData.Length > 0)
+                    {
+                        var rankedServices = serviceData.OrderByDescending(x => x.Revenue).Take(5).ToArray();
+                        var maxServiceRevenue = rankedServices.Max(x => x.Revenue);
+                        <div class="analytics-ranked-list">
+                            @for (var index = 0; index < rankedServices.Length; index++)
+                            {
+                                var service = rankedServices[index];
+                                var pct = maxServiceRevenue > 0 ? (double)service.Revenue / (double)maxServiceRevenue * 100 : 0;
+                                <div class="analytics-ranked-item">
+                                    <div class="analytics-ranked-row">
+                                        <div class="analytics-ranked-index">@(index + 1)</div>
+                                        <div class="analytics-ranked-copy">
+                                            <div class="analytics-ranked-title">
+                                                <span class="analytics-ranked-name">@service.Service</span>
+                                                <span class="analytics-ranked-value">@service.Revenue.ToString("C")</span>
+                                            </div>
+                                            <div class="analytics-ranked-subtitle">@service.Count bookings</div>
+                                            <div class="progress-bar-custom analytics-ranked-bar">
+                                                <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state analytics-empty-state-compact">
+                            <p>No service revenue is available for this period.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Performance</p>
+                        <h2>Revenue by worker</h2>
+                        <p>Compare revenue and tips across your team.</p>
+                    </div>
+                    @if (workerData != null && workerData.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-regular">
+                            <canvas id="revenueByWorkerChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>Add more service activity to compare team performance here.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Mix</p>
+                        <h2>Service popularity</h2>
+                        <p>Which services are driving the most demand.</p>
+                    </div>
+                    @if (serviceData != null && serviceData.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-regular">
+                            <canvas id="servicePopularityChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>No service mix is available for the current range.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Timing</p>
+                        <h2>Revenue by day of week</h2>
+                        <p>Spot the weekdays with the strongest performance.</p>
+                    </div>
+                    @if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-compact">
+                            <canvas id="dayOfWeekAnalyticsChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>Weekday patterns will appear once more bookings are recorded.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Retail</p>
+                        <h2>Top products</h2>
+                        <p>Best-selling retail items for the selected period.</p>
+                    </div>
+                    @if (topProducts != null && topProducts.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-compact">
+                            <canvas id="topProductsChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>No product sales were recorded during this period.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-12">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Trend</p>
+                        <h2>Daily revenue</h2>
+                        <p>Daily revenue movement across the selected range.</p>
+                    </div>
+                    @if (dailyData != null && dailyData.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-wide">
+                            <canvas id="dailyTrendChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>Daily trend lines appear once this period has recorded revenue.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1 mb-4">
+            <div class="col-12">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header analytics-panel-header-split">
+                        <div>
+                            <p class="analytics-panel-eyebrow">Commission</p>
+                            <h2>Commission report</h2>
+                            <p>Revenue, tips, and total share by worker.</p>
+                        </div>
+                        @if (workerData != null && workerData.Length > 0)
+                        {
+                            <div class="analytics-inline-summary">
+                                <div>
+                                    <span>Total payout</span>
+                                    <strong>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</strong>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (workerData != null && workerData.Length > 0)
+                    {
+                        var grandTotal = workerData.Sum(w => w.Revenue + w.Tips);
+                        <div class="table-responsive">
+                            <table class="data-table analytics-commission-table">
+                                <thead>
+                                    <tr>
+                                        <th>Worker</th>
+                                        <th>Revenue</th>
+                                        <th>Tips</th>
+                                        <th>Total</th>
+                                        <th>Share</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var worker in workerData)
+                                    {
+                                        var total = worker.Revenue + worker.Tips;
+                                        var share = grandTotal > 0 ? total / grandTotal * 100 : 0;
+                                        <tr>
+                                            <td class="fw-semibold">@worker.Worker</td>
+                                            <td>@worker.Revenue.ToString("C")</td>
+                                            <td>@worker.Tips.ToString("C")</td>
+                                            <td class="fw-semibold">@total.ToString("C")</td>
+                                            <td class="analytics-share-cell">
+                                                <div class="analytics-share-wrap">
+                                                    <div class="progress-bar-custom analytics-share-bar">
+                                                        <div class="progress-fill" style="width: @($"{share:F0}")%;"></div>
+                                                    </div>
+                                                    <span class="analytics-share-label">@share.ToString("F1")%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td>Total</td>
+                                        <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
+                                        <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
+                                        <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state analytics-empty-state-compact">
+                            <p>Commission data will appear after worker revenue has been recorded.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     private bool loading = true;
@@ -246,6 +468,21 @@ else
     private TopProduct[]? topProducts;
     private CombinedTimeline? combinedTimeline;
     private bool needsChartRender;
+
+    private decimal TotalRevenueForRange => dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
+    private decimal TotalTipsForRange => dailyData?.Sum(d => d.Tips) ?? workerData?.Sum(w => w.Tips) ?? 0m;
+    private int TotalServiceCount => serviceData?.Sum(s => s.Count) ?? 0;
+    private decimal AverageDailyRevenue => dailyData != null && dailyData.Length > 0 ? Math.Round(dailyData.Average(d => d.Revenue), 2) : 0m;
+    private decimal TotalServiceRevenue => combinedTimeline?.Points.Sum(p => p.ServiceRevenue) ?? 0m;
+    private decimal TotalProductRevenue => combinedTimeline?.Points.Sum(p => p.ProductRevenue) ?? 0m;
+    private WorkerRevenue? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
+    private ServicePopularity? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
+    private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private ForecastPoint? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
+    private bool HasHighlights => TopWorker != null || TopService != null || StrongestDay != null || FinalForecastPoint != null;
+    private string CurrentRangeLabel => FormatDateRange(dateFrom, dateTo);
+    private string ForecastDirectionLabel => forecastResult == null ? "Pending" : forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Cooling" : "Flat";
+    private string ForecastTrendChipClass => forecastResult == null ? "analytics-chip-neutral" : forecastResult.Slope > 0 ? "analytics-chip-positive" : forecastResult.Slope < 0 ? "analytics-chip-negative" : "analytics-chip-neutral";
 
     protected override async Task OnInitializedAsync()
     {
@@ -421,6 +658,28 @@ else
             }
         }
         catch { }
+    }
+
+    private static string FormatDateRange(DateTime? from, DateTime? to)
+    {
+        if (from.HasValue && to.HasValue)
+        {
+            return from.Value.Date == to.Value.Date
+                ? from.Value.ToString("MMM d, yyyy")
+                : $"{from.Value:MMM d, yyyy} - {to.Value:MMM d, yyyy}";
+        }
+
+        if (from.HasValue)
+        {
+            return $"From {from.Value:MMM d, yyyy}";
+        }
+
+        if (to.HasValue)
+        {
+            return $"Through {to.Value:MMM d, yyyy}";
+        }
+
+        return "All available dates";
     }
 
     private string BuildQueryString()
