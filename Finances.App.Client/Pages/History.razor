@@ -1,5 +1,7 @@
 @page "/history"
+@implements IDisposable
 @inject HttpClient Http
+@inject LocalFinanceStore Store
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -14,11 +16,17 @@
             <div class="workspace-hero-meta">
                 <div class="workspace-hero-note">
                     <span>Worker scope</span>
-                    <strong>@(WorkerContext.SelectedWorkerId.HasValue ? "Selected worker only" : "All workers")</strong>
+                    <strong>@WorkerScopeLabel</strong>
                 </div>
             </div>
         </div>
         <div class="workspace-hero-actions">
+            @if (WorkerContext.SelectedWorkerId.HasValue)
+            {
+                <div class="workspace-action-row">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">Clear worker filter</button>
+                </div>
+            }
             <div class="workspace-filter-panel">
                 <span>Date range</span>
                 <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
@@ -235,11 +243,22 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Store.OnChange += HandleStoreChanged;
+        WorkerContext.OnChange += HandleWorkerContextChanged;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
         await WorkerContext.InitializeAsync();
         allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
         workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
         services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        await WorkerContext.EnsureWorkerExistsAsync((workers ?? []).Select(worker => worker.Id));
     }
+
+    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? $"{SelectedWorkerName} only" : "All workers";
+    private string SelectedWorkerName => workers?.FirstOrDefault(worker => worker.Id == WorkerContext.SelectedWorkerId)?.Name ?? "Selected worker";
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
     {
@@ -288,6 +307,11 @@
     {
         if (sortColumn != column) return "";
         return sortAsc ? "▲" : "▼";
+    }
+
+    private async Task ClearWorkerFilter()
+    {
+        await WorkerContext.SetWorkerAsync(null);
     }
 
     private void OpenEditModal(ServiceRecord record)
@@ -367,5 +391,25 @@
         }
         showDeleteConfirm = false;
         deleteTarget = null;
+    }
+
+    private async void HandleWorkerContextChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerContextChanged;
+        Store.OnChange -= HandleStoreChanged;
     }
 }

@@ -156,8 +156,10 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
 
         if (request.Method == HttpMethod.Delete && TryParseId(segments, 2, out id))
         {
-            await _store.DeleteProductAsync(id);
-            return new HttpResponseMessage(HttpStatusCode.NoContent);
+            var result = await _store.DeleteProductAsync(id);
+            return result.Success
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : JsonResponse(new { message = result.ErrorMessage }, HttpStatusCode.Conflict);
         }
 
         return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -249,14 +251,14 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
         {
             "summary" => JsonResponse(await _store.GetSummaryAsync(workerId, from, to)),
             "daily-earnings" => JsonResponse(await _store.GetDailyEarningsAsync(workerId, from, to)),
-            "revenue-by-worker" => JsonResponse(await _store.GetRevenueByWorkerAsync(from, to)),
-            "service-popularity" => JsonResponse(await _store.GetServicePopularityAsync(from, to)),
-            "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, ReadInt(query, "forecastDays", 14))),
-            "recent" => JsonResponse(await _store.GetRecentAsync(ReadInt(query, "count", 5))),
+            "revenue-by-worker" => JsonResponse(await _store.GetRevenueByWorkerAsync(workerId, from, to)),
+            "service-popularity" => JsonResponse(await _store.GetServicePopularityAsync(workerId, from, to)),
+            "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, from, to, ReadInt(query, "forecastDays", 14))),
+            "recent" => JsonResponse(await _store.GetRecentAsync(workerId, ReadInt(query, "count", 5))),
             "productsales-revenue" => JsonResponse(new { revenue = await _store.GetProductSalesRevenueAsync(from, to) }),
             "month-comparison" => JsonResponse(await _store.GetMonthComparisonAsync(workerId)),
             "revenue-by-dayofweek" => JsonResponse(await _store.GetRevenueByDayOfWeekAsync(workerId, from, to)),
-            "top-products" => JsonResponse(await _store.GetTopProductsAsync(from, to, ReadInt(query, "count", 5))),
+            "top-products" => JsonResponse(await _store.GetTopProductsAsync(workerId, from, to, ReadInt(query, "count", 5))),
             "combined-timeline" => JsonResponse(await _store.GetCombinedTimelineAsync(workerId, from, to)),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         };

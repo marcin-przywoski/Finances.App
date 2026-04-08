@@ -136,6 +136,11 @@ public sealed class LocalFinanceStore
             return new DeleteResult(false, "Cannot delete worker with existing service records.");
         }
 
+        if (_snapshot.ProductSales.Any(sale => sale.WorkerId == id))
+        {
+            return new DeleteResult(false, "Cannot delete worker with existing product sales.");
+        }
+
         _snapshot.Workers.Remove(worker);
         await PersistAsync();
         return new DeleteResult(true);
@@ -230,13 +235,20 @@ public sealed class LocalFinanceStore
         await PersistAsync();
     }
 
-    public async Task DeleteProductAsync(int id)
+    public async Task<DeleteResult> DeleteProductAsync(int id)
     {
         await EnsureLoadedAsync();
 
         var product = _snapshot!.Products.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+
+        if (_snapshot.ProductSales.Any(sale => sale.ProductId == id))
+        {
+            return new DeleteResult(false, "Cannot delete a product that already has recorded sales.");
+        }
+
         _snapshot.Products.Remove(product);
         await PersistAsync();
+        return new DeleteResult(true);
     }
 
     public async Task<IReadOnlyList<ProductSale>> GetProductSalesAsync()
@@ -254,12 +266,22 @@ public sealed class LocalFinanceStore
         ArgumentNullException.ThrowIfNull(sale);
         await EnsureLoadedAsync();
 
+        if (sale.Quantity <= 0)
+        {
+            throw new InvalidDataException("Quantity must be at least 1.");
+        }
+
         var product = _snapshot!.Products.FirstOrDefault(item => item.Id == sale.ProductId)
             ?? throw new InvalidDataException("The selected product does not exist.");
 
         if (sale.WorkerId.HasValue && _snapshot.Workers.All(worker => worker.Id != sale.WorkerId.Value))
         {
             throw new InvalidDataException("The selected worker does not exist.");
+        }
+
+        if (sale.Quantity > product.StockQuantity)
+        {
+            throw new InvalidDataException($"Only {product.StockQuantity} unit(s) of {product.Name} are currently in stock.");
         }
 
         var stored = new ProductSale
@@ -275,11 +297,7 @@ public sealed class LocalFinanceStore
         };
 
         _snapshot.ProductSales.Add(stored);
-
-        if (product.StockQuantity >= stored.Quantity)
-        {
-            product.StockQuantity -= stored.Quantity;
-        }
+        product.StockQuantity -= stored.Quantity;
 
         await PersistAsync();
         return EnrichProductSale(stored);
@@ -290,32 +308,57 @@ public sealed class LocalFinanceStore
         ArgumentNullException.ThrowIfNull(sale);
         await EnsureLoadedAsync();
 
+        if (sale.Quantity <= 0)
+        {
+            throw new InvalidDataException("Quantity must be at least 1.");
+        }
+
         if (id != sale.Id)
         {
             throw new InvalidDataException("Sale identifier mismatch.");
         }
 
         var existing = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
-
-        if (_snapshot.Products.All(product => product.Id != sale.ProductId))
-        {
-            throw new InvalidDataException("The selected product does not exist.");
-        }
+        var currentProduct = _snapshot.Products.FirstOrDefault(product => product.Id == existing.ProductId)
+            ?? throw new InvalidDataException("The selected product does not exist.");
+        var nextProduct = _snapshot.Products.FirstOrDefault(product => product.Id == sale.ProductId)
+            ?? throw new InvalidDataException("The selected product does not exist.");
 
         if (sale.WorkerId.HasValue && sale.WorkerId.Value != 0 && _snapshot.Workers.All(worker => worker.Id != sale.WorkerId.Value))
         {
             throw new InvalidDataException("The selected worker does not exist.");
         }
 
-        existing.ProductId = sale.ProductId;
-        existing.WorkerId = sale.WorkerId == 0 ? null : sale.WorkerId;
-        existing.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
-        existing.Quantity = sale.Quantity;
-        existing.UnitPrice = sale.UnitPrice;
-        existing.ClientName = NormalizeOptionalText(sale.ClientName);
-        existing.Notes = NormalizeOptionalText(sale.Notes);
+        var currentProductStock = currentProduct.StockQuantity;
+        var nextProductStock = nextProduct.StockQuantity;
 
-        await PersistAsync();
+        currentProduct.StockQuantity += existing.Quantity;
+
+        try
+        {
+            if (sale.Quantity > nextProduct.StockQuantity)
+            {
+                throw new InvalidDataException($"Only {nextProduct.StockQuantity} unit(s) of {nextProduct.Name} are currently in stock.");
+            }
+
+            nextProduct.StockQuantity -= sale.Quantity;
+
+            existing.ProductId = sale.ProductId;
+            existing.WorkerId = sale.WorkerId == 0 ? null : sale.WorkerId;
+            existing.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
+            existing.Quantity = sale.Quantity;
+            existing.UnitPrice = sale.UnitPrice;
+            existing.ClientName = NormalizeOptionalText(sale.ClientName);
+            existing.Notes = NormalizeOptionalText(sale.Notes);
+
+            await PersistAsync();
+        }
+        catch
+        {
+            currentProduct.StockQuantity = currentProductStock;
+            nextProduct.StockQuantity = nextProductStock;
+            throw;
+        }
     }
 
     public async Task DeleteProductSaleAsync(int id)
@@ -323,6 +366,13 @@ public sealed class LocalFinanceStore
         await EnsureLoadedAsync();
 
         var sale = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+        var product = _snapshot.Products.FirstOrDefault(item => item.Id == sale.ProductId);
+
+        if (product is not null)
+        {
+            product.StockQuantity += sale.Quantity;
+        }
+
         _snapshot.ProductSales.Remove(sale);
         await PersistAsync();
     }
@@ -435,13 +485,13 @@ public sealed class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(int? workerId, DateTime? from, DateTime? to)
     {
         await EnsureLoadedAsync();
 
         var workerNames = _snapshot!.Workers.ToDictionary(worker => worker.Id, worker => worker.Name);
 
-        return FilterStoredRecords(null, from, to)
+        return FilterStoredRecords(workerId, from, to)
             .GroupBy(record => workerNames.GetValueOrDefault(record.WorkerId, "Unknown"))
             .Select(group => new WorkerRevenueResult(
                 group.Key,
@@ -451,13 +501,13 @@ public sealed class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? from, DateTime? to)
     {
         await EnsureLoadedAsync();
 
         var serviceNames = _snapshot!.Services.ToDictionary(service => service.Id, service => service.Name);
 
-        return FilterStoredRecords(null, from, to)
+        return FilterStoredRecords(workerId, from, to)
             .GroupBy(record => serviceNames.GetValueOrDefault(record.ServiceId, "Unknown"))
             .Select(group => new ServicePopularityResult(
                 group.Key,
@@ -467,13 +517,14 @@ public sealed class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays)
+    public async Task<ForecastResult> GetForecastAsync(int? workerId, DateTime? from, DateTime? to, int forecastDays)
     {
         await EnsureLoadedAsync();
 
-        var cutoff = DateTime.Today.AddDays(-90);
-        var dailyRevenue = _snapshot!.ServiceRecords
-            .Where(record => (!workerId.HasValue || record.WorkerId == workerId.Value) && record.DatePerformed.Date >= cutoff)
+        var effectiveTo = to?.Date ?? DateTime.Today;
+        var effectiveFrom = from?.Date ?? effectiveTo.AddDays(-90);
+
+        var dailyRevenue = FilterStoredRecords(workerId, effectiveFrom, effectiveTo)
             .GroupBy(record => record.DatePerformed.Date)
             .Select(group => new
             {
@@ -538,14 +589,14 @@ public sealed class LocalFinanceStore
             Math.Round(rSquared, 4));
     }
 
-    public async Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count)
+    public async Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int? workerId, int count)
     {
         await EnsureLoadedAsync();
 
         var workerNames = _snapshot!.Workers.ToDictionary(worker => worker.Id, worker => worker.Name);
         var serviceNames = _snapshot.Services.ToDictionary(service => service.Id, service => service.Name);
 
-        return _snapshot.ServiceRecords
+        return FilterStoredRecords(workerId, null, null)
             .OrderByDescending(record => record.DatePerformed)
             .ThenByDescending(record => record.Id)
             .Take(Math.Max(1, count))
@@ -572,14 +623,18 @@ public sealed class LocalFinanceStore
         var currentRecords = FilterStoredRecords(workerId, currentStart, today).ToList();
         var previousRecords = FilterStoredRecords(workerId, previousStart, previousEnd).ToList();
 
-        var currentRevenue = currentRecords.Sum(r => r.AmountPaid);
-        var previousRevenue = previousRecords.Sum(r => r.AmountPaid);
+        var currentServiceRevenue = currentRecords.Sum(r => r.AmountPaid);
+        var previousServiceRevenue = previousRecords.Sum(r => r.AmountPaid);
+        var currentProductRevenue = FilterStoredProductSales(workerId, currentStart, today).Sum(sale => sale.UnitPrice * sale.Quantity);
+        var previousProductRevenue = FilterStoredProductSales(workerId, previousStart, previousEnd).Sum(sale => sale.UnitPrice * sale.Quantity);
+        var currentRevenue = currentServiceRevenue + currentProductRevenue;
+        var previousRevenue = previousServiceRevenue + previousProductRevenue;
         var currentTips = currentRecords.Sum(r => r.Tips);
         var previousTips = previousRecords.Sum(r => r.Tips);
         var currentCount = currentRecords.Count;
         var previousCount = previousRecords.Count;
-        var currentAvgTicket = currentCount > 0 ? currentRevenue / currentCount : 0;
-        var previousAvgTicket = previousCount > 0 ? previousRevenue / previousCount : 0;
+        var currentAvgTicket = currentCount > 0 ? currentServiceRevenue / currentCount : 0;
+        var previousAvgTicket = previousCount > 0 ? previousServiceRevenue / previousCount : 0;
 
         return new MonthComparisonResult(
             currentRevenue, previousRevenue,
@@ -603,14 +658,12 @@ public sealed class LocalFinanceStore
         }).ToList();
     }
 
-    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(DateTime? from, DateTime? to, int count = 5)
+    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? from, DateTime? to, int count = 5)
     {
         await EnsureLoadedAsync();
 
         var productNames = _snapshot!.Products.ToDictionary(p => p.Id, p => p.Name);
-        var query = _snapshot.ProductSales.AsEnumerable();
-        if (from.HasValue) query = query.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) query = query.Where(s => s.DateSold.Date <= to.Value.Date);
+        var query = FilterStoredProductSales(workerId, from, to);
 
         return query
             .GroupBy(s => productNames.GetValueOrDefault(s.ProductId, "Unknown"))
@@ -628,9 +681,7 @@ public sealed class LocalFinanceStore
             .GroupBy(r => r.DatePerformed.Date)
             .ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
 
-        var productQuery = _snapshot!.ProductSales.AsEnumerable();
-        if (from.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date <= to.Value.Date);
+        var productQuery = FilterStoredProductSales(workerId, from, to);
         var productsByDay = productQuery
             .GroupBy(s => s.DateSold.Date)
             .ToDictionary(g => g.Key, g => g.Sum(s => s.UnitPrice * s.Quantity));
@@ -852,6 +903,28 @@ public sealed class LocalFinanceStore
         if (to.HasValue)
         {
             query = query.Where(record => record.DatePerformed.Date <= to.Value.Date);
+        }
+
+        return query;
+    }
+
+    private IEnumerable<ProductSale> FilterStoredProductSales(int? workerId, DateTime? from, DateTime? to)
+    {
+        var query = _snapshot!.ProductSales.AsEnumerable();
+
+        if (workerId.HasValue)
+        {
+            query = query.Where(sale => sale.WorkerId == workerId.Value);
+        }
+
+        if (from.HasValue)
+        {
+            query = query.Where(sale => sale.DateSold.Date >= from.Value.Date);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(sale => sale.DateSold.Date <= to.Value.Date);
         }
 
         return query;

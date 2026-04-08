@@ -1,6 +1,9 @@
 @page "/sales"
+@implements IDisposable
 @inject HttpClient Http
+@inject LocalFinanceStore Store
 @inject ToastService Toast
+@inject WorkerContextService WorkerContext
 
 <PageTitle>Product Sales</PageTitle>
 
@@ -10,6 +13,12 @@
             <span class="workspace-kicker">Retail ledger</span>
             <h1 class="workspace-title">Product sales</h1>
             <p class="workspace-description">Track retail sales, review basket values, and fix incorrect checkout entries for the selected period.</p>
+            <div class="workspace-hero-meta">
+                <div class="workspace-hero-note">
+                    <span>Worker scope</span>
+                    <strong>@WorkerScopeLabel</strong>
+                </div>
+            </div>
         </div>
         <div class="workspace-hero-actions">
             <div class="workspace-action-row">
@@ -18,6 +27,12 @@
                     Record sale
                 </button>
             </div>
+            @if (WorkerContext.SelectedWorkerId.HasValue)
+            {
+                <div class="workspace-action-row">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">Clear worker filter</button>
+                </div>
+            }
             <div class="workspace-filter-panel">
                 <span>Date range</span>
                 <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
@@ -154,6 +169,14 @@
                                         }
                                     }
                                 </select>
+                                @if (SelectedProduct != null)
+                                {
+                                    <div class="form-text">Available stock: @AvailableStockForCurrentForm</div>
+                                    @if (formModel.Quantity > AvailableStockForCurrentForm)
+                                    {
+                                        <div class="text-danger small mt-1">This quantity exceeds the current stock for @SelectedProduct.Name.</div>
+                                    }
+                                }
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Worker (optional)</label>
@@ -239,9 +262,41 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Store.OnChange += HandleStoreChanged;
+        WorkerContext.OnChange += HandleWorkerContextChanged;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await WorkerContext.InitializeAsync();
         allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
         products = await Http.GetFromJsonAsync<List<Product>>("api/products");
         workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        await WorkerContext.EnsureWorkerExistsAsync((workers ?? []).Select(worker => worker.Id));
+    }
+
+    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? $"{SelectedWorkerName} only" : "All workers";
+    private string SelectedWorkerName => workers?.FirstOrDefault(worker => worker.Id == WorkerContext.SelectedWorkerId)?.Name ?? "Selected worker";
+    private Product? SelectedProduct => products?.FirstOrDefault(product => product.Id == formModel.ProductId);
+    private int AvailableStockForCurrentForm
+    {
+        get
+        {
+            var baseStock = SelectedProduct?.StockQuantity ?? 0;
+            if (!isEditing || allSales == null)
+            {
+                return baseStock;
+            }
+
+            var originalSale = allSales.FirstOrDefault(sale => sale.Id == editId);
+            if (originalSale != null && originalSale.ProductId == formModel.ProductId)
+            {
+                baseStock += originalSale.Quantity;
+            }
+
+            return baseStock;
+        }
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -255,6 +310,9 @@
         if (allSales == null) return new();
 
         var q = allSales.AsEnumerable();
+
+        if (WorkerContext.SelectedWorkerId.HasValue)
+            q = q.Where(s => s.WorkerId == WorkerContext.SelectedWorkerId.Value);
 
         if (dateFrom.HasValue)
             q = q.Where(s => s.DateSold.Date >= dateFrom.Value.Date);
@@ -292,7 +350,7 @@
 
     private void OpenAddModal()
     {
-        formModel = new ProductSale { DateSold = DateTime.Today, Quantity = 1 };
+        formModel = new ProductSale { DateSold = DateTime.Today, Quantity = 1, WorkerId = WorkerContext.SelectedWorkerId };
         isEditing = false;
         showModal = true;
     }
@@ -352,9 +410,10 @@
                 {
                     Toast.Show("Sale updated");
                     allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
+                    products = await Http.GetFromJsonAsync<List<Product>>("api/products");
                     showModal = false;
                 }
-                else Toast.Show("Failed to update sale", ToastLevel.Error);
+                else Toast.Show(await ReadErrorMessageAsync(resp, "Failed to update sale."), ToastLevel.Error);
             }
             else
             {
@@ -363,9 +422,10 @@
                 {
                     Toast.Show("Sale recorded!");
                     allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
+                    products = await Http.GetFromJsonAsync<List<Product>>("api/products");
                     showModal = false;
                 }
-                else Toast.Show("Failed to record sale", ToastLevel.Error);
+                else Toast.Show(await ReadErrorMessageAsync(resp, "Failed to record sale."), ToastLevel.Error);
             }
         }
         finally { saving = false; }
@@ -385,9 +445,50 @@
         {
             Toast.Show("Sale deleted");
             allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
+            products = await Http.GetFromJsonAsync<List<Product>>("api/products");
         }
-        else Toast.Show("Failed to delete sale", ToastLevel.Error);
+        else Toast.Show(await ReadErrorMessageAsync(resp, "Failed to delete sale."), ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
     }
+
+    private async Task ClearWorkerFilter()
+    {
+        await WorkerContext.SetWorkerAsync(null);
+    }
+
+    private async Task<string> ReadErrorMessageAsync(HttpResponseMessage response, string fallback)
+    {
+        try
+        {
+            var error = await response.Content.ReadFromJsonAsync<ApiError>();
+            return string.IsNullOrWhiteSpace(error?.Message) ? fallback : error.Message;
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private async void HandleWorkerContextChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerContextChanged;
+        Store.OnChange -= HandleStoreChanged;
+    }
+
+    private sealed record ApiError(string? Message);
 }

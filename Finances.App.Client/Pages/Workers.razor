@@ -1,6 +1,8 @@
 @page "/workers"
 @inject HttpClient Http
 @inject ToastService Toast
+@inject WorkerContextService WorkerContext
+@inject NavigationManager Nav
 
 <PageTitle>Workers</PageTitle>
 
@@ -85,6 +87,7 @@
                                     <td>@worker.DefaultCommissionPercentage%</td>
                                     <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
                                     <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenAnalytics(worker)">Analytics</button>
                                         <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
                                     </td>
@@ -203,6 +206,12 @@
     {
         deleteTarget = w;
         showDeleteConfirm = true;
+    }
+
+    private async Task OpenAnalytics(Worker worker)
+    {
+        await WorkerContext.SetWorkerAsync(worker.Id);
+        Nav.NavigateTo("analytics");
     }
 
     private async Task HandleDelete()

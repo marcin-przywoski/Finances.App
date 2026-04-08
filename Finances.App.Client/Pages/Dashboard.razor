@@ -1,6 +1,8 @@
 @page "/"
+@implements IDisposable
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject LocalFinanceStore Store
 @inject WorkerContextService WorkerContext
 
 <PageTitle>Dashboard</PageTitle>
@@ -61,7 +63,7 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalRevenueDisplay" Label="Salon Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
+                <StatCard Value="@TotalRevenueDisplay" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                     </IconContent>
@@ -75,7 +77,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@AvgTicketDisplay" Label="Average Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
+                <StatCard Value="@AvgTicketDisplay" Label="Avg Service Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                     </IconContent>
@@ -288,7 +290,9 @@
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
-    private string TotalRevenueDisplay => totalRevenueValue.ToString("C");
+    private string TotalRevenueDisplay => (totalRevenueValue + productRevenueTotal).ToString("C");
+    private string ServiceRevenueDisplay => totalRevenueValue.ToString("C");
+    private string RetailRevenueDisplay => productRevenueTotal.ToString("C");
     private string TotalTipsDisplay => totalTipsValue.ToString("C");
     private string AvgTicketDisplay => avgTicketValue.ToString("C");
     private string RecordCountDisplay => recordCountValue.ToString();
@@ -302,7 +306,7 @@
     private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
     private RecentRecord? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
     private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
-    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{TotalTipsDisplay} in guest tips across {recordCountValue} logged appointments.";
+    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{ServiceRevenueDisplay} from services and {RetailRevenueDisplay} from retail.";
     private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
     private string ServiceShareSubtext => loading ? "Checking the revenue mix." : HasRevenueSources ? $"{serviceRevenueTotal.ToString("C")} came from services." : "Revenue sources will appear here.";
     private string StrongestDayLabel => loading ? "Loading..." : StrongestDay?.Day ?? "No data yet";
@@ -314,6 +318,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        WorkerContext.OnChange += HandleWorkerContextChanged;
+        Store.OnChange += HandleStoreChanged;
         await WorkerContext.InitializeAsync();
         await LoadData();
     }
@@ -369,7 +375,8 @@
             }
             catch { }
 
-            recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>("api/analytics/recent?count=5");
+            var recentQuery = wId.HasValue ? $"?count=5&workerId={wId.Value}" : "?count=5";
+            recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>($"api/analytics/recent{recentQuery}");
 
             try
             {
@@ -409,6 +416,16 @@
     }
 
     private bool needsChartRender;
+
+    private async void HandleWorkerContextChanged()
+    {
+        await InvokeAsync(LoadData);
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await InvokeAsync(LoadData);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -472,4 +489,10 @@
     private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
     private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
     private record CombinedTimeline(CombinedTimelinePoint[] Points);
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerContextChanged;
+        Store.OnChange -= HandleStoreChanged;
+    }
 }
