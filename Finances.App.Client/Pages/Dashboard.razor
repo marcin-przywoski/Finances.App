@@ -283,10 +283,10 @@
     private decimal? tipsTrend;
     private decimal? avgTicketTrend;
     private decimal? countTrend;
-    private RecentRecord[]? recentRecords;
-    private TopProduct[]? topProducts;
-    private DayOfWeekEntry[]? dayOfWeekData;
-    private CombinedTimeline? combinedTimeline;
+    private RecentRecordDto[]? recentRecords;
+    private TopProductDto[]? topProducts;
+    private DayOfWeekDto[]? dayOfWeekData;
+    private CombinedTimelineDto? combinedTimeline;
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
@@ -302,9 +302,9 @@
     private bool HasRevenueSources => TotalRevenueSources > 0;
     private decimal ServiceRevenueShare => HasRevenueSources ? Math.Round(serviceRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
     private decimal ProductRevenueShare => HasRevenueSources ? Math.Round(productRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
-    private TopProduct? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
-    private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
-    private RecentRecord? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
+    private TopProductDto? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
+    private DayOfWeekDto? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private RecentRecordDto? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
     private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
     private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{ServiceRevenueDisplay} from services and {RetailRevenueDisplay} from retail.";
     private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
@@ -376,23 +376,23 @@
             catch { }
 
             var recentQuery = wId.HasValue ? $"?count=5&workerId={wId.Value}" : "?count=5";
-            recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>($"api/analytics/recent{recentQuery}");
+            recentRecords = await Http.GetFromJsonAsync<RecentRecordDto[]>($"api/analytics/recent{recentQuery}");
 
             try
             {
-                topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}");
+                topProducts = await Http.GetFromJsonAsync<TopProductDto[]>($"api/analytics/top-products{qs}");
             }
             catch { topProducts = []; }
 
             try
             {
-                dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}");
+                dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekDto[]>($"api/analytics/revenue-by-dayofweek{qs}");
             }
             catch { dayOfWeekData = []; }
 
             try
             {
-                combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}");
+                combinedTimeline = await Http.GetFromJsonAsync<CombinedTimelineDto>($"api/analytics/combined-timeline{qs}");
                 if (combinedTimeline?.Points != null)
                 {
                     serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
@@ -481,14 +481,6 @@
         }
         catch { }
     }
-
-    private record SummaryDto(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
-    private record RecentRecord(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
-    private record MonthComparisonDto(decimal CurrentRevenue, decimal PreviousRevenue, decimal CurrentTips, decimal PreviousTips, int CurrentCount, int PreviousCount, decimal CurrentAvgTicket, decimal PreviousAvgTicket);
-    private record TopProduct(string Product, int Quantity, decimal Revenue);
-    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
-    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 
     public void Dispose()
     {

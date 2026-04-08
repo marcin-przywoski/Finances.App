@@ -477,13 +477,13 @@
     private DateTime? dateFrom;
     private DateTime? dateTo;
     private int forecastDays = 14;
-    private WorkerRevenue[]? workerData;
-    private ServicePopularity[]? serviceData;
-    private DailyEarning[]? dailyData;
-    private ForecastResult? forecastResult;
-    private DayOfWeekEntry[]? dayOfWeekData;
-    private TopProduct[]? topProducts;
-    private CombinedTimeline? combinedTimeline;
+    private WorkerRevenueDto[]? workerData;
+    private ServicePopularityDto[]? serviceData;
+    private DailyEarningDto[]? dailyData;
+    private ForecastResultDto? forecastResult;
+    private DayOfWeekDto[]? dayOfWeekData;
+    private TopProductDto[]? topProducts;
+    private CombinedTimelineDto? combinedTimeline;
     private bool needsChartRender;
 
     private decimal TotalRevenueForRange => combinedTimeline?.Points.Sum(point => point.ServiceRevenue + point.ProductRevenue) ?? dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
@@ -492,10 +492,10 @@
     private decimal AverageDailyRevenue => combinedTimeline is { Points.Length: > 0 } ? Math.Round(combinedTimeline.Points.Average(point => point.ServiceRevenue + point.ProductRevenue), 2) : dailyData != null && dailyData.Length > 0 ? Math.Round(dailyData.Average(d => d.Revenue), 2) : 0m;
     private decimal TotalServiceRevenue => combinedTimeline?.Points.Sum(p => p.ServiceRevenue) ?? 0m;
     private decimal TotalProductRevenue => combinedTimeline?.Points.Sum(p => p.ProductRevenue) ?? 0m;
-    private WorkerRevenue? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
-    private ServicePopularity? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
-    private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
-    private ForecastPoint? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
+    private WorkerRevenueDto? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
+    private ServicePopularityDto? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
+    private DayOfWeekDto? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private ForecastPointDto? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
     private bool HasHighlights => TopWorker != null || TopService != null || StrongestDay != null || FinalForecastPoint != null;
     private string CurrentRangeLabel => FormatDateRange(dateFrom, dateTo);
     private string WorkerScopeLabel => "Selected worker from top bar";
@@ -508,10 +508,6 @@
         Store.OnChange += HandleStoreChanged;
         WorkerContext.OnChange += HandleWorkerContextChanged;
         await WorkerContext.InitializeAsync();
-        var today = DateTime.Today;
-        dateFrom = new DateTime(today.Year, today.Month, 1);
-        dateTo = today;
-        await LoadData();
     }
 
     private async Task OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -537,18 +533,18 @@
         try
         {
             var qs = BuildQueryString();
-            workerData = await Http.GetFromJsonAsync<WorkerRevenue[]>($"api/analytics/revenue-by-worker{qs}");
-            serviceData = await Http.GetFromJsonAsync<ServicePopularity[]>($"api/analytics/service-popularity{qs}");
-            dailyData = await Http.GetFromJsonAsync<DailyEarning[]>($"api/analytics/daily-earnings{qs}");
+            workerData = await Http.GetFromJsonAsync<WorkerRevenueDto[]>($"api/analytics/revenue-by-worker{qs}");
+            serviceData = await Http.GetFromJsonAsync<ServicePopularityDto[]>($"api/analytics/service-popularity{qs}");
+            dailyData = await Http.GetFromJsonAsync<DailyEarningDto[]>($"api/analytics/daily-earnings{qs}");
             await LoadForecast();
 
-            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
+            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekDto[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
             catch { dayOfWeekData = []; }
 
-            try { topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}"); }
+            try { topProducts = await Http.GetFromJsonAsync<TopProductDto[]>($"api/analytics/top-products{qs}"); }
             catch { topProducts = []; }
 
-            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}"); }
+            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimelineDto>($"api/analytics/combined-timeline{qs}"); }
             catch { }
         }
         catch { }
@@ -563,7 +559,7 @@
     {
         try
         {
-            forecastResult = await Http.GetFromJsonAsync<ForecastResult>($"api/analytics/forecast{BuildQueryString(forecastDays)}");
+            forecastResult = await Http.GetFromJsonAsync<ForecastResultDto>($"api/analytics/forecast{BuildQueryString(forecastDays)}");
         }
         catch { }
     }
@@ -728,17 +724,6 @@
     {
         await InvokeAsync(LoadData);
     }
-
-    private record WorkerRevenue(string Worker, decimal Revenue, decimal Tips);
-    private record ServicePopularity(string Service, int Count, decimal Revenue);
-    private record DailyEarning(string Date, decimal Revenue, decimal Tips);
-    private record HistoricalPoint(string Date, double Actual, double Trend);
-    private record ForecastPoint(string Date, double Predicted);
-    private record ForecastResult(HistoricalPoint[] Historical, ForecastPoint[] Forecast, double Slope, double Intercept, double RSquared);
-    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
-    private record TopProduct(string Product, int Quantity, decimal Revenue);
-    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 
     public void Dispose()
     {

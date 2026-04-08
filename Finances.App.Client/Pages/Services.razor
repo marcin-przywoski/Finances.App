@@ -1,5 +1,7 @@
 @page "/services"
+@implements IDisposable
 @inject HttpClient Http
+@inject LocalFinanceStore Store
 @inject ToastService Toast
 
 <PageTitle>Services</PageTitle>
@@ -138,8 +140,6 @@
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
     private List<Service>? services;
     private Service formModel = new();
@@ -149,6 +149,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Store.OnChange += HandleStoreChanged;
         await LoadServices();
     }
 
@@ -212,5 +213,19 @@
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadServices();
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadServices();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Store.OnChange -= HandleStoreChanged;
     }
 }

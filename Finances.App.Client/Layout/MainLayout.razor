@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 
-<div class="page">
+<div class="page @(sidebarOpen ? "sidebar-open" : "")">
     <div class="sidebar">
         <NavMenu />
     </div>
@@ -23,6 +23,8 @@
         </article>
     </main>
 </div>
+
+<Toast />
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
