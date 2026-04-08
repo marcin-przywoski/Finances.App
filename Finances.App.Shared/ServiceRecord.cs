@@ -28,6 +28,9 @@ public class ServiceRecord
     [MaxLength(100)]
     public string? ClientName { get; set; }
 
+    public int? ClientId { get; set; }
+    public Client? Client { get; set; }
+
     public string? Notes { get; set; }
 
     public decimal WorkerShare => AmountPaid * (CommissionPercentageApplied / 100);

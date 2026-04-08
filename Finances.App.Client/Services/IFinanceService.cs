@@ -36,6 +36,15 @@ public interface IFinanceService
     Task UpdateProductSaleAsync(int id, ProductSale sale);
     Task DeleteProductSaleAsync(int id);
 
+    // Clients
+    Task<IReadOnlyList<Client>> GetClientsAsync();
+    Task<Client> AddClientAsync(Client client);
+    Task UpdateClientAsync(int id, Client client);
+    Task<DeleteResult> DeleteClientAsync(int id);
+    Task<Client?> GetOrCreateClientByNameAsync(string? name);
+    Task<ClientDetailResult> GetClientDetailAsync(int clientId);
+    Task<IReadOnlyList<TopClientResult>> GetTopClientsAsync(int? workerId, DateTime? from, DateTime? to, int count = 10);
+
     // Analytics
     Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? from, DateTime? to);
     Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? from, DateTime? to);

@@ -39,6 +39,18 @@ public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, 
 
 public sealed record CombinedTimelineResult(CombinedTimelinePoint[] Points);
 
+public sealed record ClientDetailResult(
+    Client Client,
+    int TotalVisits,
+    decimal TotalSpend,
+    DateTime? LastVisit,
+    IReadOnlyList<RecentRecordResult> RecentServices,
+    IReadOnlyList<ClientProductSaleResult> RecentProductSales);
+
+public sealed record ClientProductSaleResult(int Id, string Date, string Product, int Quantity, decimal Total, string? Worker);
+
+public sealed record TopClientResult(string Client, int Visits, decimal Revenue);
+
 public sealed class LocalFinanceStore : IFinanceService
 {
     private const int CurrentSchemaVersion = 1;
@@ -375,6 +387,180 @@ public sealed class LocalFinanceStore : IFinanceService
 
         _snapshot.ProductSales.Remove(sale);
         await PersistAsync();
+    }
+
+    // ── Clients ──────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<Client>> GetClientsAsync()
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.Clients.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).Select(CloneClient).ToList();
+    }
+
+    public async Task<Client> AddClientAsync(Client client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        await EnsureLoadedAsync();
+
+        var created = CloneClient(client);
+        created.Id = _snapshot!.NextClientId++;
+        created.Name = created.Name.Trim();
+        created.Phone = NormalizeOptionalText(created.Phone);
+        created.Email = NormalizeOptionalText(created.Email);
+        created.Notes = NormalizeOptionalText(created.Notes);
+        if (created.CreatedDate == default) created.CreatedDate = DateTime.Today;
+
+        _snapshot.Clients.Add(created);
+        await PersistAsync();
+
+        return CloneClient(created);
+    }
+
+    public async Task UpdateClientAsync(int id, Client client)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        await EnsureLoadedAsync();
+
+        if (id != client.Id) throw new InvalidDataException("Client identifier mismatch.");
+
+        var existing = _snapshot!.Clients.FirstOrDefault(c => c.Id == id) ?? throw new KeyNotFoundException();
+        existing.Name = client.Name.Trim();
+        existing.Phone = NormalizeOptionalText(client.Phone);
+        existing.Email = NormalizeOptionalText(client.Email);
+        existing.Notes = NormalizeOptionalText(client.Notes);
+
+        await PersistAsync();
+    }
+
+    public async Task<DeleteResult> DeleteClientAsync(int id)
+    {
+        await EnsureLoadedAsync();
+
+        var client = _snapshot!.Clients.FirstOrDefault(c => c.Id == id);
+        if (client is null) throw new KeyNotFoundException();
+
+        // Unlink records but don't delete them
+        foreach (var r in _snapshot.ServiceRecords.Where(r => r.ClientId == id))
+        {
+            r.ClientId = null;
+            r.Client = null;
+        }
+        foreach (var s in _snapshot.ProductSales.Where(s => s.ClientId == id))
+        {
+            s.ClientId = null;
+            s.Client = null;
+        }
+
+        _snapshot.Clients.Remove(client);
+        await PersistAsync();
+        return new DeleteResult(true);
+    }
+
+    public async Task<Client?> GetOrCreateClientByNameAsync(string? name)
+    {
+        var normalized = NormalizeOptionalText(name);
+        if (normalized is null) return null;
+
+        await EnsureLoadedAsync();
+
+        var existing = _snapshot!.Clients.FirstOrDefault(c =>
+            string.Equals(c.Name.Trim(), normalized, StringComparison.CurrentCultureIgnoreCase));
+
+        if (existing is not null) return CloneClient(existing);
+
+        var created = new Client
+        {
+            Id = _snapshot.NextClientId++,
+            Name = normalized,
+            CreatedDate = DateTime.Today
+        };
+        _snapshot.Clients.Add(created);
+        await PersistAsync();
+
+        return CloneClient(created);
+    }
+
+    public async Task<ClientDetailResult> GetClientDetailAsync(int clientId)
+    {
+        await EnsureLoadedAsync();
+
+        var client = _snapshot!.Clients.FirstOrDefault(c => c.Id == clientId) ?? throw new KeyNotFoundException();
+
+        var serviceRecords = _snapshot.ServiceRecords
+            .Where(r => r.ClientId == clientId)
+            .OrderByDescending(r => r.DatePerformed)
+            .ToList();
+
+        var productSales = _snapshot.ProductSales
+            .Where(s => s.ClientId == clientId)
+            .OrderByDescending(s => s.DateSold)
+            .ToList();
+
+        var totalSpend = serviceRecords.Sum(r => r.AmountPaid + r.Tips)
+                       + productSales.Sum(s => s.UnitPrice * s.Quantity);
+
+        var lastServiceDate = serviceRecords.Select(r => (DateTime?)r.DatePerformed).FirstOrDefault();
+        var lastSaleDate = productSales.Select(s => (DateTime?)s.DateSold).FirstOrDefault();
+        DateTime? lastVisit = lastServiceDate.HasValue && lastSaleDate.HasValue
+            ? (lastServiceDate.Value > lastSaleDate.Value ? lastServiceDate : lastSaleDate)
+            : lastServiceDate ?? lastSaleDate;
+
+        var recentServices = serviceRecords.Take(20).Select(r => new RecentRecordResult(
+            r.Id,
+            r.DatePerformed.ToString("yyyy-MM-dd"),
+            _snapshot.Workers.FirstOrDefault(w => w.Id == r.WorkerId)?.Name ?? "Unknown",
+            _snapshot.Services.FirstOrDefault(s => s.Id == r.ServiceId)?.Name ?? "Unknown",
+            r.AmountPaid,
+            r.Tips,
+            r.ClientName
+        )).ToList();
+
+        var recentSales = productSales.Take(20).Select(s => new ClientProductSaleResult(
+            s.Id,
+            s.DateSold.ToString("yyyy-MM-dd"),
+            _snapshot.Products.FirstOrDefault(p => p.Id == s.ProductId)?.Name ?? "Unknown",
+            s.Quantity,
+            s.UnitPrice * s.Quantity,
+            s.WorkerId.HasValue ? _snapshot.Workers.FirstOrDefault(w => w.Id == s.WorkerId.Value)?.Name : null
+        )).ToList();
+
+        return new ClientDetailResult(
+            CloneClient(client),
+            serviceRecords.Count + productSales.Count,
+            totalSpend,
+            lastVisit,
+            recentServices,
+            recentSales);
+    }
+
+    public async Task<IReadOnlyList<TopClientResult>> GetTopClientsAsync(int? workerId, DateTime? from, DateTime? to, int count = 10)
+    {
+        await EnsureLoadedAsync();
+
+        var serviceRecords = FilterStoredRecords(workerId, from, to)
+            .Where(r => r.ClientId.HasValue)
+            .GroupBy(r => r.ClientId!.Value)
+            .Select(g => new { ClientId = g.Key, Visits = g.Count(), Revenue = g.Sum(r => r.AmountPaid) })
+            .ToList();
+
+        var productSales = FilterStoredProductSales(workerId, from, to)
+            .Where(s => s.ClientId.HasValue)
+            .GroupBy(s => s.ClientId!.Value)
+            .Select(g => new { ClientId = g.Key, Visits = g.Count(), Revenue = g.Sum(s => s.UnitPrice * s.Quantity) })
+            .ToList();
+
+        var combined = serviceRecords.Concat(productSales)
+            .GroupBy(x => x.ClientId)
+            .Select(g =>
+            {
+                var name = _snapshot!.Clients.FirstOrDefault(c => c.Id == g.Key)?.Name ?? "Unknown";
+                return new TopClientResult(name, g.Sum(x => x.Visits), g.Sum(x => x.Revenue));
+            })
+            .OrderByDescending(c => c.Revenue)
+            .Take(count)
+            .ToList();
+
+        return combined;
     }
 
     public async Task<decimal> GetProductSalesRevenueAsync(DateTime? from, DateTime? to)
