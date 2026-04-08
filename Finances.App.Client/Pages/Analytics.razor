@@ -1,0 +1,444 @@
+@page "/analytics"
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Analytics</PageTitle>
+
+<div class="mb-4">
+    <h2 class="mb-1" style="font-weight: 700;">Analytics</h2>
+    <p class="text-muted mb-0">Revenue trends, forecasting, and detailed breakdowns.</p>
+</div>
+
+<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+
+@if (loading)
+{
+    <LoadingSpinner />
+}
+else
+{
+    <!-- Forecast Section -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-semibold mb-0">Revenue Forecast</h6>
+                        <small class="text-muted">Linear regression on last 90 days &middot; @forecastDays-day projection</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="text-muted" style="font-size: 0.8rem;">Forecast days:</label>
+                        <select class="form-select form-select-sm" style="width: 80px;" value="@forecastDays" @onchange="OnForecastDaysChanged">
+                            <option value="7">7</option>
+                            <option value="14">14</option>
+                            <option value="30">30</option>
+                        </select>
+                    </div>
+                </div>
+                @if (forecastResult != null && forecastResult.Historical.Length > 0)
+                {
+                    <div class="row mb-3">
+                        <div class="col-auto">
+                            <span class="badge" style="background-color: #0d948820; color: #0d9488; font-size: 0.8rem; padding: 6px 12px;">
+                                Slope: @forecastResult.Slope.ToString("F2")/day
+                            </span>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge" style="background-color: #6366f120; color: #6366f1; font-size: 0.8rem; padding: 6px 12px;">
+                                R&sup2;: @forecastResult.RSquared.ToString("F4")
+                            </span>
+                        </div>
+                        <div class="col-auto">
+                            @{
+                                var direction = forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Downward" : "Flat";
+                                var dirColor = forecastResult.Slope > 0 ? "#10b981" : forecastResult.Slope < 0 ? "#ef4444" : "#6b7280";
+                            }
+                            <span class="badge" style="background-color: @(dirColor)20; color: @dirColor; font-size: 0.8rem; padding: 6px 12px;">
+                                Trend: @direction
+                            </span>
+                        </div>
+                    </div>
+                }
+                <div style="height: 340px;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Revenue Timeline -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Services vs Products Revenue</h6>
+                <div style="height: 300px;">
+                    <canvas id="combinedTimelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakdowns -->
+    <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Revenue by Worker</h6>
+                <div style="height: 300px;">
+                    <canvas id="revenueByWorkerChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Service Popularity</h6>
+                <div style="height: 300px;">
+                    <canvas id="servicePopularityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day of Week + Top Products -->
+    <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Revenue by Day of Week</h6>
+                <div style="height: 280px;">
+                    <canvas id="dayOfWeekAnalyticsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Top Products</h6>
+                @if (topProducts != null && topProducts.Length > 0)
+                {
+                    <div style="height: 280px;">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
+                        <p class="text-muted mb-0">No product sales in this period.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-lg-8">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Daily Revenue</h6>
+                <div style="height: 300px;">
+                    <canvas id="dailyTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Top Services by Revenue</h6>
+                @if (serviceData != null && serviceData.Length > 0)
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var s in serviceData.OrderByDescending(x => x.Revenue).Take(5))
+                        {
+                            <div class="list-group-item px-0" style="border-color: var(--border-color);">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
+                                    </div>
+                                    <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
+                                </div>
+                                @if (serviceData.Max(x => x.Revenue) > 0)
+                                {
+                                    var pct = (double)s.Revenue / (double)serviceData.Max(x => x.Revenue) * 100;
+                                    <div class="progress-bar-custom">
+                                        <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No data for this period.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-12">
+            <div class="card p-3">
+                <h6 class="fw-semibold mb-3">Commission Report</h6>
+                @if (workerData != null && workerData.Length > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Worker</th>
+                                    <th>Revenue</th>
+                                    <th>Tips</th>
+                                    <th>Total</th>
+                                    <th>Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var grandTotal = workerData.Sum(w => w.Revenue + w.Tips);
+                                }
+                                @foreach (var w in workerData)
+                                {
+                                    var total = w.Revenue + w.Tips;
+                                    var share = grandTotal > 0 ? (total / grandTotal * 100) : 0;
+                                    <tr>
+                                        <td class="fw-semibold">@w.Worker</td>
+                                        <td>@w.Revenue.ToString("C")</td>
+                                        <td>@w.Tips.ToString("C")</td>
+                                        <td class="fw-semibold">@total.ToString("C")</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress-bar-custom" style="width: 80px;">
+                                                    <div class="progress-fill" style="width: @($"{share:F0}")%;"></div>
+                                                </div>
+                                                <span class="text-muted" style="font-size: 0.75rem;">@share.ToString("F1")%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold" style="background-color: var(--body-bg);">
+                                    <td>Total</td>
+                                    <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
+                                    <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
+                                    <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No data for this period.</p>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool loading = true;
+    private DateTime? dateFrom;
+    private DateTime? dateTo;
+    private int forecastDays = 14;
+    private WorkerRevenue[]? workerData;
+    private ServicePopularity[]? serviceData;
+    private DailyEarning[]? dailyData;
+    private ForecastResult? forecastResult;
+    private DayOfWeekEntry[]? dayOfWeekData;
+    private TopProduct[]? topProducts;
+    private CombinedTimeline? combinedTimeline;
+    private bool needsChartRender;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.Today;
+        dateFrom = new DateTime(today.Year, today.Month, 1);
+        dateTo = today;
+        await LoadData();
+    }
+
+    private async Task OnDateRangeChanged((DateTime? From, DateTime? To) range)
+    {
+        dateFrom = range.From;
+        dateTo = range.To;
+        await LoadData();
+    }
+
+    private async Task OnForecastDaysChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var days))
+        {
+            forecastDays = days;
+            await LoadForecast();
+            needsChartRender = true;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        loading = true;
+        try
+        {
+            var qs = BuildQueryString();
+            workerData = await Http.GetFromJsonAsync<WorkerRevenue[]>($"api/analytics/revenue-by-worker{qs}");
+            serviceData = await Http.GetFromJsonAsync<ServicePopularity[]>($"api/analytics/service-popularity{qs}");
+            dailyData = await Http.GetFromJsonAsync<DailyEarning[]>($"api/analytics/daily-earnings{qs}");
+            await LoadForecast();
+
+            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
+            catch { dayOfWeekData = []; }
+
+            try { topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}"); }
+            catch { topProducts = []; }
+
+            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}"); }
+            catch { }
+        }
+        catch { }
+        finally
+        {
+            loading = false;
+            needsChartRender = true;
+        }
+    }
+
+    private async Task LoadForecast()
+    {
+        try
+        {
+            forecastResult = await Http.GetFromJsonAsync<ForecastResult>($"api/analytics/forecast?forecastDays={forecastDays}");
+        }
+        catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (needsChartRender)
+        {
+            needsChartRender = false;
+            // Yield to let Blazor commit the DOM before JS reads canvas dimensions
+            await Task.Yield();
+            await RenderCharts();
+        }
+    }
+
+    private async Task RenderCharts()
+    {
+        // Each chart is wrapped individually so one failure doesn't block others
+        try { await RenderForecastChart(); } catch { }
+
+        try
+        {
+            if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+            {
+                var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
+                var datasets = new object[]
+                {
+                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
+                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                };
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (workerData != null && workerData.Length > 0)
+            {
+                var labels = workerData.Select(w => w.Worker).ToArray();
+                var datasets = new object[]
+                {
+                    new { label = "Revenue", data = workerData.Select(w => w.Revenue).ToArray(), color = "#0d9488" },
+                    new { label = "Tips", data = workerData.Select(w => w.Tips).ToArray(), color = "#3b82f6" }
+                };
+                await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets);
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (serviceData != null && serviceData.Length > 0)
+            {
+                var labels = serviceData.Select(s => s.Service).ToArray();
+                var data = serviceData.Select(s => (decimal)s.Count).ToArray();
+                await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart", "servicePopularityChart", labels, data, (string[]?)null);
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+            {
+                var labels = dayOfWeekData.Select(d => d.Day).ToArray();
+                var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
+                await JS.InvokeVoidAsync("financeCharts.renderBarChart", "dayOfWeekAnalyticsChart", labels,
+                    new object[] { new { label = "Revenue", data = data, color = "#0d9488" } });
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (topProducts != null && topProducts.Length > 0)
+            {
+                var labels = topProducts.Select(p => p.Product).ToArray();
+                var data = topProducts.Select(p => p.Revenue).ToArray();
+                await JS.InvokeVoidAsync("financeCharts.renderHorizontalBarChart", "topProductsChart", labels, data, (string[]?)null);
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (dailyData != null && dailyData.Length > 0)
+            {
+                var labels = dailyData.Select(d => d.Date).ToArray();
+                var datasets = new object[]
+                {
+                    new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray(), color = "#0d9488" }
+                };
+                await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets);
+            }
+        }
+        catch { }
+    }
+
+    private async Task RenderForecastChart()
+    {
+        try
+        {
+            if (forecastResult != null && forecastResult.Historical.Length > 0)
+            {
+                var histLabels = forecastResult.Historical.Select(h => h.Date).ToArray();
+                var actualData = forecastResult.Historical.Select(h => h.Actual).ToArray();
+                var trendData = forecastResult.Historical.Select(h => h.Trend).ToArray();
+                var forecastLabels = forecastResult.Forecast.Select(f => f.Date).ToArray();
+                var forecastData = forecastResult.Forecast.Select(f => f.Predicted).ToArray();
+
+                await JS.InvokeVoidAsync("financeCharts.renderForecastChart",
+                    "forecastChart", histLabels, actualData, trendData, forecastLabels, forecastData);
+            }
+        }
+        catch { }
+    }
+
+    private string BuildQueryString()
+    {
+        var parts = new List<string>();
+        if (dateFrom.HasValue) parts.Add($"from={dateFrom.Value:yyyy-MM-dd}");
+        if (dateTo.HasValue) parts.Add($"to={dateTo.Value:yyyy-MM-dd}");
+        return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+    }
+
+    private record WorkerRevenue(string Worker, decimal Revenue, decimal Tips);
+    private record ServicePopularity(string Service, int Count, decimal Revenue);
+    private record DailyEarning(string Date, decimal Revenue, decimal Tips);
+    private record HistoricalPoint(string Date, double Actual, double Trend);
+    private record ForecastPoint(string Date, double Predicted);
+    private record ForecastResult(HistoricalPoint[] Historical, ForecastPoint[] Forecast, double Slope, double Intercept, double RSquared);
+    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
+    private record TopProduct(string Product, int Quantity, decimal Revenue);
+    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
+    private record CombinedTimeline(CombinedTimelinePoint[] Points);
+}

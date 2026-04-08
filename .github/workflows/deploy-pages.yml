@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -29,10 +29,10 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore dependencies
-        run: dotnet restore KubiczPlace.Finances.Client/KubiczPlace.Finances.Client.csproj
+        run: dotnet restore Finances.App.Client/Finances.App.Client.csproj
 
       - name: Publish standalone client
-        run: dotnet publish KubiczPlace.Finances.Client/KubiczPlace.Finances.Client.csproj -c Release -o artifacts/publish
+        run: dotnet publish Finances.App.Client/Finances.App.Client.csproj -c Release -o artifacts/publish
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

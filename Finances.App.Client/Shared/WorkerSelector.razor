@@ -1,0 +1,62 @@
+@using Finances.App.Client.Services
+@using Finances.App.Shared
+@implements IDisposable
+@inject HttpClient Http
+@inject LocalFinanceStore Store
+@inject WorkerContextService WorkerContext
+
+<div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;">Worker:</label>
+    <select class="form-select form-select-sm" style="width: auto; min-width: 160px;"
+            value="@WorkerContext.SelectedWorkerId" @onchange="OnWorkerChanged">
+        <option value="">-- Select --</option>
+        @if (workers != null)
+        {
+            @foreach (var w in workers)
+            {
+                <option value="@w.Id">@w.Name</option>
+            }
+        }
+    </select>
+</div>
+
+@code {
+    private List<Worker>? workers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        WorkerContext.OnChange += StateHasChanged;
+        Store.OnChange += HandleStoreChange;
+        await LoadWorkersAsync();
+    }
+
+    private async Task LoadWorkersAsync()
+    {
+        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers") ?? [];
+        await WorkerContext.InitializeAsync();
+        await WorkerContext.EnsureWorkerExistsAsync(workers.Select(worker => worker.Id));
+    }
+
+    private async Task OnWorkerChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+            await WorkerContext.SetWorkerAsync(id);
+        else
+            await WorkerContext.SetWorkerAsync(null);
+    }
+
+    private async void HandleStoreChange()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadWorkersAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= StateHasChanged;
+        Store.OnChange -= HandleStoreChange;
+    }
+}
