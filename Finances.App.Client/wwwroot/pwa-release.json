@@ -1,9 +1,9 @@
 {
   "releaseId": "2026-04-08-standalone-pwa",
-  "publishedUtc": "2026-04-08T00:00:00Z",
+  "publishedUtc": "2026-04-08T23:58:00Z",
   "title": "Standalone browser-only release",
   "summary": "The finance tracker now runs entirely in the browser as an installable PWA.",
   "changes": [
-    "The analytics dashboard now uses a richer layout with clearer KPI summaries, grouped charts, and stronger visual highlights."
+    "The home dashboard now opens with a stronger monthly snapshot, cleaner panels, and clearer product, revenue, and activity sections."
   ]
 }

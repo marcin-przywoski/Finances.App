@@ -5,142 +5,278 @@
 
 <PageTitle>Dashboard</PageTitle>
 
-<div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Dashboard</h2>
-    <p class="text-muted mb-0">Overview of your salon's financial performance.</p>
-</div>
-
-@if (loading)
-{
-    <LoadingSpinner />
-}
-else
-{
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@totalRevenue" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="@("vs last month")">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@totalTips" Label="Total Tips" IconBg="#dbeafe" IconColor="#3b82f6" TrendPercent="@tipsTrend" Subtitle="@("vs last month")">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@avgTicket" Label="Avg Ticket" IconBg="#fef3c7" IconColor="#f59e0b" TrendPercent="@avgTicketTrend" Subtitle="@("vs last month")">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@recordCount" Label="Services Done" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="@("vs last month")">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-lg-8">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue Breakdown</h6>
-                <div style="height: 300px;">
-                    <canvas id="combinedTimelineChart"></canvas>
+<div class="dashboard-page">
+    <section class="dashboard-hero">
+        <div class="dashboard-hero-copy">
+            <span class="dashboard-hero-kicker">Monthly snapshot</span>
+            <h1 class="dashboard-hero-title">Home dashboard</h1>
+            <p class="dashboard-hero-description">Overview of your salon's current performance, revenue mix, and latest recorded activity.</p>
+            <div class="dashboard-hero-meta">
+                <div class="dashboard-hero-pill">
+                    <span>Period</span>
+                    <strong>@CurrentMonthLabel</strong>
+                </div>
+                <div class="dashboard-hero-pill">
+                    <span>Scope</span>
+                    <strong>@WorkerScopeLabel</strong>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue Sources</h6>
-                <div style="height: 300px;">
-                    <canvas id="revenueSourcesChart"></canvas>
+        <div class="dashboard-glance">
+            <div class="dashboard-glance-card dashboard-glance-card-primary">
+                <span class="dashboard-glance-label">Revenue this month</span>
+                <strong class="dashboard-glance-value">@HeroRevenueDisplay</strong>
+                <span class="dashboard-glance-subtext">@HeroRevenueSubtext</span>
+            </div>
+            <div class="dashboard-glance-grid">
+                <div class="dashboard-glance-card">
+                    <span class="dashboard-glance-label">Services share</span>
+                    <strong class="dashboard-glance-value">@ServiceShareDisplay</strong>
+                    <span class="dashboard-glance-subtext">@ServiceShareSubtext</span>
+                </div>
+                <div class="dashboard-glance-card">
+                    <span class="dashboard-glance-label">Top day</span>
+                    <strong class="dashboard-glance-value">@StrongestDayLabel</strong>
+                    <span class="dashboard-glance-subtext">@StrongestDaySubtext</span>
+                </div>
+                <div class="dashboard-glance-card">
+                    <span class="dashboard-glance-label">Top product</span>
+                    <strong class="dashboard-glance-value">@FeaturedProductLabel</strong>
+                    <span class="dashboard-glance-subtext">@FeaturedProductSubtext</span>
+                </div>
+                <div class="dashboard-glance-card">
+                    <span class="dashboard-glance-label">Latest activity</span>
+                    <strong class="dashboard-glance-value">@LatestActivityLabel</strong>
+                    <span class="dashboard-glance-subtext">@LatestActivitySubtext</span>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="row g-3 mb-4">
-        <div class="col-lg-4">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Busiest Days</h6>
-                <div style="height: 240px;">
-                    <canvas id="dayOfWeekChart"></canvas>
-                </div>
+    @if (loading)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@TotalRevenueDisplay" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@TotalTipsDisplay" Label="Total Tips" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="vs last month">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@AvgTicketDisplay" Label="Avg Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@RecordCountDisplay" Label="Services Done" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="vs last month">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
+                    </IconContent>
+                </StatCard>
             </div>
         </div>
-        <div class="col-lg-4">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Products</h6>
-                @if (topProducts != null && topProducts.Length > 0)
-                {
-                    <div class="list-group list-group-flush">
-                        @foreach (var p in topProducts)
+
+        <div class="row g-3 mb-4">
+            <div class="col-xl-8">
+                <section class="card dashboard-panel dashboard-panel-spotlight">
+                    <div class="dashboard-panel-header dashboard-panel-header-split">
+                        <div>
+                            <p class="dashboard-panel-eyebrow">Trend</p>
+                            <h2>Revenue breakdown</h2>
+                            <p>Monthly view of services versus product sales.</p>
+                        </div>
+                        @if (HasRevenueSources)
                         {
-                            <div class="list-group-item px-0" style="border-color: var(--border-color);">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-semibold" style="font-size: 0.875rem;">@p.Product</span>
-                                    <span class="fw-semibold" style="color: var(--primary); font-size: 0.875rem;">@p.Revenue.ToString("C")</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted" style="font-size: 0.75rem;">@p.Quantity sold</span>
-                                    @if (topProducts.Length > 0 && topProducts[0].Revenue > 0)
-                                    {
-                                        var pct = (double)p.Revenue / (double)topProducts[0].Revenue * 100;
-                                        <div class="progress-bar-custom" style="width: 60%;">
-                                            <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No product sales yet.</p>
-                }
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Recent Activity</h6>
-                @if (recentRecords != null && recentRecords.Length > 0)
-                {
-                    <div class="list-group list-group-flush">
-                        @foreach (var r in recentRecords)
-                        {
-                            <div class="list-group-item px-0 d-flex justify-content-between align-items-start" style="border-color: var(--border-color);">
+                            <div class="dashboard-inline-summary">
                                 <div>
-                                    <div class="fw-semibold" style="font-size: 0.875rem;">@r.Service</div>
-                                    <div class="text-muted" style="font-size: 0.75rem;">@r.Worker &middot; @r.Date</div>
+                                    <span>Services</span>
+                                    <strong>@serviceRevenueTotal.ToString("C")</strong>
                                 </div>
-                                <span class="fw-semibold" style="color: var(--primary);">@r.AmountPaid.ToString("C")</span>
+                                <div>
+                                    <span>Products</span>
+                                    <strong>@productRevenueTotal.ToString("C")</strong>
+                                </div>
                             </div>
                         }
                     </div>
-                }
-                else
-                {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No recent activity.</p>
-                }
+                    @if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+                    {
+                        <div class="dashboard-chart dashboard-chart-regular">
+                            <canvas id="combinedTimelineChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty-state">
+                            <p>Revenue history will appear once this month has service or product sales recorded.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-xl-4">
+                <section class="card dashboard-panel">
+                    <div class="dashboard-panel-header">
+                        <p class="dashboard-panel-eyebrow">Mix</p>
+                        <h2>Revenue sources</h2>
+                        <p>How this month's revenue is split between services and retail.</p>
+                    </div>
+                    @if (HasRevenueSources)
+                    {
+                        <div class="dashboard-chart dashboard-chart-doughnut">
+                            <canvas id="revenueSourcesChart"></canvas>
+                        </div>
+                        <div class="dashboard-source-list">
+                            <div class="dashboard-source-item">
+                                <span class="dashboard-source-swatch dashboard-source-swatch-services"></span>
+                                <div class="dashboard-source-copy">
+                                    <strong>Services</strong>
+                                    <span>@serviceRevenueTotal.ToString("C") · @ServiceRevenueShare.ToString("F1")%</span>
+                                </div>
+                            </div>
+                            <div class="dashboard-source-item">
+                                <span class="dashboard-source-swatch dashboard-source-swatch-products"></span>
+                                <div class="dashboard-source-copy">
+                                    <strong>Products</strong>
+                                    <span>@productRevenueTotal.ToString("C") · @ProductRevenueShare.ToString("F1")%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty-state dashboard-empty-state-compact">
+                            <p>Revenue source percentages will appear when the month has recorded income.</p>
+                        </div>
+                    }
+                </section>
             </div>
         </div>
-    </div>
-}
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <section class="card dashboard-panel">
+                    <div class="dashboard-panel-header dashboard-panel-header-split">
+                        <div>
+                            <p class="dashboard-panel-eyebrow">Timing</p>
+                            <h2>Busiest days</h2>
+                            <p>Which weekdays are currently generating the most revenue.</p>
+                        </div>
+                        @if (StrongestDay != null)
+                        {
+                            <span class="dashboard-chip">Peak: @StrongestDay.Day</span>
+                        }
+                    </div>
+                    @if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+                    {
+                        <div class="dashboard-chart dashboard-chart-compact">
+                            <canvas id="dayOfWeekChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty-state dashboard-empty-state-compact">
+                            <p>Weekday demand patterns will show up once there are more services to compare.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-lg-4">
+                <section class="card dashboard-panel">
+                    <div class="dashboard-panel-header">
+                        <p class="dashboard-panel-eyebrow">Retail</p>
+                        <h2>Top products</h2>
+                        <p>Best-selling retail items this month.</p>
+                    </div>
+                    @if (topProducts != null && topProducts.Length > 0)
+                    {
+                        var rankedProducts = topProducts.OrderByDescending(p => p.Revenue).Take(5).ToArray();
+                        var topRevenue = rankedProducts.Max(p => p.Revenue);
+                        <div class="dashboard-ranked-list">
+                            @for (var index = 0; index < rankedProducts.Length; index++)
+                            {
+                                var product = rankedProducts[index];
+                                var pct = topRevenue > 0 ? (double)product.Revenue / (double)topRevenue * 100 : 0;
+                                <div class="dashboard-ranked-item">
+                                    <div class="dashboard-ranked-title">
+                                        <div class="dashboard-ranked-name-wrap">
+                                            <span class="dashboard-ranked-index">@(index + 1)</span>
+                                            <div>
+                                                <div class="dashboard-ranked-name">@product.Product</div>
+                                                <div class="dashboard-ranked-caption">@product.Quantity sold</div>
+                                            </div>
+                                        </div>
+                                        <span class="dashboard-ranked-value">@product.Revenue.ToString("C")</span>
+                                    </div>
+                                    <div class="progress-bar-custom dashboard-ranked-bar">
+                                        <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty-state dashboard-empty-state-compact">
+                            <p>No retail product sales have been recorded this month.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-lg-4">
+                <section class="card dashboard-panel">
+                    <div class="dashboard-panel-header">
+                        <p class="dashboard-panel-eyebrow">Feed</p>
+                        <h2>Recent activity</h2>
+                        <p>Latest recorded services and payments.</p>
+                    </div>
+                    @if (recentRecords != null && recentRecords.Length > 0)
+                    {
+                        <div class="dashboard-activity-list">
+                            @foreach (var record in recentRecords)
+                            {
+                                <div class="dashboard-activity-item">
+                                    <span class="dashboard-activity-marker"></span>
+                                    <div class="dashboard-activity-copy">
+                                        <div class="dashboard-activity-title">@record.Service</div>
+                                        <div class="dashboard-activity-meta">@record.Worker &middot; @record.Date</div>
+                                    </div>
+                                    <span class="dashboard-activity-amount">@record.AmountPaid.ToString("C")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-empty-state dashboard-empty-state-compact">
+                            <p>Newly recorded services will appear here as activity comes in.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     private bool loading = true;
-    private string totalRevenue = "0";
-    private string totalTips = "0";
-    private string avgTicket = "0";
-    private string recordCount = "0";
+    private decimal totalRevenueValue;
+    private decimal totalTipsValue;
+    private decimal avgTicketValue;
+    private int recordCountValue;
     private decimal? revenueTrend;
     private decimal? tipsTrend;
     private decimal? avgTicketTrend;
@@ -152,6 +288,30 @@ else
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
+    private string TotalRevenueDisplay => totalRevenueValue.ToString("C");
+    private string TotalTipsDisplay => totalTipsValue.ToString("C");
+    private string AvgTicketDisplay => avgTicketValue.ToString("C");
+    private string RecordCountDisplay => recordCountValue.ToString();
+    private string CurrentMonthLabel => DateTime.Today.ToString("MMMM yyyy");
+    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? "Filtered by selected worker" : "All workers";
+    private decimal TotalRevenueSources => serviceRevenueTotal + productRevenueTotal;
+    private bool HasRevenueSources => TotalRevenueSources > 0;
+    private decimal ServiceRevenueShare => HasRevenueSources ? Math.Round(serviceRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
+    private decimal ProductRevenueShare => HasRevenueSources ? Math.Round(productRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
+    private TopProduct? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
+    private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private RecentRecord? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
+    private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
+    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{TotalTipsDisplay} in tips and {recordCountValue} services recorded.";
+    private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
+    private string ServiceShareSubtext => loading ? "Checking the revenue mix." : HasRevenueSources ? $"{serviceRevenueTotal.ToString("C")} from services." : "Revenue sources will appear here.";
+    private string StrongestDayLabel => loading ? "Loading..." : StrongestDay?.Day ?? "No data yet";
+    private string StrongestDaySubtext => loading ? "Finding the strongest weekday." : StrongestDay == null ? "Weekday performance will appear here." : $"{StrongestDay.Revenue.ToString("C")} across {StrongestDay.Count} bookings.";
+    private string FeaturedProductLabel => loading ? "Loading..." : FeaturedProduct?.Product ?? "No product sales";
+    private string FeaturedProductSubtext => loading ? "Checking retail activity." : FeaturedProduct == null ? "Retail highlights will appear here." : $"{FeaturedProduct.Quantity} sold for {FeaturedProduct.Revenue.ToString("C")}.";
+    private string LatestActivityLabel => loading ? "Loading..." : RecentHeadline?.Service ?? "No recent activity";
+    private string LatestActivitySubtext => loading ? "Loading recent records." : RecentHeadline == null ? "New records will show up here." : $"{RecentHeadline.Worker} · {RecentHeadline.AmountPaid.ToString("C")}";
+
     protected override async Task OnInitializedAsync()
     {
         await WorkerContext.InitializeAsync();
@@ -161,6 +321,21 @@ else
     private async Task LoadData()
     {
         loading = true;
+        totalRevenueValue = 0;
+        totalTipsValue = 0;
+        avgTicketValue = 0;
+        recordCountValue = 0;
+        revenueTrend = null;
+        tipsTrend = null;
+        avgTicketTrend = null;
+        countTrend = null;
+        recentRecords = null;
+        topProducts = null;
+        dayOfWeekData = null;
+        combinedTimeline = null;
+        serviceRevenueTotal = 0;
+        productRevenueTotal = 0;
+
         try
         {
             var wId = WorkerContext.SelectedWorkerId;
@@ -172,12 +347,12 @@ else
             var summary = await Http.GetFromJsonAsync<SummaryDto>($"api/analytics/summary{qs}");
             if (summary != null)
             {
-                totalRevenue = summary.TotalRevenue.ToString("C");
-                totalTips = summary.TotalTips.ToString("C");
-                recordCount = summary.RecordCount.ToString();
-                avgTicket = summary.RecordCount > 0
-                    ? (summary.TotalRevenue / summary.RecordCount).ToString("C")
-                    : "$0.00";
+                totalRevenueValue = summary.TotalRevenue;
+                totalTipsValue = summary.TotalTips;
+                recordCountValue = summary.RecordCount;
+                avgTicketValue = summary.RecordCount > 0
+                    ? summary.TotalRevenue / summary.RecordCount
+                    : 0m;
             }
 
             try
@@ -266,14 +441,12 @@ else
 
         try
         {
-            var svcTotal = (decimal)serviceRevenueTotal;
-            var prdTotal = (decimal)productRevenueTotal;
-            if (svcTotal > 0 || prdTotal > 0)
+            if (HasRevenueSources)
             {
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart",
                     "revenueSourcesChart",
                     new[] { "Services", "Products" },
-                    new[] { svcTotal, prdTotal },
+                    new[] { serviceRevenueTotal, productRevenueTotal },
                     new[] { "#0d9488", "#8b5cf6" });
             }
         }
