@@ -1,7 +1,6 @@
 @page "/record"
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject ToastService Toast
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
@@ -114,14 +113,14 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        Store.OnChange += HandleStoreChange;
+        Finance.OnChange += HandleStoreChange;
         await LoadLookupDataAsync();
     }
 
     private async Task LoadLookupDataAsync()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        workers = (await Finance.GetWorkersAsync()).ToList();
+        services = (await Finance.GetServicesAsync()).ToList();
 
         await WorkerContext.InitializeAsync();
         if (WorkerContext.SelectedWorkerId.HasValue && workers != null)
@@ -171,26 +170,24 @@ else
         saving = true;
         try
         {
-            var resp = await Http.PostAsJsonAsync("api/servicerecords", record);
-            if (resp.IsSuccessStatusCode)
-            {
-                if (record.WorkerId != 0)
-                {
-                    await WorkerContext.SetWorkerAsync(record.WorkerId);
-                }
+            await Finance.AddServiceRecordAsync(record);
 
-                Toast.Show("Service recorded successfully!");
-                record = new ServiceRecord
-                {
-                    DatePerformed = DateTime.Today,
-                    WorkerId = record.WorkerId,
-                    CommissionPercentageApplied = record.CommissionPercentageApplied
-                };
-            }
-            else
+            if (record.WorkerId != 0)
             {
-                Toast.Show("Failed to save record.", ToastLevel.Error);
+                await WorkerContext.SetWorkerAsync(record.WorkerId);
             }
+
+            Toast.Show("Service recorded successfully!");
+            record = new ServiceRecord
+            {
+                DatePerformed = DateTime.Today,
+                WorkerId = record.WorkerId,
+                CommissionPercentageApplied = record.CommissionPercentageApplied
+            };
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save record.", ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -206,6 +203,6 @@ else
 
     public void Dispose()
     {
-        Store.OnChange -= HandleStoreChange;
+        Finance.OnChange -= HandleStoreChange;
     }
 }

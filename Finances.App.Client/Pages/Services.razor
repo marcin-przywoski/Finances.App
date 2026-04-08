@@ -1,7 +1,6 @@
 @page "/services"
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject ToastService Toast
 
 <PageTitle>Services</PageTitle>
@@ -149,13 +148,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Store.OnChange += HandleStoreChanged;
+        Finance.OnChange += HandleStoreChanged;
         await LoadServices();
     }
 
     private async Task LoadServices()
     {
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        services = (await Finance.GetServicesAsync()).ToList();
     }
 
     private void OpenAddModal()
@@ -182,18 +181,20 @@
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/services/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service updated");
-                else Toast.Show("Failed to update service", ToastLevel.Error);
+                await Finance.UpdateServiceAsync(editId, formModel);
+                Toast.Show("Service updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/services", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service added");
-                else Toast.Show("Failed to add service", ToastLevel.Error);
+                await Finance.AddServiceAsync(formModel);
+                Toast.Show("Service added");
             }
             await LoadServices();
             showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save service", ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -207,9 +208,9 @@
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/services/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Service deleted");
-        else Toast.Show("Failed to delete service. It may have related records.", ToastLevel.Error);
+        var result = await Finance.DeleteServiceAsync(deleteTarget.Id);
+        if (result.Success) Toast.Show("Service deleted");
+        else Toast.Show(result.ErrorMessage ?? "Failed to delete service. It may have related records.", ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadServices();
@@ -226,6 +227,6 @@
 
     public void Dispose()
     {
-        Store.OnChange -= HandleStoreChanged;
+        Finance.OnChange -= HandleStoreChanged;
     }
 }

@@ -1,8 +1,7 @@
 @page "/"
 @implements IDisposable
-@inject HttpClient Http
+@inject IFinanceService Finance
 @inject IJSRuntime JS
-@inject LocalFinanceStore Store
 @inject WorkerContextService WorkerContext
 
 <PageTitle>Dashboard</PageTitle>
@@ -283,10 +282,10 @@
     private decimal? tipsTrend;
     private decimal? avgTicketTrend;
     private decimal? countTrend;
-    private RecentRecordDto[]? recentRecords;
-    private TopProductDto[]? topProducts;
-    private DayOfWeekDto[]? dayOfWeekData;
-    private CombinedTimelineDto? combinedTimeline;
+    private RecentRecordResult[]? recentRecords;
+    private TopProductResult[]? topProducts;
+    private DayOfWeekResult[]? dayOfWeekData;
+    private CombinedTimelineResult? combinedTimeline;
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
@@ -302,9 +301,9 @@
     private bool HasRevenueSources => TotalRevenueSources > 0;
     private decimal ServiceRevenueShare => HasRevenueSources ? Math.Round(serviceRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
     private decimal ProductRevenueShare => HasRevenueSources ? Math.Round(productRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
-    private TopProductDto? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
-    private DayOfWeekDto? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
-    private RecentRecordDto? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
+    private TopProductResult? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
+    private DayOfWeekResult? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private RecentRecordResult? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
     private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
     private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{ServiceRevenueDisplay} from services and {RetailRevenueDisplay} from retail.";
     private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
@@ -319,7 +318,7 @@
     protected override async Task OnInitializedAsync()
     {
         WorkerContext.OnChange += HandleWorkerContextChanged;
-        Store.OnChange += HandleStoreChanged;
+        Finance.OnChange += HandleStoreChanged;
         await WorkerContext.InitializeAsync();
         await LoadData();
     }
@@ -347,10 +346,8 @@
             var wId = WorkerContext.SelectedWorkerId;
             var now = DateTime.Today;
             var monthStart = new DateTime(now.Year, now.Month, 1);
-            var qs = $"?from={monthStart:yyyy-MM-dd}&to={now:yyyy-MM-dd}";
-            if (wId.HasValue) qs += $"&workerId={wId.Value}";
 
-            var summary = await Http.GetFromJsonAsync<SummaryDto>($"api/analytics/summary{qs}");
+            var summary = await Finance.GetSummaryAsync(wId, monthStart, now);
             if (summary != null)
             {
                 totalRevenueValue = summary.TotalRevenue;
@@ -363,8 +360,7 @@
 
             try
             {
-                var comparison = await Http.GetFromJsonAsync<MonthComparisonDto>(
-                    $"api/analytics/month-comparison{(wId.HasValue ? $"?workerId={wId.Value}" : "")}");
+                var comparison = await Finance.GetMonthComparisonAsync(wId);
                 if (comparison != null)
                 {
                     revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);
@@ -375,24 +371,23 @@
             }
             catch { }
 
-            var recentQuery = wId.HasValue ? $"?count=5&workerId={wId.Value}" : "?count=5";
-            recentRecords = await Http.GetFromJsonAsync<RecentRecordDto[]>($"api/analytics/recent{recentQuery}");
+            recentRecords = (await Finance.GetRecentAsync(wId, 5)).ToArray();
 
             try
             {
-                topProducts = await Http.GetFromJsonAsync<TopProductDto[]>($"api/analytics/top-products{qs}");
+                topProducts = (await Finance.GetTopProductsAsync(wId, monthStart, now)).ToArray();
             }
             catch { topProducts = []; }
 
             try
             {
-                dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekDto[]>($"api/analytics/revenue-by-dayofweek{qs}");
+                dayOfWeekData = (await Finance.GetRevenueByDayOfWeekAsync(wId, monthStart, now)).ToArray();
             }
             catch { dayOfWeekData = []; }
 
             try
             {
-                combinedTimeline = await Http.GetFromJsonAsync<CombinedTimelineDto>($"api/analytics/combined-timeline{qs}");
+                combinedTimeline = await Finance.GetCombinedTimelineAsync(wId, monthStart, now);
                 if (combinedTimeline?.Points != null)
                 {
                     serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
@@ -485,6 +480,6 @@
     public void Dispose()
     {
         WorkerContext.OnChange -= HandleWorkerContextChanged;
-        Store.OnChange -= HandleStoreChanged;
+        Finance.OnChange -= HandleStoreChanged;
     }
 }

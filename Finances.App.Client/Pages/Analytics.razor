@@ -1,8 +1,7 @@
 @page "/analytics"
 @implements IDisposable
-@inject HttpClient Http
+@inject IFinanceService Finance
 @inject IJSRuntime JS
-@inject LocalFinanceStore Store
 @inject WorkerContextService WorkerContext
 
 <PageTitle>Analytics</PageTitle>
@@ -477,13 +476,13 @@
     private DateTime? dateFrom;
     private DateTime? dateTo;
     private int forecastDays = 14;
-    private WorkerRevenueDto[]? workerData;
-    private ServicePopularityDto[]? serviceData;
-    private DailyEarningDto[]? dailyData;
-    private ForecastResultDto? forecastResult;
-    private DayOfWeekDto[]? dayOfWeekData;
-    private TopProductDto[]? topProducts;
-    private CombinedTimelineDto? combinedTimeline;
+    private WorkerRevenueResult[]? workerData;
+    private ServicePopularityResult[]? serviceData;
+    private DailyEarningResult[]? dailyData;
+    private ForecastResult? forecastResult;
+    private DayOfWeekResult[]? dayOfWeekData;
+    private TopProductResult[]? topProducts;
+    private CombinedTimelineResult? combinedTimeline;
     private bool needsChartRender;
 
     private decimal TotalRevenueForRange => combinedTimeline?.Points.Sum(point => point.ServiceRevenue + point.ProductRevenue) ?? dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
@@ -492,10 +491,10 @@
     private decimal AverageDailyRevenue => combinedTimeline is { Points.Length: > 0 } ? Math.Round(combinedTimeline.Points.Average(point => point.ServiceRevenue + point.ProductRevenue), 2) : dailyData != null && dailyData.Length > 0 ? Math.Round(dailyData.Average(d => d.Revenue), 2) : 0m;
     private decimal TotalServiceRevenue => combinedTimeline?.Points.Sum(p => p.ServiceRevenue) ?? 0m;
     private decimal TotalProductRevenue => combinedTimeline?.Points.Sum(p => p.ProductRevenue) ?? 0m;
-    private WorkerRevenueDto? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
-    private ServicePopularityDto? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
-    private DayOfWeekDto? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
-    private ForecastPointDto? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
+    private WorkerRevenueResult? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
+    private ServicePopularityResult? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
+    private DayOfWeekResult? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
+    private ForecastPointResult? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
     private bool HasHighlights => TopWorker != null || TopService != null || StrongestDay != null || FinalForecastPoint != null;
     private string CurrentRangeLabel => FormatDateRange(dateFrom, dateTo);
     private string WorkerScopeLabel => "Selected worker from top bar";
@@ -505,7 +504,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Store.OnChange += HandleStoreChanged;
+        Finance.OnChange += HandleStoreChanged;
         WorkerContext.OnChange += HandleWorkerContextChanged;
         await WorkerContext.InitializeAsync();
         var today = DateTime.Today;
@@ -536,19 +535,19 @@
         loading = true;
         try
         {
-            var qs = BuildQueryString();
-            workerData = await Http.GetFromJsonAsync<WorkerRevenueDto[]>($"api/analytics/revenue-by-worker{qs}");
-            serviceData = await Http.GetFromJsonAsync<ServicePopularityDto[]>($"api/analytics/service-popularity{qs}");
-            dailyData = await Http.GetFromJsonAsync<DailyEarningDto[]>($"api/analytics/daily-earnings{qs}");
+            var wId = WorkerContext.SelectedWorkerId;
+            workerData = (await Finance.GetRevenueByWorkerAsync(wId, dateFrom, dateTo)).ToArray();
+            serviceData = (await Finance.GetServicePopularityAsync(wId, dateFrom, dateTo)).ToArray();
+            dailyData = (await Finance.GetDailyEarningsAsync(wId, dateFrom, dateTo)).ToArray();
             await LoadForecast();
 
-            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekDto[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
+            try { dayOfWeekData = (await Finance.GetRevenueByDayOfWeekAsync(wId, dateFrom, dateTo)).ToArray(); }
             catch { dayOfWeekData = []; }
 
-            try { topProducts = await Http.GetFromJsonAsync<TopProductDto[]>($"api/analytics/top-products{qs}"); }
+            try { topProducts = (await Finance.GetTopProductsAsync(wId, dateFrom, dateTo)).ToArray(); }
             catch { topProducts = []; }
 
-            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimelineDto>($"api/analytics/combined-timeline{qs}"); }
+            try { combinedTimeline = await Finance.GetCombinedTimelineAsync(wId, dateFrom, dateTo); }
             catch { }
         }
         catch { }
@@ -563,7 +562,8 @@
     {
         try
         {
-            forecastResult = await Http.GetFromJsonAsync<ForecastResultDto>($"api/analytics/forecast{BuildQueryString(forecastDays)}");
+            var wId = WorkerContext.SelectedWorkerId;
+            forecastResult = await Finance.GetForecastAsync(wId, dateFrom, dateTo, forecastDays);
         }
         catch { }
     }
@@ -732,6 +732,6 @@
     public void Dispose()
     {
         WorkerContext.OnChange -= HandleWorkerContextChanged;
-        Store.OnChange -= HandleStoreChanged;
+        Finance.OnChange -= HandleStoreChanged;
     }
 }

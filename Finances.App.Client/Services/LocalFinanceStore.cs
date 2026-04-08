@@ -37,9 +37,9 @@ public sealed record TopProductResult(string Product, int Quantity, decimal Reve
 
 public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
 
-public sealed record CombinedTimelineResult(IReadOnlyList<CombinedTimelinePoint> Points);
+public sealed record CombinedTimelineResult(CombinedTimelinePoint[] Points);
 
-public sealed class LocalFinanceStore
+public sealed class LocalFinanceStore : IFinanceService
 {
     private const int CurrentSchemaVersion = 1;
     private const string StorageKey = "Finances.App.snapshot";
@@ -692,7 +692,7 @@ public sealed class LocalFinanceStore
             d.ToString("yyyy-MM-dd"),
             servicesByDay.GetValueOrDefault(d, 0),
             productsByDay.GetValueOrDefault(d, 0)
-        )).ToList();
+        )).ToArray();
 
         return new CombinedTimelineResult(points);
     }

@@ -1,7 +1,6 @@
 @page "/history"
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -241,7 +240,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Store.OnChange += HandleStoreChanged;
+        Finance.OnChange += HandleStoreChanged;
         WorkerContext.OnChange += HandleWorkerContextChanged;
         await LoadDataAsync();
     }
@@ -249,9 +248,9 @@
     private async Task LoadDataAsync()
     {
         await WorkerContext.InitializeAsync();
-        allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        allRecords = (await Finance.GetServiceRecordsAsync()).ToList();
+        workers = (await Finance.GetWorkersAsync()).ToList();
+        services = (await Finance.GetServicesAsync()).ToList();
         await WorkerContext.EnsureWorkerExistsAsync((workers ?? []).Select(worker => worker.Id));
     }
 
@@ -353,17 +352,14 @@
         saving = true;
         try
         {
-            var resp = await Http.PutAsJsonAsync($"api/servicerecords/{editModel.Id}", editModel);
-            if (resp.IsSuccessStatusCode)
-            {
-                Toast.Show("Record updated");
-                allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-                showEditModal = false;
-            }
-            else
-            {
-                Toast.Show("Failed to update record", ToastLevel.Error);
-            }
+            await Finance.UpdateServiceRecordAsync(editModel.Id, editModel);
+            Toast.Show("Record updated");
+            allRecords = (await Finance.GetServiceRecordsAsync()).ToList();
+            showEditModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to update record", ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -377,13 +373,13 @@
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/servicerecords/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode)
+        try
         {
+            await Finance.DeleteServiceRecordAsync(deleteTarget.Id);
             Toast.Show("Record deleted");
-            allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
+            allRecords = (await Finance.GetServiceRecordsAsync()).ToList();
         }
-        else
+        catch
         {
             Toast.Show("Failed to delete record", ToastLevel.Error);
         }
@@ -408,6 +404,6 @@
     public void Dispose()
     {
         WorkerContext.OnChange -= HandleWorkerContextChanged;
-        Store.OnChange -= HandleStoreChanged;
+        Finance.OnChange -= HandleStoreChanged;
     }
 }

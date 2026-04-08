@@ -1,7 +1,6 @@
 @page "/workers"
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject ToastService Toast
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
@@ -154,13 +153,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Store.OnChange += HandleStoreChanged;
+        Finance.OnChange += HandleStoreChanged;
         await LoadWorkers();
     }
 
     private async Task LoadWorkers()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        workers = (await Finance.GetWorkersAsync()).ToList();
     }
 
     private void OpenAddModal()
@@ -187,18 +186,20 @@
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/workers/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker updated");
-                else Toast.Show("Failed to update worker", ToastLevel.Error);
+                await Finance.UpdateWorkerAsync(editId, formModel);
+                Toast.Show("Worker updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/workers", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker added");
-                else Toast.Show("Failed to add worker", ToastLevel.Error);
+                await Finance.AddWorkerAsync(formModel);
+                Toast.Show("Worker added");
             }
             await LoadWorkers();
             showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save worker", ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -218,9 +219,9 @@
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/workers/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Worker deleted");
-        else Toast.Show("Failed to delete worker. It may have related records.", ToastLevel.Error);
+        var result = await Finance.DeleteWorkerAsync(deleteTarget.Id);
+        if (result.Success) Toast.Show("Worker deleted");
+        else Toast.Show(result.ErrorMessage ?? "Failed to delete worker. It may have related records.", ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadWorkers();
@@ -237,6 +238,6 @@
 
     public void Dispose()
     {
-        Store.OnChange -= HandleStoreChanged;
+        Finance.OnChange -= HandleStoreChanged;
     }
 }
