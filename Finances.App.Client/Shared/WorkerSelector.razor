@@ -1,8 +1,7 @@
 @using Finances.App.Client.Services
 @using Finances.App.Shared
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject WorkerContextService WorkerContext
 
 <div class="d-flex align-items-center gap-2">
@@ -26,13 +25,13 @@
     protected override async Task OnInitializedAsync()
     {
         WorkerContext.OnChange += StateHasChanged;
-        Store.OnChange += HandleStoreChange;
+        Finance.OnChange += HandleStoreChange;
         await LoadWorkersAsync();
     }
 
     private async Task LoadWorkersAsync()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers") ?? [];
+        workers = (await Finance.GetWorkersAsync()).ToList();
         await WorkerContext.InitializeAsync();
         await WorkerContext.EnsureWorkerExistsAsync(workers.Select(worker => worker.Id));
     }
@@ -57,6 +56,6 @@
     public void Dispose()
     {
         WorkerContext.OnChange -= StateHasChanged;
-        Store.OnChange -= HandleStoreChange;
+        Finance.OnChange -= HandleStoreChange;
     }
 }
