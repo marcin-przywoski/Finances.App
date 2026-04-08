@@ -1,11 +1,14 @@
 {
-  "releaseId": "2026-04-08-standalone-pwa",
-  "publishedUtc": "2026-04-08T23:58:00Z",
-  "title": "Standalone browser-only release",
-  "summary": "The finance tracker now runs entirely in the browser as an installable PWA.",
+  "releaseId": "2026-04-09-cleanup",
+  "publishedUtc": "2026-04-09T12:00:00Z",
+  "title": "Code cleanup and consistency pass",
+  "summary": "Shared analytics DTOs, centralized toast notifications, reactive CRUD pages, and a consistent layout across all views.",
   "changes": [
-    "The home dashboard now opens with a stronger salon snapshot, clearer revenue language, and cleaner monthly activity panels.",
-    "The analytics dashboard was redesigned with a more polished hero, stronger highlight cards, and clearer chart groupings.",
-    "Data, service history, product sales, products, services, and workers pages now share a more cohesive workspace layout with clearer summaries and tables."
+    "Extracted shared analytics DTO records into a dedicated Models/AnalyticsDtos.cs file, removing duplicate inline definitions from Dashboard and Analytics pages.",
+    "Moved the Toast component into MainLayout so notifications work globally from a single instance.",
+    "Workers, Services, and Products pages now subscribe to store changes and auto-refresh when data is imported or reset.",
+    "The Record Service page now uses the same workspace-hero layout as all other pages.",
+    "Fixed the mobile sidebar toggle so it actually slides the nav in and out.",
+    "Removed an unused IJSRuntime inject from ConfirmDialog."
   ]
 }
