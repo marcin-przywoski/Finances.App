@@ -4,6 +4,8 @@
   "title": "Standalone browser-only release",
   "summary": "The finance tracker now runs entirely in the browser as an installable PWA.",
   "changes": [
-    "The home dashboard now opens with a stronger monthly snapshot, cleaner panels, and clearer product, revenue, and activity sections."
+    "The home dashboard now opens with a stronger salon snapshot, clearer revenue language, and cleaner monthly activity panels.",
+    "The analytics dashboard was redesigned with a more polished hero, stronger highlight cards, and clearer chart groupings.",
+    "Data, service history, product sales, products, services, and workers pages now share a more cohesive workspace layout with clearer summaries and tables."
   ]
 }

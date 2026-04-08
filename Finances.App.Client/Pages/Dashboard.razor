@@ -10,7 +10,7 @@
         <div class="dashboard-hero-copy">
             <span class="dashboard-hero-kicker">Monthly snapshot</span>
             <h1 class="dashboard-hero-title">Home dashboard</h1>
-            <p class="dashboard-hero-description">Overview of your salon's current performance, revenue mix, and latest recorded activity.</p>
+            <p class="dashboard-hero-description">Front-desk view of this month's salon revenue, retail mix, busiest days, and latest chair activity.</p>
             <div class="dashboard-hero-meta">
                 <div class="dashboard-hero-pill">
                     <span>Period</span>
@@ -61,28 +61,28 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalRevenueDisplay" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
+                <StatCard Value="@TotalRevenueDisplay" Label="Salon Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalTipsDisplay" Label="Total Tips" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="vs last month">
+                <StatCard Value="@TotalTipsDisplay" Label="Guest Tips" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@AvgTicketDisplay" Label="Avg Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
+                <StatCard Value="@AvgTicketDisplay" Label="Average Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@RecordCountDisplay" Label="Services Done" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="vs last month">
+                <StatCard Value="@RecordCountDisplay" Label="Appointments Logged" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="vs last month">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
                     </IconContent>
@@ -97,7 +97,7 @@
                         <div>
                             <p class="dashboard-panel-eyebrow">Trend</p>
                             <h2>Revenue breakdown</h2>
-                            <p>Monthly view of services versus product sales.</p>
+                            <p>Daily view of service income versus retail checkout revenue.</p>
                         </div>
                         @if (HasRevenueSources)
                         {
@@ -132,7 +132,7 @@
                     <div class="dashboard-panel-header">
                         <p class="dashboard-panel-eyebrow">Mix</p>
                         <h2>Revenue sources</h2>
-                        <p>How this month's revenue is split between services and retail.</p>
+                        <p>How the month is balancing between chair revenue and front-desk retail.</p>
                     </div>
                     @if (HasRevenueSources)
                     {
@@ -173,7 +173,7 @@
                         <div>
                             <p class="dashboard-panel-eyebrow">Timing</p>
                             <h2>Busiest days</h2>
-                            <p>Which weekdays are currently generating the most revenue.</p>
+                            <p>Which weekdays are currently bringing in the strongest takings.</p>
                         </div>
                         @if (StrongestDay != null)
                         {
@@ -199,7 +199,7 @@
                     <div class="dashboard-panel-header">
                         <p class="dashboard-panel-eyebrow">Retail</p>
                         <h2>Top products</h2>
-                        <p>Best-selling retail items this month.</p>
+                        <p>Retail lines moving fastest this month.</p>
                     </div>
                     @if (topProducts != null && topProducts.Length > 0)
                     {
@@ -241,7 +241,7 @@
                     <div class="dashboard-panel-header">
                         <p class="dashboard-panel-eyebrow">Feed</p>
                         <h2>Recent activity</h2>
-                        <p>Latest recorded services and payments.</p>
+                        <p>Latest services checked into the salon ledger.</p>
                     </div>
                     @if (recentRecords != null && recentRecords.Length > 0)
                     {
@@ -293,7 +293,7 @@
     private string AvgTicketDisplay => avgTicketValue.ToString("C");
     private string RecordCountDisplay => recordCountValue.ToString();
     private string CurrentMonthLabel => DateTime.Today.ToString("MMMM yyyy");
-    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? "Filtered by selected worker" : "All workers";
+    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? "Selected stylist" : "Entire salon";
     private decimal TotalRevenueSources => serviceRevenueTotal + productRevenueTotal;
     private bool HasRevenueSources => TotalRevenueSources > 0;
     private decimal ServiceRevenueShare => HasRevenueSources ? Math.Round(serviceRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
@@ -302,15 +302,15 @@
     private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
     private RecentRecord? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
     private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
-    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{TotalTipsDisplay} in tips and {recordCountValue} services recorded.";
+    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{TotalTipsDisplay} in guest tips across {recordCountValue} logged appointments.";
     private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
-    private string ServiceShareSubtext => loading ? "Checking the revenue mix." : HasRevenueSources ? $"{serviceRevenueTotal.ToString("C")} from services." : "Revenue sources will appear here.";
+    private string ServiceShareSubtext => loading ? "Checking the revenue mix." : HasRevenueSources ? $"{serviceRevenueTotal.ToString("C")} came from services." : "Revenue sources will appear here.";
     private string StrongestDayLabel => loading ? "Loading..." : StrongestDay?.Day ?? "No data yet";
     private string StrongestDaySubtext => loading ? "Finding the strongest weekday." : StrongestDay == null ? "Weekday performance will appear here." : $"{StrongestDay.Revenue.ToString("C")} across {StrongestDay.Count} bookings.";
     private string FeaturedProductLabel => loading ? "Loading..." : FeaturedProduct?.Product ?? "No product sales";
-    private string FeaturedProductSubtext => loading ? "Checking retail activity." : FeaturedProduct == null ? "Retail highlights will appear here." : $"{FeaturedProduct.Quantity} sold for {FeaturedProduct.Revenue.ToString("C")}.";
+    private string FeaturedProductSubtext => loading ? "Checking retail activity." : FeaturedProduct == null ? "Retail highlights will appear here." : $"{FeaturedProduct.Quantity} units sold for {FeaturedProduct.Revenue.ToString("C")}.";
     private string LatestActivityLabel => loading ? "Loading..." : RecentHeadline?.Service ?? "No recent activity";
-    private string LatestActivitySubtext => loading ? "Loading recent records." : RecentHeadline == null ? "New records will show up here." : $"{RecentHeadline.Worker} · {RecentHeadline.AmountPaid.ToString("C")}";
+    private string LatestActivitySubtext => loading ? "Loading recent records." : RecentHeadline == null ? "New records will show up here." : $"{RecentHeadline.Worker} logged {RecentHeadline.AmountPaid.ToString("C")}";
 
     protected override async Task OnInitializedAsync()
     {

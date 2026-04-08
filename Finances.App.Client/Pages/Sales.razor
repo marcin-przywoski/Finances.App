@@ -4,91 +4,130 @@
 
 <PageTitle>Product Sales</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Product Sales</h2>
-        <p class="text-muted mb-0">Record and manage retail product sales.</p>
-    </div>
-    <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Record Sale
-    </button>
-</div>
-
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
-
-@if (allSales == null)
-{
-    <LoadingSpinner />
-}
-else
-{
-    var filtered = GetFilteredSales();
-
-    @if (filtered.Count == 0)
-    {
-        <div class="card p-5 text-center mt-3">
-            <p class="text-muted mb-3">No product sales found for the selected period.</p>
-            <div><button class="btn btn-primary" @onclick="OpenAddModal">Record Sale</button></div>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--history">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Retail ledger</span>
+            <h1 class="workspace-title">Product sales</h1>
+            <p class="workspace-description">Track retail sales, review basket values, and fix incorrect checkout entries for the selected period.</p>
         </div>
+        <div class="workspace-hero-actions">
+            <div class="workspace-action-row">
+                <button class="btn btn-primary" @onclick="OpenAddModal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
+                    Record sale
+                </button>
+            </div>
+            <div class="workspace-filter-panel">
+                <span>Date range</span>
+                <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+            </div>
+        </div>
+    </section>
+
+    @if (allSales == null)
+    {
+        <LoadingSpinner />
     }
     else
     {
-        <div class="card mt-3">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th @onclick='() => SetSort("date")' style="cursor:pointer;">
-                                Date @SortIcon("date")
-                            </th>
-                            <th>Product</th>
-                            <th>Worker</th>
-                            <th>Client</th>
-                            <th>Qty</th>
-                            <th @onclick='() => SetSort("price")' style="cursor:pointer;">
-                                Unit Price @SortIcon("price")
-                            </th>
-                            <th @onclick='() => SetSort("total")' style="cursor:pointer;">
-                                Total @SortIcon("total")
-                            </th>
-                            <th>Notes</th>
-                            <th style="width: 100px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var s in filtered)
-                        {
-                            <tr>
-                                <td>@s.DateSold.ToString("yyyy-MM-dd")</td>
-                                <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
-                                <td>@(s.Worker?.Name ?? "—")</td>
-                                <td class="text-muted">@(s.ClientName ?? "—")</td>
-                                <td>@s.Quantity</td>
-                                <td>@s.UnitPrice.ToString("C")</td>
-                                <td class="fw-semibold">@s.TotalPrice.ToString("C")</td>
-                                <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(s.Notes ?? "")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">Delete</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold" style="background-color: var(--body-bg);">
-                            <td colspan="4">Totals</td>
-                            <td>@filtered.Sum(s => s.Quantity)</td>
-                            <td></td>
-                            <td>@filtered.Sum(s => s.TotalPrice).ToString("C")</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
+        var filtered = GetFilteredSales();
+
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Sales</span>
+                <strong>@filtered.Count</strong>
+                <p>Retail transactions in the selected period.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Units sold</span>
+                <strong>@filtered.Sum(s => s.Quantity)</strong>
+                <p>Total product units checked out.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Retail revenue</span>
+                <strong>@filtered.Sum(s => s.TotalPrice).ToString("C")</strong>
+                <p>Gross retail takings for this range.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Average basket</span>
+                <strong>@(filtered.Count > 0 ? (filtered.Sum(s => s.TotalPrice) / filtered.Count).ToString("C") : "$0.00")</strong>
+                <p>Average value per recorded sale.</p>
             </div>
         </div>
+
+        @if (filtered.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No product sales were found for the selected period.</p>
+            </div>
+        }
+        else
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header workspace-panel-header-split">
+                    <div>
+                        <p class="workspace-panel-eyebrow">Transactions</p>
+                        <h2>Recorded retail sales</h2>
+                        <p>Review product, client, and basket details for every checkout entry.</p>
+                    </div>
+                    <span class="workspace-badge">@filtered.Count sale@(filtered.Count == 1 ? "" : "s")</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table workspace-table">
+                        <thead>
+                            <tr>
+                                <th @onclick='() => SetSort("date")' style="cursor:pointer;">
+                                    Date @SortIcon("date")
+                                </th>
+                                <th>Product</th>
+                                <th>Worker</th>
+                                <th>Client</th>
+                                <th>Qty</th>
+                                <th @onclick='() => SetSort("price")' style="cursor:pointer;">
+                                    Unit Price @SortIcon("price")
+                                </th>
+                                <th @onclick='() => SetSort("total")' style="cursor:pointer;">
+                                    Total @SortIcon("total")
+                                </th>
+                                <th>Notes</th>
+                                <th class="workspace-table-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in filtered)
+                            {
+                                <tr>
+                                    <td>@s.DateSold.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
+                                    <td>@(s.Worker?.Name ?? "—")</td>
+                                    <td class="text-muted">@(s.ClientName ?? "—")</td>
+                                    <td>@s.Quantity</td>
+                                    <td>@s.UnitPrice.ToString("C")</td>
+                                    <td class="fw-semibold">@s.TotalPrice.ToString("C")</td>
+                                    <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(s.Notes ?? "")</td>
+                                    <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4">Totals</td>
+                                <td>@filtered.Sum(s => s.Quantity)</td>
+                                <td></td>
+                                <td>@filtered.Sum(s => s.TotalPrice).ToString("C")</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+        }
     }
-}
+</div>
 
 @if (showModal)
 {

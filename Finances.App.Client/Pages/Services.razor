@@ -4,57 +4,97 @@
 
 <PageTitle>Services</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Services</h2>
-        <p class="text-muted mb-0">Manage the services your shop offers and their base prices.</p>
-    </div>
-    <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Service
-    </button>
-</div>
-
-@if (services == null)
-{
-    <LoadingSpinner />
-}
-else if (services.Count == 0)
-{
-    <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No services yet. Add your first service to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Service</button></div>
-    </div>
-}
-else
-{
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Service Name</th>
-                        <th>Base Price</th>
-                        <th style="width: 140px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var svc in services)
-                    {
-                        <tr>
-                            <td class="fw-semibold">@svc.Name</td>
-                            <td>@svc.BasePrice.ToString("C")</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--catalog">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Service menu</span>
+            <h1 class="workspace-title">Services</h1>
+            <p class="workspace-description">Keep the service menu current so pricing, appointment logging, and analytics all start from the right base values.</p>
         </div>
-    </div>
-}
+        <div class="workspace-hero-actions">
+            <div class="workspace-action-row">
+                <button class="btn btn-primary" @onclick="OpenAddModal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
+                    Add service
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (services == null)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Services</span>
+                <strong>@services.Count</strong>
+                <p>Service offerings currently available to log and analyze.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Average base price</span>
+                <strong>@(services.Count > 0 ? services.Average(s => s.BasePrice).ToString("C") : "$0.00")</strong>
+                <p>Typical starting price across the service menu.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Highest base price</span>
+                <strong>@(services.Count > 0 ? services.Max(s => s.BasePrice).ToString("C") : "$0.00")</strong>
+                <p>Premium offer currently listed in the menu.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Lowest base price</span>
+                <strong>@(services.Count > 0 ? services.Min(s => s.BasePrice).ToString("C") : "$0.00")</strong>
+                <p>Entry-level offer in the current service range.</p>
+            </div>
+        </div>
+
+        @if (services.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No services yet. Add the first service to start building the menu.</p>
+            </div>
+        }
+        else
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header workspace-panel-header-split">
+                    <div>
+                        <p class="workspace-panel-eyebrow">Menu</p>
+                        <h2>Service list</h2>
+                        <p>Update naming and pricing here before new appointments and reports are recorded.</p>
+                    </div>
+                    <span class="workspace-badge">@services.Count service@(services.Count == 1 ? "" : "s")</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table workspace-table">
+                        <thead>
+                            <tr>
+                                <th>Service Name</th>
+                                <th>Base Price</th>
+                                <th class="workspace-table-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var svc in services)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@svc.Name</td>
+                                    <td>@svc.BasePrice.ToString("C")</td>
+                                    <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+    }
+</div>
 
 @if (showModal)
 {

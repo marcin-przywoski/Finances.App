@@ -4,70 +4,110 @@
 
 <PageTitle>Products</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Products</h2>
-        <p class="text-muted mb-0">Manage retail products your shop sells (shampoo, styling products, etc.).</p>
-    </div>
-    <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Product
-    </button>
-</div>
-
-@if (products == null)
-{
-    <LoadingSpinner />
-}
-else if (products.Count == 0)
-{
-    <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No products yet. Add your first product to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Product</button></div>
-    </div>
-}
-else
-{
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Product Name</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th style="width: 140px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var p in products)
-                    {
-                        <tr>
-                            <td class="fw-semibold">@p.Name</td>
-                            <td class="text-muted">@(p.Category ?? "—")</td>
-                            <td>@p.Price.ToString("C")</td>
-                            <td>
-                                @if (p.StockQuantity <= 3)
-                                {
-                                    <span class="badge bg-danger">@p.StockQuantity</span>
-                                }
-                                else
-                                {
-                                    <span>@p.StockQuantity</span>
-                                }
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Delete</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--catalog">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Retail catalog</span>
+            <h1 class="workspace-title">Products</h1>
+            <p class="workspace-description">Maintain the retail catalog, keep pricing tidy, and spot stock items that need attention before the next sale.</p>
         </div>
-    </div>
-}
+        <div class="workspace-hero-actions">
+            <div class="workspace-action-row">
+                <button class="btn btn-primary" @onclick="OpenAddModal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
+                    Add product
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (products == null)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Products</span>
+                <strong>@products.Count</strong>
+                <p>Total retail items currently available in the catalog.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Low stock</span>
+                <strong>@products.Count(p => p.StockQuantity <= 3)</strong>
+                <p>Items with three or fewer units remaining.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Average price</span>
+                <strong>@(products.Count > 0 ? products.Average(p => p.Price).ToString("C") : "$0.00")</strong>
+                <p>Typical shelf price across the retail assortment.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Categories</span>
+                <strong>@products.Select(p => p.Category).Where(category => !string.IsNullOrWhiteSpace(category)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                <p>Named product groupings in the current catalog.</p>
+            </div>
+        </div>
+
+        @if (products.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No products yet. Add the first retail item to start building the catalog.</p>
+            </div>
+        }
+        else
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header workspace-panel-header-split">
+                    <div>
+                        <p class="workspace-panel-eyebrow">Catalog</p>
+                        <h2>Retail product list</h2>
+                        <p>Keep names, categories, pricing, and stock levels accurate for front-desk sales.</p>
+                    </div>
+                    <span class="workspace-badge">@products.Count product@(products.Count == 1 ? "" : "s")</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table workspace-table">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th class="workspace-table-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in products)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@p.Name</td>
+                                    <td class="text-muted">@(p.Category ?? "—")</td>
+                                    <td>@p.Price.ToString("C")</td>
+                                    <td>
+                                        @if (p.StockQuantity <= 3)
+                                        {
+                                            <span class="badge bg-danger">@p.StockQuantity</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@p.StockQuantity</span>
+                                        }
+                                    </td>
+                                    <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+    }
+</div>
 
 @if (showModal)
 {

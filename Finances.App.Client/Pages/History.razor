@@ -5,89 +5,133 @@
 
 <PageTitle>History</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Service History</h2>
-        <p class="text-muted mb-0">View, edit, and manage past service records.</p>
-    </div>
-</div>
-
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
-
-@if (allRecords == null)
-{
-    <LoadingSpinner />
-}
-else
-{
-    var filtered = GetFilteredRecords();
-
-    @if (filtered.Count == 0)
-    {
-        <div class="card p-5 text-center mt-3">
-            <p class="text-muted mb-0">No records found for the selected period.</p>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--history">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Service ledger</span>
+            <h1 class="workspace-title">Service history</h1>
+            <p class="workspace-description">Review completed services, tips, and worker payouts for the selected date range.</p>
+            <div class="workspace-hero-meta">
+                <div class="workspace-hero-note">
+                    <span>Worker scope</span>
+                    <strong>@(WorkerContext.SelectedWorkerId.HasValue ? "Selected worker only" : "All workers")</strong>
+                </div>
+            </div>
         </div>
+        <div class="workspace-hero-actions">
+            <div class="workspace-filter-panel">
+                <span>Date range</span>
+                <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+            </div>
+        </div>
+    </section>
+
+    @if (allRecords == null)
+    {
+        <LoadingSpinner />
     }
     else
     {
-        <div class="card mt-3">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th @onclick='() => SetSort("date")' style="cursor:pointer;">
-                                Date @SortIcon("date")
-                            </th>
-                            <th>Worker</th>
-                            <th>Service</th>
-                            <th>Client</th>
-                            <th @onclick='() => SetSort("amount")' style="cursor:pointer;">
-                                Amount @SortIcon("amount")
-                            </th>
-                            <th>Commission</th>
-                            <th>Tips</th>
-                            <th @onclick='() => SetSort("worker_share")' style="cursor:pointer;">
-                                Worker Share @SortIcon("worker_share")
-                            </th>
-                            <th>Notes</th>
-                            <th style="width: 100px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var r in filtered)
-                        {
-                            <tr>
-                                <td>@r.DatePerformed.ToString("yyyy-MM-dd")</td>
-                                <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
-                                <td>@(r.Service?.Name ?? "—")</td>
-                                <td class="text-muted">@(r.ClientName ?? "—")</td>
-                                <td>@r.AmountPaid.ToString("C")</td>
-                                <td>@r.CommissionPercentageApplied%</td>
-                                <td>@r.Tips.ToString("C")</td>
-                                <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
-                                <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold" style="background-color: var(--body-bg);">
-                            <td colspan="4">Totals</td>
-                            <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
-                            <td></td>
-                            <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
-                            <td>@filtered.Sum(r => r.WorkerShare).ToString("C")</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
+        var filtered = GetFilteredRecords();
+
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Records</span>
+                <strong>@filtered.Count</strong>
+                <p>Completed services in the selected window.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Revenue</span>
+                <strong>@filtered.Sum(r => r.AmountPaid).ToString("C")</strong>
+                <p>Gross service revenue before worker payout.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Tips</span>
+                <strong>@filtered.Sum(r => r.Tips).ToString("C")</strong>
+                <p>Guest gratuities recorded in this period.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Worker share</span>
+                <strong>@filtered.Sum(r => r.WorkerShare).ToString("C")</strong>
+                <p>Commission payout across the filtered services.</p>
             </div>
         </div>
+
+        @if (filtered.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No service records were found for the selected period.</p>
+            </div>
+        }
+        else
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header workspace-panel-header-split">
+                    <div>
+                        <p class="workspace-panel-eyebrow">Records</p>
+                        <h2>Completed service records</h2>
+                        <p>Edit notes, fix pricing, or remove incorrect entries from the salon ledger.</p>
+                    </div>
+                    <span class="workspace-badge">@filtered.Count record@(filtered.Count == 1 ? "" : "s")</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table workspace-table">
+                        <thead>
+                            <tr>
+                                <th @onclick='() => SetSort("date")' style="cursor:pointer;">
+                                    Date @SortIcon("date")
+                                </th>
+                                <th>Worker</th>
+                                <th>Service</th>
+                                <th>Client</th>
+                                <th @onclick='() => SetSort("amount")' style="cursor:pointer;">
+                                    Amount @SortIcon("amount")
+                                </th>
+                                <th>Commission</th>
+                                <th>Tips</th>
+                                <th @onclick='() => SetSort("worker_share")' style="cursor:pointer;">
+                                    Worker Share @SortIcon("worker_share")
+                                </th>
+                                <th>Notes</th>
+                                <th class="workspace-table-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in filtered)
+                            {
+                                <tr>
+                                    <td>@r.DatePerformed.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
+                                    <td>@(r.Service?.Name ?? "—")</td>
+                                    <td class="text-muted">@(r.ClientName ?? "—")</td>
+                                    <td>@r.AmountPaid.ToString("C")</td>
+                                    <td>@r.CommissionPercentageApplied%</td>
+                                    <td>@r.Tips.ToString("C")</td>
+                                    <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
+                                    <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
+                                    <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4">Totals</td>
+                                <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
+                                <td></td>
+                                <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
+                                <td>@filtered.Sum(r => r.WorkerShare).ToString("C")</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+        }
     }
-}
+</div>
 
 @if (showEditModal)
 {

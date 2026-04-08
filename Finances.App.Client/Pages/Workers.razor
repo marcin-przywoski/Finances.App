@@ -4,59 +4,99 @@
 
 <PageTitle>Workers</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Workers</h2>
-        <p class="text-muted mb-0">Manage your team members and their commission rates.</p>
-    </div>
-    <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Worker
-    </button>
-</div>
-
-@if (workers == null)
-{
-    <LoadingSpinner />
-}
-else if (workers.Count == 0)
-{
-    <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No workers yet. Add your first team member to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Worker</button></div>
-    </div>
-}
-else
-{
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Commission %</th>
-                        <th>Linked User</th>
-                        <th style="width: 140px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var worker in workers)
-                    {
-                        <tr>
-                            <td class="fw-semibold">@worker.Name</td>
-                            <td>@worker.DefaultCommissionPercentage%</td>
-                            <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--team">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Team setup</span>
+            <h1 class="workspace-title">Workers</h1>
+            <p class="workspace-description">Manage your team roster and default commission settings so service records and analytics reflect the right people and payout splits.</p>
         </div>
-    </div>
-}
+        <div class="workspace-hero-actions">
+            <div class="workspace-action-row">
+                <button class="btn btn-primary" @onclick="OpenAddModal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
+                    Add worker
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (workers == null)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Team members</span>
+                <strong>@workers.Count</strong>
+                <p>Workers available to assign in records and dashboards.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Average commission</span>
+                <strong>@(workers.Count > 0 ? workers.Average(w => w.DefaultCommissionPercentage).ToString("0.##") : "0")%</strong>
+                <p>Typical default payout percentage across the team.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Highest commission</span>
+                <strong>@(workers.Count > 0 ? workers.Max(w => w.DefaultCommissionPercentage).ToString("0.##") : "0")%</strong>
+                <p>Top commission rate currently configured.</p>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">Linked users</span>
+                <strong>@workers.Count(w => !string.IsNullOrWhiteSpace(w.ApplicationUserId))</strong>
+                <p>Team members already tied to an app user identity.</p>
+            </div>
+        </div>
+
+        @if (workers.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No workers yet. Add the first team member to start assigning services.</p>
+            </div>
+        }
+        else
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header workspace-panel-header-split">
+                    <div>
+                        <p class="workspace-panel-eyebrow">Roster</p>
+                        <h2>Team member list</h2>
+                        <p>Update names, payout defaults, and linked accounts for each stylist or staff member.</p>
+                    </div>
+                    <span class="workspace-badge">@workers.Count worker@(workers.Count == 1 ? "" : "s")</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table workspace-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Commission %</th>
+                                <th>Linked User</th>
+                                <th class="workspace-table-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var worker in workers)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@worker.Name</td>
+                                    <td>@worker.DefaultCommissionPercentage%</td>
+                                    <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
+                                    <td class="workspace-table-actions">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+    }
+</div>
 
 @if (showModal)
 {

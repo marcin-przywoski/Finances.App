@@ -8,163 +8,209 @@
 
 <PageTitle>Data</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1" style="font-weight: 700;">Local Data</h2>
-        <p class="text-muted mb-0">Everything in this branch is saved only in the current browser profile.</p>
-    </div>
-</div>
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--data">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">Local control</span>
+            <h1 class="workspace-title">Local data vault</h1>
+            <p class="workspace-description">Back up, restore, and update the salon data that lives only in this browser profile for this standalone PWA build.</p>
 
-@if (summary is null)
-{
-    <LoadingSpinner />
-}
-else
-{
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.WorkerCount.ToString()" Label="Workers" IconBg="#dbeafe" IconColor="#3b82f6">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ServiceCount.ToString()" Label="Services" IconBg="#fef3c7" IconColor="#f59e0b">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ProductCount.ToString()" Label="Products" IconBg="#ede9fe" IconColor="#7c3aed">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="Recorded Services" IconBg="#d1fae5" IconColor="#10b981">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ProductSaleCount.ToString()" Label="Product Sales" IconBg="#fce7f3" IconColor="#ec4899">
-                <IconContent>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </IconContent>
-            </StatCard>
-        </div>
-    </div>
-
-    <div class="row g-3">
-        <div class="col-lg-7">
-            <div class="card p-4 h-100">
-                <h6 class="fw-semibold mb-3">Back Up or Restore</h6>
-                <p class="text-muted mb-3">
-                    Use export to save your data as a JSON backup. Use import to restore a previous backup on this browser or move it to another device.
-                </p>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? "Working..." : "Export JSON")</button>
-                    <label class="btn btn-outline-primary mb-0 @(busy ? "disabled" : string.Empty)">
-                        Import JSON
-                        <InputFile OnChange="ImportAsync" accept=".json,application/json" class="d-none" disabled="@busy" />
-                    </label>
-                    <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Reset Starter Data</button>
+            @if (summary is not null)
+            {
+                <div class="workspace-hero-meta">
+                    <div class="workspace-hero-note">
+                        <span>Backup schema</span>
+                        <strong>v@(summary.SchemaVersion)</strong>
+                    </div>
+                    <div class="workspace-hero-note">
+                        <span>Last local update</span>
+                        <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong>
+                    </div>
                 </div>
+            }
+        </div>
+
+        <div class="workspace-hero-actions">
+            <div class="workspace-filter-panel">
+                <span>Storage model</span>
+                <strong>Browser-only PWA</strong>
+                <small class="text-muted">No server account or hosted database is used in this branch.</small>
+            </div>
+
+            @if (summary is not null)
+            {
+                <div class="workspace-summary-grid">
+                    <div class="workspace-summary-card">
+                        <span class="workspace-summary-label">Update status</span>
+                        <strong>@GetPwaStatusLabel()</strong>
+                        <p>Installed build: @GetBuildLabel()</p>
+                    </div>
+                    <div class="workspace-summary-card">
+                        <span class="workspace-summary-label">Available build</span>
+                        <strong>@GetAvailableBuildLabel()</strong>
+                        <p>Last checked: @FormatDateTime(PwaUpdate.State.LastCheckedUtc)</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    @if (summary is null)
+    {
+        <LoadingSpinner />
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@summary.WorkerCount.ToString()" Label="Workers" IconBg="#dbeafe" IconColor="#3b82f6" Subtitle="Saved locally">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@summary.ServiceCount.ToString()" Label="Services" IconBg="#fef3c7" IconColor="#f59e0b" Subtitle="Catalog entries">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@summary.ProductCount.ToString()" Label="Products" IconBg="#ede9fe" IconColor="#7c3aed" Subtitle="Retail catalog">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="Recorded Services" IconBg="#d1fae5" IconColor="#10b981" Subtitle="Appointment history">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
+                    </IconContent>
+                </StatCard>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <StatCard Value="@summary.ProductSaleCount.ToString()" Label="Product Sales" IconBg="#fce7f3" IconColor="#ec4899" Subtitle="Retail history">
+                    <IconContent>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+                    </IconContent>
+                </StatCard>
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="card p-4 h-100">
-                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-                    <div>
-                        <h6 class="fw-semibold mb-1">App Updates</h6>
-                        <p class="text-muted mb-0">Check for a newer offline build, then reload once to switch the installed PWA to it.</p>
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <section class="workspace-panel">
+                    <div class="workspace-panel-header">
+                        <p class="workspace-panel-eyebrow">Backup</p>
+                        <h2>Back up or restore</h2>
+                        <p>Export a JSON snapshot for safekeeping, then import it into this browser or another device when you need to restore salon data.</p>
                     </div>
-                    <span class="badge rounded-pill @(PwaUpdate.State.UpdateAvailable ? "text-bg-primary" : "text-bg-light")">@GetPwaStatusLabel()</span>
-                </div>
+                    <div class="workspace-action-row">
+                        <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? "Working..." : "Export JSON")</button>
+                        <label class="btn btn-outline-primary mb-0 @(busy ? "disabled" : string.Empty)">
+                            Import JSON
+                            <InputFile OnChange="ImportAsync" accept=".json,application/json" class="d-none" disabled="@busy" />
+                        </label>
+                        <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Reset starter data</button>
+                    </div>
+                </section>
+            </div>
 
-                <dl class="row mb-3 small">
-                    <dt class="col-5 text-muted">Installed build</dt>
-                    <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
+            <div class="col-lg-5">
+                <section class="workspace-panel">
+                    <div class="workspace-panel-header workspace-panel-header-split">
+                        <div>
+                            <p class="workspace-panel-eyebrow">Updates</p>
+                            <h2>App updates</h2>
+                            <p>Check for a newer offline build, then reload once to switch the installed PWA to it.</p>
+                        </div>
+                        <span class="workspace-badge">@GetPwaStatusLabel()</span>
+                    </div>
 
-                    <dt class="col-5 text-muted">Available build</dt>
-                    <dd class="col-7">@GetAvailableBuildLabel()</dd>
+                    <dl class="row mb-3 small">
+                        <dt class="col-5 text-muted">Installed build</dt>
+                        <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
 
-                    <dt class="col-5 text-muted">Last checked</dt>
-                    <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
+                        <dt class="col-5 text-muted">Available build</dt>
+                        <dd class="col-7">@GetAvailableBuildLabel()</dd>
 
-                    <dt class="col-5 text-muted">Last applied</dt>
-                    <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
+                        <dt class="col-5 text-muted">Last checked</dt>
+                        <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
 
-                    <dt class="col-5 text-muted">Backup schema</dt>
-                    <dd class="col-7">v@(summary.SchemaVersion)</dd>
-                </dl>
+                        <dt class="col-5 text-muted">Last applied</dt>
+                        <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
 
-                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? "Checking..." : "Check for updates")</button>
+                        <dt class="col-5 text-muted">Backup schema</dt>
+                        <dd class="col-7">v@(summary.SchemaVersion)</dd>
+                    </dl>
 
-                    @if (PwaUpdate.State.UpdateAvailable)
+                    <div class="workspace-action-row mb-3">
+                        <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? "Checking..." : "Check for updates")</button>
+
+                        @if (PwaUpdate.State.UpdateAvailable)
+                        {
+                            <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">Reload to update</button>
+                        }
+
+                        @if (PwaUpdate.State.InstallAvailable && !PwaUpdate.State.IsStandalone)
+                        {
+                            <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
+                        }
+                    </div>
+
+                    @if (GetDisplayedRelease() is { } release)
                     {
-                        <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">Reload to update</button>
-                    }
+                        <div class="workspace-summary-card mb-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                                <div>
+                                    <div class="workspace-summary-label mb-1">@GetReleaseHeading()</div>
+                                    @if (!string.IsNullOrWhiteSpace(release.Title))
+                                    {
+                                        <strong>@release.Title</strong>
+                                    }
+                                </div>
 
-                    @if (PwaUpdate.State.InstallAvailable && !PwaUpdate.State.IsStandalone)
-                    {
-                        <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
-                    }
-                </div>
-
-                @if (GetDisplayedRelease() is { } release)
-                {
-                    <div class="border rounded-3 p-3 bg-light-subtle mb-3">
-                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-                            <div>
-                                <h6 class="fw-semibold mb-1">@GetReleaseHeading()</h6>
-                                @if (!string.IsNullOrWhiteSpace(release.Title))
+                                @if (release.PublishedUtc is not null)
                                 {
-                                    <p class="mb-1 fw-semibold">@release.Title</p>
+                                    <span class="small text-muted">@release.PublishedUtc.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
                                 }
                             </div>
 
-                            @if (release.PublishedUtc is not null)
+                            @if (!string.IsNullOrWhiteSpace(release.Summary))
                             {
-                                <span class="small text-muted">@release.PublishedUtc.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                                <p class="mb-2">@release.Summary</p>
+                            }
+
+                            @if (release.Changes.Count > 0)
+                            {
+                                <ul class="workspace-note-list">
+                                    @foreach (var change in release.Changes)
+                                    {
+                                        <li>@change</li>
+                                    }
+                                </ul>
                             }
                         </div>
+                    }
 
-                        @if (!string.IsNullOrWhiteSpace(release.Summary))
-                        {
-                            <p class="text-muted mb-2">@release.Summary</p>
-                        }
-
-                        @if (release.Changes.Count > 0)
-                        {
-                            <ul class="mb-0 text-muted" style="padding-left: 1rem;">
-                                @foreach (var change in release.Changes)
-                                {
-                                    <li>@change</li>
-                                }
-                            </ul>
-                        }
+                    <div class="workspace-panel-header mb-0">
+                        <p class="workspace-panel-eyebrow">Privacy</p>
+                        <h2>Privacy and install notes</h2>
                     </div>
-                }
-
-                <h6 class="fw-semibold mb-3">Privacy and Install Notes</h6>
-                <ul class="mb-0 text-muted" style="padding-left: 1rem;">
-                    <li>Your data is stored only in this browser's local storage.</li>
-                    <li>No server-side account or database is used in this branch.</li>
-                    <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
-                    <li>Use exported backups if you want to keep data across devices or browsers.</li>
-                    <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
-                </ul>
+                    <ul class="workspace-note-list">
+                        <li>Your data is stored only in this browser's local storage.</li>
+                        <li>No server-side account or database is used in this branch.</li>
+                        <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
+                        <li>Use exported backups if you want to keep data across devices or browsers.</li>
+                        <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
+                    </ul>
+                </section>
             </div>
         </div>
-    </div>
-}
+    }
+</div>
 
 <ConfirmDialog IsVisible="showResetConfirm"
                Title="Reset Local Data"
