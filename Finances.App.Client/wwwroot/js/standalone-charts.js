@@ -1,6 +1,18 @@
 window.financeCharts = {
     instances: {},
 
+    _getGridColor: function () {
+        return getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim() || '#e5e7eb';
+    },
+
+    _getTextColor: function () {
+        return getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#6b7280';
+    },
+
+    _getBorderColor: function () {
+        return getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#e5e7eb';
+    },
+
     // Wait for the canvas to exist in the DOM and have non-zero dimensions.
     // Returns the canvas element, or null if it doesn't appear within ~500ms.
     _waitForCanvas: function (canvasId) {
@@ -43,10 +55,10 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: { legend: { position: 'top', labels: { color: this._getTextColor() } } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-                    x: { grid: { display: false } }
+                    y: { beginAtZero: true, grid: { color: this._getGridColor() }, ticks: { color: this._getTextColor() } },
+                    x: { grid: { display: false }, ticks: { color: this._getTextColor() } }
                 }
             }
         });
@@ -70,10 +82,10 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: { legend: { position: 'top', labels: { color: this._getTextColor() } } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-                    x: { grid: { display: false } }
+                    y: { beginAtZero: true, grid: { color: this._getGridColor() }, ticks: { color: this._getTextColor() } },
+                    x: { grid: { display: false }, ticks: { color: this._getTextColor() } }
                 }
             }
         });
@@ -91,14 +103,14 @@ window.financeCharts = {
                     data: data,
                     backgroundColor: colors || labels.map((_, index) => this._colors(index)),
                     borderWidth: 2,
-                    borderColor: '#fff'
+                    borderColor: this._getBorderColor()
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right' }
+                    legend: { position: 'right', labels: { color: this._getTextColor() } }
                 }
             }
         });
@@ -174,8 +186,8 @@ window.financeCharts = {
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-                    x: { grid: { display: false }, ticks: { maxTicksLimit: 15 } }
+                    y: { beginAtZero: true, grid: { color: this._getGridColor() }, ticks: { color: this._getTextColor() } },
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 15, color: this._getTextColor() } }
                 }
             }
         });
@@ -201,8 +213,8 @@ window.financeCharts = {
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'top' } },
                 scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, grid: { color: '#e5e7eb' } }
+                    x: { stacked: true, grid: { display: false }, ticks: { color: this._getTextColor() } },
+                    y: { stacked: true, beginAtZero: true, grid: { color: this._getGridColor() }, ticks: { color: this._getTextColor() } }
                 }
             }
         });
@@ -229,8 +241,8 @@ window.financeCharts = {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-                    y: { grid: { display: false } }
+                    x: { beginAtZero: true, grid: { color: this._getGridColor() }, ticks: { color: this._getTextColor() } },
+                    y: { grid: { display: false }, ticks: { color: this._getTextColor() } }
                 }
             }
         });

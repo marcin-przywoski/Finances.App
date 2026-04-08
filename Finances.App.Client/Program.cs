@@ -17,6 +17,7 @@ static class Program
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
         builder.Services.AddScoped<PwaUpdateService>();
+        builder.Services.AddScoped<ThemeService>();
 
         await builder.Build().RunAsync();
     }
