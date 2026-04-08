@@ -508,6 +508,10 @@
         Store.OnChange += HandleStoreChanged;
         WorkerContext.OnChange += HandleWorkerContextChanged;
         await WorkerContext.InitializeAsync();
+        var today = DateTime.Today;
+        dateFrom = new DateTime(today.Year, today.Month, 1);
+        dateTo = today;
+        await LoadData();
     }
 
     private async Task OnDateRangeChanged((DateTime? From, DateTime? To) range)
