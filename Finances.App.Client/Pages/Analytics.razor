@@ -709,16 +709,6 @@
         return "All available dates";
     }
 
-    private string BuildQueryString(int? forecastDaysOverride = null)
-    {
-        var parts = new List<string>();
-        if (dateFrom.HasValue) parts.Add($"from={dateFrom.Value:yyyy-MM-dd}");
-        if (dateTo.HasValue) parts.Add($"to={dateTo.Value:yyyy-MM-dd}");
-        if (WorkerContext.SelectedWorkerId.HasValue) parts.Add($"workerId={WorkerContext.SelectedWorkerId.Value}");
-        if (forecastDaysOverride.HasValue) parts.Add($"forecastDays={forecastDaysOverride.Value}");
-        return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
-    }
-
     private async void HandleWorkerContextChanged()
     {
         await InvokeAsync(LoadData);

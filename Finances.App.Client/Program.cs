@@ -13,11 +13,7 @@ static class Program
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
         builder.Services.AddScoped<LocalFinanceStore>();
-        builder.Services.AddScoped<LocalApiMessageHandler>();
-        builder.Services.AddScoped(sp => new HttpClient(sp.GetRequiredService<LocalApiMessageHandler>())
-        {
-            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-        });
+        builder.Services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<LocalFinanceStore>());
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
         builder.Services.AddScoped<PwaUpdateService>();

@@ -1,6 +1,6 @@
 @page "/data"
 @implements IDisposable
-@inject LocalFinanceStore Store
+@inject IFinanceService Finance
 @inject WorkerContextService WorkerContext
 @inject IJSRuntime JS
 @inject PwaUpdateService PwaUpdate
@@ -243,7 +243,7 @@
 
     private async Task RefreshSummaryAsync()
     {
-        summary = await Store.GetDataStateSummaryAsync();
+        summary = await Finance.GetDataStateSummaryAsync();
     }
 
     private async Task ExportAsync()
@@ -256,7 +256,7 @@
         busy = true;
         try
         {
-            var json = await Store.ExportAsync();
+            var json = await Finance.ExportAsync();
             var fileName = $"finances-app-{DateTime.Now:yyyyMMdd-HHmmss}.json";
             await JS.InvokeVoidAsync("financeBrowser.downloadTextFile", fileName, "application/json;charset=utf-8", json);
             Toast.Show("Backup exported.");
@@ -292,7 +292,7 @@
             using var reader = new StreamReader(stream);
             var json = await reader.ReadToEndAsync();
 
-            await Store.ImportAsync(json);
+            await Finance.ImportAsync(json);
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
             Toast.Show("Backup imported.");
@@ -319,7 +319,7 @@
         busy = true;
         try
         {
-            await Store.ResetAsync();
+            await Finance.ResetAsync();
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
             Toast.Show("Local data reset to starter values.");
@@ -336,7 +336,7 @@
 
     private async Task SyncSelectedWorkerAsync()
     {
-        var workers = await Store.GetWorkersAsync();
+        var workers = await Finance.GetWorkersAsync();
         await WorkerContext.EnsureWorkerExistsAsync(workers.Select(worker => worker.Id));
     }
 
