@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IFinanceService Finance
 @inject ToastService Toast
+@inject ExportService Export
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--catalog">
@@ -45,6 +46,16 @@
             <div>
                 <input type="text" class="form-control" placeholder="Search clients…"
                        @bind="searchQuery" @bind:event="oninput" style="min-width: 220px;" />
+            </div>
+            <div class="d-flex gap-2 ms-2">
+                <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Excel
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    PDF
+                </button>
             </div>
         </div>
 
@@ -258,7 +269,40 @@
     private ClientDetailResult? detailResult;
     private bool showModal;
     private bool isEditing;
+    private bool exporting;
     private string searchQuery = string.Empty;
+
+    private async Task ExportExcel()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Name", "Phone", "Email", "Created" };
+            var rows = filteredClients.Select(c => new object[]
+            {
+                c.Name, c.Phone ?? "", c.Email ?? "", c.CreatedDate.ToString("yyyy-MM-dd")
+            }).ToArray();
+            await Export.ExportExcelAsync("clients.xlsx", "Clients", headers, rows);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Name", "Phone", "Email", "Created" };
+            var rows = filteredClients.Select(c => new object[]
+            {
+                c.Name, c.Phone ?? "", c.Email ?? "", c.CreatedDate.ToString("yyyy-MM-dd")
+            }).ToArray();
+            await Export.ExportPdfAsync("clients.pdf", "Client Directory", headers, rows);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
 
     private List<SalonClient> filteredClients => string.IsNullOrWhiteSpace(searchQuery)
         ? clients

@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IFinanceService Finance
 @inject ToastService Toast
+@inject ExportService Export
 
 <PageTitle>Products</PageTitle>
 
@@ -67,6 +68,16 @@
                         <p>Keep names, categories, pricing, and stock levels accurate for front-desk sales.</p>
                     </div>
                     <span class="workspace-badge">@products.Count product@(products.Count == 1 ? "" : "s")</span>
+                    <div class="d-flex gap-2 ms-2">
+                        <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            Excel
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            PDF
+                        </button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="data-table workspace-table">
@@ -169,6 +180,41 @@
     private Product? deleteTarget;
     private bool showModal, isEditing, saving, showDeleteConfirm;
     private int editId;
+    private bool exporting;
+
+    private async Task ExportExcel()
+    {
+        if (products == null) return;
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Name", "Category", "Price", "Stock" };
+            var rows = products.Select(p => new object[]
+            {
+                p.Name, p.Category ?? "", p.Price, p.StockQuantity
+            }).ToArray();
+            await Export.ExportExcelAsync("products.xlsx", "Products", headers, rows);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf()
+    {
+        if (products == null) return;
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Name", "Category", "Price", "Stock" };
+            var rows = products.Select(p => new object[]
+            {
+                p.Name, p.Category ?? "", p.Price.ToString("F2"), p.StockQuantity
+            }).ToArray();
+            await Export.ExportPdfAsync("products.pdf", "Product Catalog", headers, rows);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {

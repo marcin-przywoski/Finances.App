@@ -267,6 +267,55 @@
 
     private ProductSale? deleteTarget;
     private bool showDeleteConfirm;
+    private bool exporting;
+
+    private async Task ExportExcel(List<ProductSale> sales)
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Product", "Worker", "Client", "Qty", "Unit Price", "Total", "Notes" };
+            var rows = sales.Select(s => new object[]
+            {
+                s.DateSold.ToString("yyyy-MM-dd"),
+                s.Product?.Name ?? "",
+                s.Worker?.Name ?? "",
+                s.Client?.Name ?? s.ClientName ?? "",
+                s.Quantity,
+                s.UnitPrice,
+                s.TotalPrice,
+                s.Notes ?? ""
+            }).ToArray();
+            await Export.ExportExcelAsync("product-sales.xlsx", "Product Sales", headers, rows);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf(List<ProductSale> sales)
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Product", "Worker", "Client", "Qty", "Unit Price", "Total" };
+            var rows = sales.Select(s => new object[]
+            {
+                s.DateSold.ToString("yyyy-MM-dd"),
+                s.Product?.Name ?? "",
+                s.Worker?.Name ?? "",
+                s.Client?.Name ?? s.ClientName ?? "",
+                s.Quantity,
+                s.UnitPrice.ToString("F2"),
+                s.TotalPrice.ToString("F2")
+            }).ToArray();
+            var subtitle = dateFrom.HasValue && dateTo.HasValue
+                ? $"{dateFrom.Value:yyyy-MM-dd} to {dateTo.Value:yyyy-MM-dd}"
+                : null;
+            await Export.ExportPdfAsync("product-sales.pdf", "Product Sales", headers, rows, subtitle, true);
+        }
+        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        finally { exporting = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
