@@ -6,7 +6,7 @@ globalThis.addEventListener('activate', event => event.waitUntil(onActivate()));
 globalThis.addEventListener('fetch', event => event.respondWith(onFetch(event)));
 globalThis.addEventListener('message', event => onMessage(event));
 
-const cacheNamePrefix = 'kubiczplace-finances-offline-';
+const cacheNamePrefix = 'finances-app-offline-';
 const cacheName = `${cacheNamePrefix}${globalThis.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm$/, /\.html$/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/, /\.svg$/ ];
 const offlineAssetsExclude = [ /^service-worker\.js$/, /^pwa-release\.json$/ ];
