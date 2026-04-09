@@ -52,6 +52,13 @@ public interface IFinanceService
     Task DeleteRecurringServiceAsync(int id);
     Task<IReadOnlyList<RecurringService>> GetDueRecurringServicesAsync();
 
+    // Goals
+    Task<IReadOnlyList<Goal>> GetGoalsAsync();
+    Task<Goal> AddGoalAsync(Goal goal);
+    Task UpdateGoalAsync(int id, Goal goal);
+    Task DeleteGoalAsync(int id);
+    Task<IReadOnlyList<GoalProgressResult>> GetGoalProgressAsync(int? workerId);
+
     // Analytics
     Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? from, DateTime? to);
     Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? from, DateTime? to);

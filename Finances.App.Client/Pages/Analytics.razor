@@ -55,7 +55,7 @@
     {
         <div class="row g-3 analytics-metrics">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalRevenueForRange.ToString("C")" Label="Total Revenue" Subtitle="Services and retail">
+                <StatCard Value="@TotalRevenueForRange.ToString("C")" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="1" x2="12" y2="23" />
@@ -65,7 +65,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalTipsForRange.ToString("C")" Label="Tips in Range" IconBg="#dbeafe" IconColor="#2563eb" Subtitle="Gratuities captured">
+                <StatCard Value="@TotalTipsForRange.ToString("C")" Label="Tips in Range" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 21s-6.716-4.35-9.193-8.14A5.5 5.5 0 0 1 12 5.67a5.5 5.5 0 0 1 9.193 7.19C18.716 16.65 12 21 12 21Z" />
@@ -74,7 +74,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalServiceCount.ToString()" Label="Services Logged" IconBg="#fef3c7" IconColor="#d97706" Subtitle="Tracked appointments">
+                <StatCard Value="@TotalServiceCount.ToString()" Label="Services Logged" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@countTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M7 6h10" />
@@ -86,7 +86,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@AverageDailyRevenue.ToString("C")" Label="Average Day" IconBg="#d1fae5" IconColor="#059669" Subtitle="Recorded-day total">
+                <StatCard Value="@AverageDailyRevenue.ToString("C")" Label="Average Day" IconBg="#d1fae5" IconColor="#059669" TrendPercent="@avgDayTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 17 9 11 13 15 21 7" />
@@ -484,6 +484,11 @@
     private TopProductResult[]? topProducts;
     private CombinedTimelineResult? combinedTimeline;
     private bool needsChartRender;
+    private decimal? revenueTrend;
+    private decimal? tipsTrend;
+    private decimal? countTrend;
+    private decimal? avgDayTrend;
+    private string TrendSubtitle => "vs prior period";
 
     private decimal TotalRevenueForRange => combinedTimeline?.Points.Sum(point => point.ServiceRevenue + point.ProductRevenue) ?? dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
     private decimal TotalTipsForRange => dailyData?.Sum(d => d.Tips) ?? workerData?.Sum(w => w.Tips) ?? 0m;
@@ -548,6 +553,35 @@
             catch { topProducts = []; }
 
             try { combinedTimeline = await Finance.GetCombinedTimelineAsync(wId, dateFrom, dateTo); }
+            catch { }
+
+            // Period comparison: compare selected range against preceding equal-length range
+            revenueTrend = null;
+            tipsTrend = null;
+            countTrend = null;
+            avgDayTrend = null;
+            try
+            {
+                if (dateFrom.HasValue && dateTo.HasValue)
+                {
+                    var days = (dateTo.Value.Date - dateFrom.Value.Date).Days + 1;
+                    var prevTo = dateFrom.Value.AddDays(-1);
+                    var prevFrom = prevTo.AddDays(-(days - 1));
+                    var prevSummary = await Finance.GetSummaryAsync(wId, prevFrom, prevTo);
+
+                    var currentRevenue = TotalRevenueForRange;
+                    var currentTips = TotalTipsForRange;
+                    var currentCount = (decimal)TotalServiceCount;
+                    var currentAvgDay = AverageDailyRevenue;
+
+                    revenueTrend = CalcTrend(currentRevenue, prevSummary.TotalRevenue);
+                    tipsTrend = CalcTrend(currentTips, prevSummary.TotalTips);
+                    countTrend = CalcTrend(currentCount, prevSummary.RecordCount);
+
+                    var prevAvgDay = prevSummary.RecordCount > 0 ? prevSummary.TotalRevenue / prevSummary.RecordCount : 0m;
+                    avgDayTrend = CalcTrend(currentAvgDay, prevAvgDay);
+                }
+            }
             catch { }
         }
         catch { }
@@ -707,6 +741,12 @@
         }
 
         return "All available dates";
+    }
+
+    private static decimal? CalcTrend(decimal current, decimal previous)
+    {
+        if (previous == 0) return current > 0 ? 100m : null;
+        return Math.Round((current - previous) / previous * 100, 1);
     }
 
     private async void HandleWorkerContextChanged()
