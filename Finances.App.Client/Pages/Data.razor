@@ -213,7 +213,7 @@ else
         try
         {
             var json = await Store.ExportAsync();
-            var fileName = $"kubiczplace-finances-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+            var fileName = $"finances-app-{DateTime.Now:yyyyMMdd-HHmmss}.json";
             await JS.InvokeVoidAsync("financeBrowser.downloadTextFile", fileName, "application/json;charset=utf-8", json);
             Toast.Show("Backup exported.");
             await RefreshSummaryAsync();
