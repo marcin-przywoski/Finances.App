@@ -20,6 +20,7 @@ static class Program
         builder.Services.AddScoped<ThemeService>();
         builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddScoped<ExportService>();
+        builder.Services.AddScoped<LocalizationService>();
 
         await builder.Build().RunAsync();
     }

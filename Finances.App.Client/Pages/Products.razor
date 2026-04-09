@@ -4,20 +4,20 @@
 @inject ToastService Toast
 @inject ExportService Export
 
-<PageTitle>Products</PageTitle>
+<PageTitle>@L["productsPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--catalog">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">Retail catalog</span>
-            <h1 class="workspace-title">Products</h1>
-            <p class="workspace-description">Maintain the retail catalog, keep pricing tidy, and spot stock items that need attention before the next sale.</p>
+            <span class="workspace-kicker">@L["productsKicker"]</span>
+            <h1 class="workspace-title">@L["productsTitle"]</h1>
+            <p class="workspace-description">@L["productsDescription"]</p>
         </div>
         <div class="workspace-hero-actions">
             <div class="workspace-action-row">
                 <button class="btn btn-primary" @onclick="OpenAddModal">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
-                    Add product
+                    @L["productsAddButton"]
                 </button>
             </div>
         </div>
@@ -31,31 +31,31 @@
     {
         <div class="workspace-summary-grid">
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Products</span>
+                <span class="workspace-summary-label">@L["productsSummaryLabel"]</span>
                 <strong>@products.Count</strong>
-                <p>Total retail items currently available in the catalog.</p>
+                <p>@L["productsSummaryDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Low stock</span>
+                <span class="workspace-summary-label">@L["productsSummaryLowStock"]</span>
                 <strong>@products.Count(p => p.StockQuantity <= 3)</strong>
-                <p>Items with three or fewer units remaining.</p>
+                <p>@L["productsSummaryLowStockDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Average price</span>
+                <span class="workspace-summary-label">@L["productsSummaryAvgPrice"]</span>
                 <strong>@(products.Count > 0 ? products.Average(p => p.Price).ToString("C") : "$0.00")</strong>
-                <p>Typical shelf price across the retail assortment.</p>
+                <p>@L["productsSummaryAvgPriceDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Categories</span>
+                <span class="workspace-summary-label">@L["productsSummaryCategories"]</span>
                 <strong>@products.Select(p => p.Category).Where(category => !string.IsNullOrWhiteSpace(category)).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
-                <p>Named product groupings in the current catalog.</p>
+                <p>@L["productsSummaryCategoriesDesc"]</p>
             </div>
         </div>
 
         @if (products.Count == 0)
         {
             <div class="workspace-empty-state">
-                <p>No products yet. Add the first retail item to start building the catalog.</p>
+                <p>@L["productsEmpty"]</p>
             </div>
         }
         else
@@ -63,19 +63,19 @@
             <section class="workspace-panel">
                 <div class="workspace-panel-header workspace-panel-header-split">
                     <div>
-                        <p class="workspace-panel-eyebrow">Catalog</p>
-                        <h2>Retail product list</h2>
-                        <p>Keep names, categories, pricing, and stock levels accurate for front-desk sales.</p>
+                        <p class="workspace-panel-eyebrow">@L["productsPanelEyebrow"]</p>
+                        <h2>@L["productsPanelTitle"]</h2>
+                        <p>@L["productsPanelDesc"]</p>
                     </div>
                     <span class="workspace-badge">@products.Count product@(products.Count == 1 ? "" : "s")</span>
                     <div class="d-flex gap-2 ms-2">
                         <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                            Excel
+                            @L["commonExcel"]
                         </button>
                         <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            PDF
+                            @L["commonPdf"]
                         </button>
                     </div>
                 </div>
@@ -83,11 +83,11 @@
                     <table class="data-table workspace-table">
                         <thead>
                             <tr>
-                                <th>Product Name</th>
-                                <th>Category</th>
-                                <th>Price</th>
-                                <th>Stock</th>
-                                <th class="workspace-table-actions">Actions</th>
+                                <th>@L["productsThName"]</th>
+                                <th>@L["productsThCategory"]</th>
+                                <th>@L["productsThPrice"]</th>
+                                <th>@L["productsThStock"]</th>
+                                <th class="workspace-table-actions">@L["productsThActions"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -108,8 +108,8 @@
                                         }
                                     </td>
                                     <td class="workspace-table-actions">
-                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Delete</button>
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">@L["commonEdit"]</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">@L["commonDelete"]</button>
                                     </td>
                                 </tr>
                             }
@@ -127,38 +127,38 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Product" : "Add Product")</h5>
+                    <h5 class="modal-title">@(isEditing ? L["productsModalTitleEdit"] : L["productsModalTitleAdd"])</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Product Name</label>
+                            <label class="form-label">@L["productsModalLabelName"]</label>
                             <InputText class="form-control" @bind-Value="formModel.Name" />
                             <ValidationMessage For="() => formModel.Name" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Category</label>
-                            <InputText class="form-control" @bind-Value="formModel.Category" placeholder="e.g. Hair Care, Styling, Tools" />
+                            <label class="form-label">@L["productsModalLabelCategory"]</label>
+                            <InputText class="form-control" @bind-Value="formModel.Category" placeholder="@L["productsModalCategoryPlaceholder"]" />
                         </div>
                         <div class="row g-3">
                             <div class="col-6">
-                                <label class="form-label">Price</label>
+                                <label class="form-label">@L["productsModalLabelPrice"]</label>
                                 <InputNumber class="form-control" @bind-Value="formModel.Price" />
                                 <ValidationMessage For="() => formModel.Price" />
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Stock Quantity</label>
+                                <label class="form-label">@L["productsModalLabelStock"]</label>
                                 <InputNumber class="form-control" @bind-Value="formModel.StockQuantity" />
                                 <ValidationMessage For="() => formModel.StockQuantity" />
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["productsModalCancel"]</button>
                         <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+                            @(saving ? L["productsModalSaving"] : (isEditing ? L["productsModalUpdate"] : L["productsModalAdd"]))
                         </button>
                     </div>
                 </EditForm>
@@ -168,9 +168,9 @@
 }
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Product"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}?")"
-               ConfirmText="Delete"
+               Title="@L["productsDeleteTitle"]"
+               Message="@(L.T("productsDeleteMsg", deleteTarget?.Name ?? ""))"
+               ConfirmText="@L["commonDelete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -195,7 +195,7 @@
             }).ToArray();
             await Export.ExportExcelAsync("products.xlsx", "Products", headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -212,7 +212,7 @@
             }).ToArray();
             await Export.ExportPdfAsync("products.pdf", "Product Catalog", headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -252,19 +252,19 @@
             if (isEditing)
             {
                 await Finance.UpdateProductAsync(editId, formModel);
-                Toast.Show("Product updated");
+                Toast.Show(L["productsToastUpdated"]);
             }
             else
             {
                 await Finance.AddProductAsync(formModel);
-                Toast.Show("Product added");
+                Toast.Show(L["productsToastAdded"]);
             }
             await LoadProducts();
             showModal = false;
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save product", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["productsToastFailed"], ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -279,8 +279,8 @@
     {
         if (deleteTarget == null) return;
         var result = await Finance.DeleteProductAsync(deleteTarget.Id);
-        if (result.Success) Toast.Show("Product deleted");
-        else Toast.Show(result.ErrorMessage ?? "Failed to delete product.", ToastLevel.Error);
+        if (result.Success) Toast.Show(L["productsToastDeleted"]);
+        else Toast.Show(result.ErrorMessage ?? L["productsToastDeleteFailed"], ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadProducts();

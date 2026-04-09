@@ -3,20 +3,20 @@
 @inject IFinanceService Finance
 @inject ToastService Toast
 
-<PageTitle>Services</PageTitle>
+<PageTitle>@L["servicesPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--catalog">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">Service menu</span>
-            <h1 class="workspace-title">Services</h1>
-            <p class="workspace-description">Keep the service menu current so pricing, appointment logging, and analytics all start from the right base values.</p>
+            <span class="workspace-kicker">@L["servicesKicker"]</span>
+            <h1 class="workspace-title">@L["servicesTitle"]</h1>
+            <p class="workspace-description">@L["servicesDescription"]</p>
         </div>
         <div class="workspace-hero-actions">
             <div class="workspace-action-row">
                 <button class="btn btn-primary" @onclick="OpenAddModal">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
-                    Add service
+                    @L["servicesAddButton"]
                 </button>
             </div>
         </div>
@@ -30,31 +30,31 @@
     {
         <div class="workspace-summary-grid">
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Services</span>
+                <span class="workspace-summary-label">@L["servicesSummaryLabel"]</span>
                 <strong>@services.Count</strong>
-                <p>Service offerings currently available to log and analyze.</p>
+                <p>@L["servicesSummaryDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Average base price</span>
+                <span class="workspace-summary-label">@L["servicesSummaryAvgPrice"]</span>
                 <strong>@(services.Count > 0 ? services.Average(s => s.BasePrice).ToString("C") : "$0.00")</strong>
-                <p>Typical starting price across the service menu.</p>
+                <p>@L["servicesSummaryAvgPriceDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Highest base price</span>
+                <span class="workspace-summary-label">@L["servicesSummaryHighest"]</span>
                 <strong>@(services.Count > 0 ? services.Max(s => s.BasePrice).ToString("C") : "$0.00")</strong>
-                <p>Premium offer currently listed in the menu.</p>
+                <p>@L["servicesSummaryHighestDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Lowest base price</span>
+                <span class="workspace-summary-label">@L["servicesSummaryLowest"]</span>
                 <strong>@(services.Count > 0 ? services.Min(s => s.BasePrice).ToString("C") : "$0.00")</strong>
-                <p>Entry-level offer in the current service range.</p>
+                <p>@L["servicesSummaryLowestDesc"]</p>
             </div>
         </div>
 
         @if (services.Count == 0)
         {
             <div class="workspace-empty-state">
-                <p>No services yet. Add the first service to start building the menu.</p>
+                <p>@L["servicesEmpty"]</p>
             </div>
         }
         else
@@ -62,9 +62,9 @@
             <section class="workspace-panel">
                 <div class="workspace-panel-header workspace-panel-header-split">
                     <div>
-                        <p class="workspace-panel-eyebrow">Menu</p>
-                        <h2>Service list</h2>
-                        <p>Update naming and pricing here before new appointments and reports are recorded.</p>
+                        <p class="workspace-panel-eyebrow">@L["servicesPanelEyebrow"]</p>
+                        <h2>@L["servicesPanelTitle"]</h2>
+                        <p>@L["servicesPanelDesc"]</p>
                     </div>
                     <span class="workspace-badge">@services.Count service@(services.Count == 1 ? "" : "s")</span>
                 </div>
@@ -72,9 +72,9 @@
                     <table class="data-table workspace-table">
                         <thead>
                             <tr>
-                                <th>Service Name</th>
-                                <th>Base Price</th>
-                                <th class="workspace-table-actions">Actions</th>
+                                <th>@L["servicesThName"]</th>
+                                <th>@L["servicesThBasePrice"]</th>
+                                <th class="workspace-table-actions">@L["servicesThActions"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -84,8 +84,8 @@
                                     <td class="fw-semibold">@svc.Name</td>
                                     <td>@svc.BasePrice.ToString("C")</td>
                                     <td class="workspace-table-actions">
-                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">@L["commonEdit"]</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">@L["commonDelete"]</button>
                                     </td>
                                 </tr>
                             }
@@ -103,27 +103,27 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Service" : "Add Service")</h5>
+                    <h5 class="modal-title">@(isEditing ? L["servicesModalTitleEdit"] : L["servicesModalTitleAdd"])</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Service Name</label>
+                            <label class="form-label">@L["servicesModalLabelName"]</label>
                             <InputText class="form-control" @bind-Value="formModel.Name" />
                             <ValidationMessage For="() => formModel.Name" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Base Price</label>
+                            <label class="form-label">@L["servicesModalLabelPrice"]</label>
                             <InputNumber class="form-control" @bind-Value="formModel.BasePrice" />
                             <ValidationMessage For="() => formModel.BasePrice" />
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["servicesModalCancel"]</button>
                         <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+                            @(saving ? L["servicesModalSaving"] : (isEditing ? L["servicesModalUpdate"] : L["servicesModalAdd"]))
                         </button>
                     </div>
                 </EditForm>
@@ -133,9 +133,9 @@
 }
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Service"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["servicesDeleteTitle"]"
+               Message="@(L.T("servicesDeleteMsg", deleteTarget?.Name ?? ""))"
+               ConfirmText="@L["servicesDeleteConfirm"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -182,19 +182,19 @@
             if (isEditing)
             {
                 await Finance.UpdateServiceAsync(editId, formModel);
-                Toast.Show("Service updated");
+                Toast.Show(L["servicesToastUpdated"]);
             }
             else
             {
                 await Finance.AddServiceAsync(formModel);
-                Toast.Show("Service added");
+                Toast.Show(L["servicesToastAdded"]);
             }
             await LoadServices();
             showModal = false;
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save service", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["servicesToastFailed"], ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -209,8 +209,8 @@
     {
         if (deleteTarget == null) return;
         var result = await Finance.DeleteServiceAsync(deleteTarget.Id);
-        if (result.Success) Toast.Show("Service deleted");
-        else Toast.Show(result.ErrorMessage ?? "Failed to delete service. It may have related records.", ToastLevel.Error);
+        if (result.Success) Toast.Show(L["servicesToastDeleted"]);
+        else Toast.Show(result.ErrorMessage ?? L["servicesToastDeleteFailed"], ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadServices();

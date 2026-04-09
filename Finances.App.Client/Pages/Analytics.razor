@@ -6,56 +6,56 @@
 @inject ExportService Export
 @inject ToastService Toast
 
-<PageTitle>Analytics</PageTitle>
+<PageTitle>@L["analyticsPageTitle"]</PageTitle>
 
 <div class="analytics-page">
     <section class="analytics-hero">
         <div class="analytics-hero-copy">
-            <span class="analytics-hero-kicker">Performance intelligence</span>
-            <h1 class="analytics-hero-title">Analytics dashboard</h1>
-            <p class="analytics-hero-description">Revenue trends, forecasting, and detailed breakdowns for the selected period.</p>
+            <span class="analytics-hero-kicker">@L["analyticsKicker"]</span>
+            <h1 class="analytics-hero-title">@L["analyticsTitle"]</h1>
+            <p class="analytics-hero-description">@L["analyticsDescription"]</p>
             <div class="analytics-hero-pill">
-                <span class="analytics-hero-pill-label">Selected window</span>
+                <span class="analytics-hero-pill-label">@L["analyticsSelectedWindow"]</span>
                 <strong>@CurrentRangeLabel</strong>
             </div>
             @if (WorkerContext.SelectedWorkerId.HasValue)
             {
                 <div class="analytics-hero-pill">
-                    <span class="analytics-hero-pill-label">Worker scope</span>
+                    <span class="analytics-hero-pill-label">@L["analyticsWorkerScope"]</span>
                     <strong>@WorkerScopeLabel</strong>
                 </div>
             }
         </div>
         <div class="analytics-toolbar">
             <div class="analytics-toolbar-group">
-                <span class="analytics-toolbar-label">Date range</span>
+                <span class="analytics-toolbar-label">@L["analyticsDateRange"]</span>
                 <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
             </div>
             <div class="analytics-toolbar-group analytics-toolbar-group-compact">
-                <label class="analytics-toolbar-label" for="forecastDays">Forecast horizon</label>
+                <label class="analytics-toolbar-label" for="forecastDays">@L["analyticsForecastHorizon"]</label>
                 <select id="forecastDays" class="form-select form-select-sm analytics-forecast-select" value="@forecastDays" @onchange="OnForecastDaysChanged">
-                    <option value="7">7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30">30 days</option>
+                    <option value="7">@L["analyticsForecast7"]</option>
+                    <option value="14">@L["analyticsForecast14"]</option>
+                    <option value="30">@L["analyticsForecast30"]</option>
                 </select>
             </div>
             @if (WorkerContext.SelectedWorkerId.HasValue)
             {
                 <div class="analytics-toolbar-group analytics-toolbar-group-compact">
-                    <span class="analytics-toolbar-label">Worker filter</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">Clear selected worker</button>
+                    <span class="analytics-toolbar-label">@L["analyticsWorkerFilter"]</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">@L["analyticsClearWorker"]</button>
                 </div>
             }
             <div class="analytics-toolbar-group analytics-toolbar-group-compact">
-                <span class="analytics-toolbar-label">Export</span>
+                <span class="analytics-toolbar-label">@L["analyticsExportLabel"]</span>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-success" @onclick="ExportAnalyticsExcel" disabled="@exporting">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Excel
+                        @L["commonExcel"]
                     </button>
                     <button class="btn btn-sm btn-outline-danger" @onclick="ExportAnalyticsPdf" disabled="@exporting">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        PDF
+                        @L["commonPdf"]
                     </button>
                 </div>
             </div>
@@ -70,7 +70,7 @@
     {
         <div class="row g-3 analytics-metrics">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalRevenueForRange.ToString("C")" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="@TrendSubtitle">
+                <StatCard Value="@TotalRevenueForRange.ToString("C")" Label="@L["analyticsStatRevenue"]" TrendPercent="@revenueTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="1" x2="12" y2="23" />
@@ -80,7 +80,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalTipsForRange.ToString("C")" Label="Tips in Range" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="@TrendSubtitle">
+                <StatCard Value="@TotalTipsForRange.ToString("C")" Label="@L["analyticsStatTips"]" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 21s-6.716-4.35-9.193-8.14A5.5 5.5 0 0 1 12 5.67a5.5 5.5 0 0 1 9.193 7.19C18.716 16.65 12 21 12 21Z" />
@@ -89,7 +89,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalServiceCount.ToString()" Label="Services Logged" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@countTrend" Subtitle="@TrendSubtitle">
+                <StatCard Value="@TotalServiceCount.ToString()" Label="@L["analyticsStatServices"]" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@countTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M7 6h10" />
@@ -101,7 +101,7 @@
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@AverageDailyRevenue.ToString("C")" Label="Average Day" IconBg="#d1fae5" IconColor="#059669" TrendPercent="@avgDayTrend" Subtitle="@TrendSubtitle">
+                <StatCard Value="@AverageDailyRevenue.ToString("C")" Label="@L["analyticsStatAvgDay"]" IconBg="#d1fae5" IconColor="#059669" TrendPercent="@avgDayTrend" Subtitle="@TrendSubtitle">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 17 9 11 13 15 21 7" />
@@ -117,23 +117,23 @@
                 <section class="card analytics-panel analytics-panel-spotlight">
                     <div class="analytics-panel-header analytics-panel-header-split">
                         <div>
-                            <p class="analytics-panel-eyebrow">Forecast</p>
-                            <h2>Revenue forecast</h2>
-                            <p>Linear regression on recorded service revenue inside the selected range with a @forecastDays-day projection.</p>
+                            <p class="analytics-panel-eyebrow">@L["analyticsForecastEyebrow"]</p>
+                            <h2>@L["analyticsForecastTitle"]</h2>
+                            <p>@L.T("analyticsForecastDesc", forecastDays)</p>
                         </div>
                         @if (forecastResult != null && forecastResult.Historical.Length > 0)
                         {
                             <div class="analytics-chip-list">
                                 <span class="analytics-chip analytics-chip-surface">
-                                    Slope
-                                    <strong>@forecastResult.Slope.ToString("F2")/day</strong>
+                                    @L["analyticsForecastSlope"]
+                                    <strong>@L.T("analyticsForecastSlopePerDay", forecastResult.Slope.ToString("F2"))</strong>
                                 </span>
                                 <span class="analytics-chip analytics-chip-surface">
                                     R<sup>2</sup>
                                     <strong>@forecastResult.RSquared.ToString("F4")</strong>
                                 </span>
                                 <span class="analytics-chip @ForecastTrendChipClass">
-                                    Trend
+                                    @L["analyticsForecastTrend"]
                                     <strong>@ForecastDirectionLabel</strong>
                                 </span>
                             </div>
@@ -148,7 +148,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>The forecast needs more history before it can surface a reliable projection.</p>
+                            <p>@L["analyticsForecastEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -156,9 +156,9 @@
             <div class="col-12 col-xxl-4">
                 <section class="card analytics-panel analytics-panel-highlights">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Highlights</p>
-                        <h2>What stands out</h2>
-                        <p>Quick signals from the selected range.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsHighlightsEyebrow"]</p>
+                        <h2>@L["analyticsHighlightsTitle"]</h2>
+                        <p>@L["analyticsHighlightsDesc"]</p>
                     </div>
                     @{
                         var topWorker = TopWorker;
@@ -172,33 +172,33 @@
                             @if (topWorker != null)
                             {
                                 <div class="analytics-highlight-item">
-                                    <span class="analytics-highlight-label">Top worker</span>
+                                    <span class="analytics-highlight-label">@L["analyticsHighlightTopWorker"]</span>
                                     <strong class="analytics-highlight-value">@topWorker.Worker</strong>
-                                    <span class="analytics-highlight-meta">@((topWorker.Revenue + topWorker.Tips).ToString("C")) total revenue and tips</span>
+                                    <span class="analytics-highlight-meta">@L.T("analyticsHighlightTopWorkerMeta", (topWorker.Revenue + topWorker.Tips).ToString("C"))</span>
                                 </div>
                             }
                             @if (topService != null)
                             {
                                 <div class="analytics-highlight-item">
-                                    <span class="analytics-highlight-label">Top service</span>
+                                    <span class="analytics-highlight-label">@L["analyticsHighlightTopService"]</span>
                                     <strong class="analytics-highlight-value">@topService.Service</strong>
-                                    <span class="analytics-highlight-meta">@topService.Revenue.ToString("C") from @topService.Count visits</span>
+                                    <span class="analytics-highlight-meta">@L.T("analyticsHighlightTopServiceMeta", topService.Revenue.ToString("C"), topService.Count)</span>
                                 </div>
                             }
                             @if (strongestDay != null)
                             {
                                 <div class="analytics-highlight-item">
-                                    <span class="analytics-highlight-label">Strongest weekday</span>
+                                    <span class="analytics-highlight-label">@L["analyticsHighlightStrongestWeekday"]</span>
                                     <strong class="analytics-highlight-value">@strongestDay.Day</strong>
-                                    <span class="analytics-highlight-meta">@strongestDay.Revenue.ToString("C") across @strongestDay.Count bookings</span>
+                                    <span class="analytics-highlight-meta">@L.T("analyticsHighlightStrongestMeta", strongestDay.Revenue.ToString("C"), strongestDay.Count)</span>
                                 </div>
                             }
                             @if (finalForecastPoint != null)
                             {
                                 <div class="analytics-highlight-item">
-                                    <span class="analytics-highlight-label">Forecast outlook</span>
+                                    <span class="analytics-highlight-label">@L["analyticsHighlightForecast"]</span>
                                     <strong class="analytics-highlight-value">@ForecastDirectionLabel</strong>
-                                    <span class="analytics-highlight-meta">@finalForecastPoint.Predicted.ToString("C") projected by @finalForecastPoint.Date</span>
+                                    <span class="analytics-highlight-meta">@L.T("analyticsHighlightForecastMeta", finalForecastPoint.Predicted.ToString("C"), finalForecastPoint.Date)</span>
                                 </div>
                             }
                         </div>
@@ -206,7 +206,7 @@
                     else
                     {
                         <div class="analytics-empty-state analytics-empty-state-compact">
-                            <p>Not enough data to surface highlights yet.</p>
+                            <p>@L["analyticsHighlightsEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -218,19 +218,19 @@
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header analytics-panel-header-split">
                         <div>
-                            <p class="analytics-panel-eyebrow">Composition</p>
-                            <h2>Services vs products revenue</h2>
-                            <p>How the revenue mix changed across the selected window.</p>
+                            <p class="analytics-panel-eyebrow">@L["analyticsCompositionEyebrow"]</p>
+                            <h2>@L["analyticsCompositionTitle"]</h2>
+                            <p>@L["analyticsCompositionDesc"]</p>
                         </div>
                         @if (combinedTimeline != null && combinedTimeline.Points.Length > 0)
                         {
                             <div class="analytics-inline-summary">
                                 <div>
-                                    <span>Services</span>
+                                    <span>@L["analyticsCompositionServices"]</span>
                                     <strong>@TotalServiceRevenue.ToString("C")</strong>
                                 </div>
                                 <div>
-                                    <span>Products</span>
+                                    <span>@L["analyticsCompositionProducts"]</span>
                                     <strong>@TotalProductRevenue.ToString("C")</strong>
                                 </div>
                             </div>
@@ -245,7 +245,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>There is no revenue mix to compare for this period yet.</p>
+                            <p>@L["analyticsCompositionEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -253,9 +253,9 @@
             <div class="col-xl-4">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Leaderboard</p>
-                        <h2>Top services by revenue</h2>
-                        <p>Highest-earning services for the selected range.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsLeaderboardEyebrow"]</p>
+                        <h2>@L["analyticsLeaderboardTitle"]</h2>
+                        <p>@L["analyticsLeaderboardDesc"]</p>
                     </div>
                     @if (serviceData != null && serviceData.Length > 0)
                     {
@@ -274,7 +274,7 @@
                                                 <span class="analytics-ranked-name">@service.Service</span>
                                                 <span class="analytics-ranked-value">@service.Revenue.ToString("C")</span>
                                             </div>
-                                            <div class="analytics-ranked-subtitle">@service.Count bookings</div>
+                                            <div class="analytics-ranked-subtitle">@L.T("analyticsLeaderboardBookings", service.Count)</div>
                                             <div class="progress-bar-custom analytics-ranked-bar">
                                                 <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
                                             </div>
@@ -287,7 +287,7 @@
                     else
                     {
                         <div class="analytics-empty-state analytics-empty-state-compact">
-                            <p>No service revenue is available for this period.</p>
+                            <p>@L["analyticsLeaderboardEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -298,8 +298,8 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Performance</p>
-                        <h2>Revenue by worker</h2>
+                        <p class="analytics-panel-eyebrow">@L["analyticsPerformanceEyebrow"]</p>
+                        <h2>@L["analyticsPerformanceTitle"]</h2>
                         <p>@WorkerPerformanceDescription</p>
                     </div>
                     @if (workerData != null && workerData.Length > 0)
@@ -311,7 +311,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>Add more service activity to compare team performance here.</p>
+                            <p>@L["analyticsPerformanceEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -319,9 +319,9 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Mix</p>
-                        <h2>Service popularity</h2>
-                        <p>Which services are driving the most demand.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsMixEyebrow"]</p>
+                        <h2>@L["analyticsMixTitle"]</h2>
+                        <p>@L["analyticsMixDesc"]</p>
                     </div>
                     @if (serviceData != null && serviceData.Length > 0)
                     {
@@ -332,7 +332,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>No service mix is available for the current range.</p>
+                            <p>@L["analyticsMixEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -343,9 +343,9 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Timing</p>
-                        <h2>Revenue by day of week</h2>
-                        <p>Spot the weekdays with the strongest performance.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsTimingEyebrow"]</p>
+                        <h2>@L["analyticsTimingTitle"]</h2>
+                        <p>@L["analyticsTimingDesc"]</p>
                     </div>
                     @if (dayOfWeekData != null && dayOfWeekData.Length > 0)
                     {
@@ -356,7 +356,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>Weekday patterns will appear once more bookings are recorded.</p>
+                            <p>@L["analyticsTimingEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -364,9 +364,9 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Retail</p>
-                        <h2>Top products</h2>
-                        <p>Best-selling retail items for the selected period.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsRetailEyebrow"]</p>
+                        <h2>@L["analyticsRetailTitle"]</h2>
+                        <p>@L["analyticsRetailDesc"]</p>
                     </div>
                     @if (topProducts != null && topProducts.Length > 0)
                     {
@@ -377,7 +377,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>No product sales were recorded during this period.</p>
+                            <p>@L["analyticsRetailEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -388,9 +388,9 @@
             <div class="col-12">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Trend</p>
-                        <h2>Daily revenue</h2>
-                        <p>Daily revenue movement across the selected range.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsDailyEyebrow"]</p>
+                        <h2>@L["analyticsDailyTitle"]</h2>
+                        <p>@L["analyticsDailyDesc"]</p>
                     </div>
                     @if (dailyData != null && dailyData.Length > 0)
                     {
@@ -401,7 +401,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>Daily trend lines appear once this period has recorded revenue.</p>
+                            <p>@L["analyticsDailyEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -413,15 +413,15 @@
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header analytics-panel-header-split">
                         <div>
-                            <p class="analytics-panel-eyebrow">Commission</p>
-                            <h2>Commission report</h2>
-                            <p>Revenue, tips, and total share by worker.</p>
+                            <p class="analytics-panel-eyebrow">@L["analyticsCommissionEyebrow"]</p>
+                            <h2>@L["analyticsCommissionTitle"]</h2>
+                            <p>@L["analyticsCommissionDesc"]</p>
                         </div>
                         @if (workerData != null && workerData.Length > 0)
                         {
                             <div class="analytics-inline-summary">
                                 <div>
-                                    <span>Total payout</span>
+                                    <span>@L["analyticsCommissionTotalPayout"]</span>
                                     <strong>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</strong>
                                 </div>
                             </div>
@@ -434,11 +434,11 @@
                             <table class="data-table analytics-commission-table">
                                 <thead>
                                     <tr>
-                                        <th>Worker</th>
-                                        <th>Revenue</th>
-                                        <th>Tips</th>
-                                        <th>Total</th>
-                                        <th>Share</th>
+                                        <th>@L["analyticsCommissionThWorker"]</th>
+                                        <th>@L["analyticsCommissionThRevenue"]</th>
+                                        <th>@L["analyticsCommissionThTips"]</th>
+                                        <th>@L["analyticsCommissionThTotal"]</th>
+                                        <th>@L["analyticsCommissionThShare"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -464,7 +464,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td>Total</td>
+                                        <td>@L["analyticsCommissionThTotal"]</td>
                                         <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
                                         <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
                                         <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
@@ -477,7 +477,7 @@
                     else
                     {
                         <div class="analytics-empty-state analytics-empty-state-compact">
-                            <p>Commission data will appear after worker revenue has been recorded.</p>
+                            <p>@L["analyticsCommissionEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -488,9 +488,9 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Retention</p>
-                        <h2>Client retention</h2>
-                        <p>New versus returning clients each month in the selected range.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsRetentionEyebrow"]</p>
+                        <h2>@L["analyticsRetentionTitle"]</h2>
+                        <p>@L["analyticsRetentionDesc"]</p>
                     </div>
                     @if (clientRetention != null && clientRetention.Length > 0)
                     {
@@ -501,7 +501,7 @@
                     else
                     {
                         <div class="analytics-empty-state">
-                            <p>Client retention data will appear once clients are linked to service records.</p>
+                            <p>@L["analyticsRetentionEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -509,9 +509,9 @@
             <div class="col-lg-6">
                 <section class="card analytics-panel">
                     <div class="analytics-panel-header">
-                        <p class="analytics-panel-eyebrow">Clients</p>
-                        <h2>Top clients by revenue</h2>
-                        <p>Your highest-value clients for the selected range.</p>
+                        <p class="analytics-panel-eyebrow">@L["analyticsTopClientsEyebrow"]</p>
+                        <h2>@L["analyticsTopClientsTitle"]</h2>
+                        <p>@L["analyticsTopClientsDesc"]</p>
                     </div>
                     @if (topClients != null && topClients.Length > 0)
                     {
@@ -529,7 +529,7 @@
                                                 <span class="analytics-ranked-name">@client.Client</span>
                                                 <span class="analytics-ranked-value">@client.Revenue.ToString("C")</span>
                                             </div>
-                                            <div class="analytics-ranked-subtitle">@client.Visits visits</div>
+                                            <div class="analytics-ranked-subtitle">@L.T("analyticsTopClientsVisits", client.Visits)</div>
                                             <div class="progress-bar-custom analytics-ranked-bar">
                                                 <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
                                             </div>
@@ -542,7 +542,7 @@
                     else
                     {
                         <div class="analytics-empty-state analytics-empty-state-compact">
-                            <p>Client revenue rankings will appear once clients are linked to records.</p>
+                            <p>@L["analyticsTopClientsEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -571,7 +571,7 @@
     private decimal? tipsTrend;
     private decimal? countTrend;
     private decimal? avgDayTrend;
-    private string TrendSubtitle => "vs prior period";
+    private string TrendSubtitle => L["analyticsTrendVsPrior"];
 
     private decimal TotalRevenueForRange => combinedTimeline?.Points.Sum(point => point.ServiceRevenue + point.ProductRevenue) ?? dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
     private decimal TotalTipsForRange => dailyData?.Sum(d => d.Tips) ?? workerData?.Sum(w => w.Tips) ?? 0m;
@@ -585,9 +585,9 @@
     private ForecastPointResult? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
     private bool HasHighlights => TopWorker != null || TopService != null || StrongestDay != null || FinalForecastPoint != null;
     private string CurrentRangeLabel => FormatDateRange(dateFrom, dateTo);
-    private string WorkerScopeLabel => "Selected worker from top bar";
-    private string WorkerPerformanceDescription => WorkerContext.SelectedWorkerId.HasValue ? "Current revenue and tips for the worker selected in the top bar." : "Compare revenue and tips across your team.";
-    private string ForecastDirectionLabel => forecastResult == null ? "Pending" : forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Cooling" : "Flat";
+    private string WorkerScopeLabel => L["analyticsWorkerScopeValue"];
+    private string WorkerPerformanceDescription => WorkerContext.SelectedWorkerId.HasValue ? L["analyticsPerformanceDescSelected"] : L["analyticsPerformanceDescAll"];
+    private string ForecastDirectionLabel => forecastResult == null ? L["analyticsForecastPending"] : forecastResult.Slope > 0 ? L["analyticsForecastUpward"] : forecastResult.Slope < 0 ? L["analyticsForecastCooling"] : L["analyticsForecastFlat"];
     private string ForecastTrendChipClass => forecastResult == null ? "analytics-chip-neutral" : forecastResult.Slope > 0 ? "analytics-chip-positive" : forecastResult.Slope < 0 ? "analytics-chip-negative" : "analytics-chip-neutral";
 
     protected override async Task OnInitializedAsync()
@@ -719,8 +719,8 @@
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                    new { label = L["analyticsCompositionServices"], data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
+                    new { label = L["analyticsCompositionProducts"], data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
             }
@@ -734,8 +734,8 @@
                 var labels = workerData.Select(w => w.Worker).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = workerData.Select(w => w.Revenue).ToArray(), color = "#0d9488" },
-                    new { label = "Tips", data = workerData.Select(w => w.Tips).ToArray(), color = "#3b82f6" }
+                    new { label = L["analyticsCommissionThRevenue"], data = workerData.Select(w => w.Revenue).ToArray(), color = "#0d9488" },
+                    new { label = L["analyticsCommissionThTips"], data = workerData.Select(w => w.Tips).ToArray(), color = "#3b82f6" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets);
             }
@@ -760,7 +760,7 @@
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "dayOfWeekAnalyticsChart", labels,
-                    new object[] { new { label = "Revenue", data = data, color = "#0d9488" } });
+                    new object[] { new { label = L["analyticsCommissionThRevenue"], data = data, color = "#0d9488" } });
             }
         }
         catch { }
@@ -783,7 +783,7 @@
                 var labels = dailyData.Select(d => d.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray(), color = "#0d9488" }
+                    new { label = L["analyticsCommissionThRevenue"], data = dailyData.Select(d => d.Revenue).ToArray(), color = "#0d9488" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets);
             }
@@ -797,8 +797,8 @@
                 var labels = clientRetention.Select(r => r.Period).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Returning", data = clientRetention.Select(r => (decimal)r.ReturningClients).ToArray(), color = "#0d9488" },
-                    new { label = "New", data = clientRetention.Select(r => (decimal)r.NewClients).ToArray(), color = "#8b5cf6" }
+                    new { label = L["analyticsRetentionReturning"], data = clientRetention.Select(r => (decimal)r.ReturningClients).ToArray(), color = "#0d9488" },
+                    new { label = L["analyticsRetentionNew"], data = clientRetention.Select(r => (decimal)r.NewClients).ToArray(), color = "#8b5cf6" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "clientRetentionChart", labels, datasets);
             }
@@ -858,7 +858,7 @@
         exporting = true;
         try
         {
-            var headers = new[] { "Worker", "Revenue", "Tips", "Total", "Share %" };
+            var headers = new[] { L["analyticsCommissionThWorker"], L["analyticsCommissionThRevenue"], L["analyticsCommissionThTips"], L["analyticsCommissionThTotal"], L["analyticsCommissionThShare"] };
             var grandTotal = workerData?.Sum(w => w.Revenue + w.Tips) ?? 0m;
             var rows = (workerData ?? []).Select(w =>
             {
@@ -866,9 +866,9 @@
                 var share = grandTotal > 0 ? total / grandTotal * 100 : 0;
                 return new object[] { w.Worker, w.Revenue, w.Tips, total, Math.Round(share, 1) };
             }).ToArray();
-            await Export.ExportExcelAsync("analytics-commission.xlsx", "Commission Report", headers, rows);
+            await Export.ExportExcelAsync("analytics-commission.xlsx", L["analyticsCommissionTitle"], headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -877,7 +877,7 @@
         exporting = true;
         try
         {
-            var headers = new[] { "Worker", "Revenue", "Tips", "Total", "Share %" };
+            var headers = new[] { L["analyticsCommissionThWorker"], L["analyticsCommissionThRevenue"], L["analyticsCommissionThTips"], L["analyticsCommissionThTotal"], L["analyticsCommissionThShare"] };
             var grandTotal = workerData?.Sum(w => w.Revenue + w.Tips) ?? 0m;
             var rows = (workerData ?? []).Select(w =>
             {
@@ -888,9 +888,9 @@
             var subtitle = dateFrom.HasValue && dateTo.HasValue
                 ? $"{dateFrom.Value:yyyy-MM-dd} to {dateTo.Value:yyyy-MM-dd}"
                 : null;
-            await Export.ExportPdfAsync("analytics-commission.pdf", "Commission Report", headers, rows, subtitle);
+            await Export.ExportPdfAsync("analytics-commission.pdf", L["analyticsCommissionTitle"], headers, rows, subtitle);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 

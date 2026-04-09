@@ -4,49 +4,49 @@
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>@L["dashboardPageTitle"]</PageTitle>
 
 <div class="dashboard-page">
     <section class="dashboard-hero">
         <div class="dashboard-hero-copy">
-            <span class="dashboard-hero-kicker">Monthly snapshot</span>
-            <h1 class="dashboard-hero-title">Home dashboard</h1>
-            <p class="dashboard-hero-description">Front-desk view of this month's salon revenue, retail mix, busiest days, and latest chair activity.</p>
+            <span class="dashboard-hero-kicker">@L["dashboardKicker"]</span>
+            <h1 class="dashboard-hero-title">@L["dashboardTitle"]</h1>
+            <p class="dashboard-hero-description">@L["dashboardDescription"]</p>
             <div class="dashboard-hero-meta">
                 <div class="dashboard-hero-pill">
-                    <span>Period</span>
+                    <span>@L["dashboardPeriodLabel"]</span>
                     <strong>@CurrentMonthLabel</strong>
                 </div>
                 <div class="dashboard-hero-pill">
-                    <span>Scope</span>
+                    <span>@L["dashboardScopeLabel"]</span>
                     <strong>@WorkerScopeLabel</strong>
                 </div>
             </div>
         </div>
         <div class="dashboard-glance">
             <div class="dashboard-glance-card dashboard-glance-card-primary">
-                <span class="dashboard-glance-label">Revenue this month</span>
+                <span class="dashboard-glance-label">@L["dashboardGlanceRevenue"]</span>
                 <strong class="dashboard-glance-value">@HeroRevenueDisplay</strong>
                 <span class="dashboard-glance-subtext">@HeroRevenueSubtext</span>
             </div>
             <div class="dashboard-glance-grid">
                 <div class="dashboard-glance-card">
-                    <span class="dashboard-glance-label">Services share</span>
+                    <span class="dashboard-glance-label">@L["dashboardGlanceServicesShare"]</span>
                     <strong class="dashboard-glance-value">@ServiceShareDisplay</strong>
                     <span class="dashboard-glance-subtext">@ServiceShareSubtext</span>
                 </div>
                 <div class="dashboard-glance-card">
-                    <span class="dashboard-glance-label">Top day</span>
+                    <span class="dashboard-glance-label">@L["dashboardGlanceTopDay"]</span>
                     <strong class="dashboard-glance-value">@StrongestDayLabel</strong>
                     <span class="dashboard-glance-subtext">@StrongestDaySubtext</span>
                 </div>
                 <div class="dashboard-glance-card">
-                    <span class="dashboard-glance-label">Top product</span>
+                    <span class="dashboard-glance-label">@L["dashboardGlanceTopProduct"]</span>
                     <strong class="dashboard-glance-value">@FeaturedProductLabel</strong>
                     <span class="dashboard-glance-subtext">@FeaturedProductSubtext</span>
                 </div>
                 <div class="dashboard-glance-card">
-                    <span class="dashboard-glance-label">Latest activity</span>
+                    <span class="dashboard-glance-label">@L["dashboardGlanceLatestActivity"]</span>
                     <strong class="dashboard-glance-value">@LatestActivityLabel</strong>
                     <span class="dashboard-glance-subtext">@LatestActivitySubtext</span>
                 </div>
@@ -62,28 +62,28 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalRevenueDisplay" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="vs last month">
+                <StatCard Value="@TotalRevenueDisplay" Label="@L["dashboardStatRevenue"]" TrendPercent="@revenueTrend" Subtitle="@L["dashboardStatVsLastMonth"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@TotalTipsDisplay" Label="Guest Tips" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="vs last month">
+                <StatCard Value="@TotalTipsDisplay" Label="@L["dashboardStatTips"]" IconBg="#dbeafe" IconColor="#2563eb" TrendPercent="@tipsTrend" Subtitle="@L["dashboardStatVsLastMonth"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@AvgTicketDisplay" Label="Avg Service Ticket" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="vs last month">
+                <StatCard Value="@AvgTicketDisplay" Label="@L["dashboardStatAvgTicket"]" IconBg="#fef3c7" IconColor="#d97706" TrendPercent="@avgTicketTrend" Subtitle="@L["dashboardStatVsLastMonth"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@RecordCountDisplay" Label="Appointments Logged" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="vs last month">
+                <StatCard Value="@RecordCountDisplay" Label="@L["dashboardStatAppointments"]" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="@L["dashboardStatVsLastMonth"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
                     </IconContent>
@@ -97,15 +97,15 @@
                 <div class="col-12">
                     <section class="card dashboard-panel">
                         <div class="dashboard-panel-header">
-                            <p class="dashboard-panel-eyebrow">Targets</p>
-                            <h2>Goal progress</h2>
-                            <p>Track how close you are to hitting your set targets this period.</p>
+                            <p class="dashboard-panel-eyebrow">@L["dashboardGoalEyebrow"]</p>
+                            <h2>@L["dashboardGoalTitle"]</h2>
+                            <p>@L["dashboardGoalDesc"]</p>
                         </div>
                         <div class="goal-progress-list">
                             @foreach (var gp in goalProgress)
                             {
                                 var label = !string.IsNullOrEmpty(gp.Goal.Label) ? gp.Goal.Label : $"{gp.Goal.Type} ({gp.Goal.Period})";
-                                var scope = gp.WorkerName ?? "Salon-wide";
+                                var scope = gp.WorkerName ?? L["dashboardGoalSalonWide"];
                                 var barColor = gp.ProgressPercent >= 100 ? "#10b981" : gp.ProgressPercent >= 75 ? "#f59e0b" : "#3b82f6";
                                 <div class="goal-progress-item">
                                     <div class="goal-progress-header">
@@ -121,10 +121,10 @@
                                         <div class="progress-fill" style="width: @($"{gp.ProgressPercent:F0}")%; background: @barColor;"></div>
                                     </div>
                                     <div class="goal-progress-footer">
-                                        <span>@gp.ProgressPercent.ToString("F0")% complete</span>
+                                        <span>@L.T("dashboardGoalPercentComplete", gp.ProgressPercent.ToString("F0"))</span>
                                         @if (gp.ProgressPercent >= 100)
                                         {
-                                            <span class="goal-progress-achieved">&#10003; Target reached!</span>
+                                            <span class="goal-progress-achieved">@L["dashboardGoalTargetReached"]</span>
                                         }
                                     </div>
                                 </div>
@@ -140,19 +140,19 @@
                 <section class="card dashboard-panel dashboard-panel-spotlight">
                     <div class="dashboard-panel-header dashboard-panel-header-split">
                         <div>
-                            <p class="dashboard-panel-eyebrow">Trend</p>
-                            <h2>Revenue breakdown</h2>
-                            <p>Daily view of service income versus retail checkout revenue.</p>
+                            <p class="dashboard-panel-eyebrow">@L["dashboardRevenueEyebrow"]</p>
+                            <h2>@L["dashboardRevenueTitle"]</h2>
+                            <p>@L["dashboardRevenueDesc"]</p>
                         </div>
                         @if (HasRevenueSources)
                         {
                             <div class="dashboard-inline-summary">
                                 <div>
-                                    <span>Services</span>
+                                    <span>@L["dashboardRevenueServices"]</span>
                                     <strong>@serviceRevenueTotal.ToString("C")</strong>
                                 </div>
                                 <div>
-                                    <span>Products</span>
+                                    <span>@L["dashboardRevenueProducts"]</span>
                                     <strong>@productRevenueTotal.ToString("C")</strong>
                                 </div>
                             </div>
@@ -167,7 +167,7 @@
                     else
                     {
                         <div class="dashboard-empty-state">
-                            <p>Revenue history will appear once this month has service or product sales recorded.</p>
+                            <p>@L["dashboardRevenueEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -175,9 +175,9 @@
             <div class="col-xl-4">
                 <section class="card dashboard-panel">
                     <div class="dashboard-panel-header">
-                        <p class="dashboard-panel-eyebrow">Mix</p>
-                        <h2>Revenue sources</h2>
-                        <p>How the month is balancing between chair revenue and front-desk retail.</p>
+                        <p class="dashboard-panel-eyebrow">@L["dashboardSourcesEyebrow"]</p>
+                        <h2>@L["dashboardSourcesTitle"]</h2>
+                        <p>@L["dashboardSourcesDesc"]</p>
                     </div>
                     @if (HasRevenueSources)
                     {
@@ -188,14 +188,14 @@
                             <div class="dashboard-source-item">
                                 <span class="dashboard-source-swatch dashboard-source-swatch-services"></span>
                                 <div class="dashboard-source-copy">
-                                    <strong>Services</strong>
+                                    <strong>@L["dashboardRevenueServices"]</strong>
                                     <span>@serviceRevenueTotal.ToString("C") · @ServiceRevenueShare.ToString("F1")%</span>
                                 </div>
                             </div>
                             <div class="dashboard-source-item">
                                 <span class="dashboard-source-swatch dashboard-source-swatch-products"></span>
                                 <div class="dashboard-source-copy">
-                                    <strong>Products</strong>
+                                    <strong>@L["dashboardRevenueProducts"]</strong>
                                     <span>@productRevenueTotal.ToString("C") · @ProductRevenueShare.ToString("F1")%</span>
                                 </div>
                             </div>
@@ -204,7 +204,7 @@
                     else
                     {
                         <div class="dashboard-empty-state dashboard-empty-state-compact">
-                            <p>Revenue source percentages will appear when the month has recorded income.</p>
+                            <p>@L["dashboardSourcesEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -216,13 +216,13 @@
                 <section class="card dashboard-panel">
                     <div class="dashboard-panel-header dashboard-panel-header-split">
                         <div>
-                            <p class="dashboard-panel-eyebrow">Timing</p>
-                            <h2>Busiest days</h2>
-                            <p>Which weekdays are currently bringing in the strongest takings.</p>
+                            <p class="dashboard-panel-eyebrow">@L["dashboardBusiestEyebrow"]</p>
+                            <h2>@L["dashboardBusiestTitle"]</h2>
+                            <p>@L["dashboardBusiestDesc"]</p>
                         </div>
                         @if (StrongestDay != null)
                         {
-                            <span class="dashboard-chip">Peak: @StrongestDay.Day</span>
+                            <span class="dashboard-chip">@L.T("dashboardBusiestPeak", StrongestDay.Day)</span>
                         }
                     </div>
                     @if (dayOfWeekData != null && dayOfWeekData.Length > 0)
@@ -234,7 +234,7 @@
                     else
                     {
                         <div class="dashboard-empty-state dashboard-empty-state-compact">
-                            <p>Weekday demand patterns will show up once there are more services to compare.</p>
+                            <p>@L["dashboardBusiestEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -242,9 +242,9 @@
             <div class="col-lg-4">
                 <section class="card dashboard-panel">
                     <div class="dashboard-panel-header">
-                        <p class="dashboard-panel-eyebrow">Retail</p>
-                        <h2>Top products</h2>
-                        <p>Retail lines moving fastest this month.</p>
+                        <p class="dashboard-panel-eyebrow">@L["dashboardTopProductsEyebrow"]</p>
+                        <h2>@L["dashboardTopProductsTitle"]</h2>
+                        <p>@L["dashboardTopProductsDesc"]</p>
                     </div>
                     @if (topProducts != null && topProducts.Length > 0)
                     {
@@ -261,7 +261,7 @@
                                             <span class="dashboard-ranked-index">@(index + 1)</span>
                                             <div>
                                                 <div class="dashboard-ranked-name">@product.Product</div>
-                                                <div class="dashboard-ranked-caption">@product.Quantity sold</div>
+                                                <div class="dashboard-ranked-caption">@L.T("dashboardTopProductsSold", product.Quantity)</div>
                                             </div>
                                         </div>
                                         <span class="dashboard-ranked-value">@product.Revenue.ToString("C")</span>
@@ -276,7 +276,7 @@
                     else
                     {
                         <div class="dashboard-empty-state dashboard-empty-state-compact">
-                            <p>No retail product sales have been recorded this month.</p>
+                            <p>@L["dashboardTopProductsEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -284,9 +284,9 @@
             <div class="col-lg-4">
                 <section class="card dashboard-panel">
                     <div class="dashboard-panel-header">
-                        <p class="dashboard-panel-eyebrow">Feed</p>
-                        <h2>Recent activity</h2>
-                        <p>Latest services checked into the salon ledger.</p>
+                        <p class="dashboard-panel-eyebrow">@L["dashboardRecentEyebrow"]</p>
+                        <h2>@L["dashboardRecentTitle"]</h2>
+                        <p>@L["dashboardRecentDesc"]</p>
                     </div>
                     @if (recentRecords != null && recentRecords.Length > 0)
                     {
@@ -307,7 +307,7 @@
                     else
                     {
                         <div class="dashboard-empty-state dashboard-empty-state-compact">
-                            <p>Newly recorded services will appear here as activity comes in.</p>
+                            <p>@L["dashboardRecentEmpty"]</p>
                         </div>
                     }
                 </section>
@@ -341,7 +341,7 @@
     private string AvgTicketDisplay => avgTicketValue.ToString("C");
     private string RecordCountDisplay => recordCountValue.ToString();
     private string CurrentMonthLabel => DateTime.Today.ToString("MMMM yyyy");
-    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? "Selected stylist" : "Entire salon";
+    private string WorkerScopeLabel => WorkerContext.SelectedWorkerId.HasValue ? L["dashboardScopeSelected"] : L["dashboardScopeAll"];
     private decimal TotalRevenueSources => serviceRevenueTotal + productRevenueTotal;
     private bool HasRevenueSources => TotalRevenueSources > 0;
     private decimal ServiceRevenueShare => HasRevenueSources ? Math.Round(serviceRevenueTotal / TotalRevenueSources * 100, 1) : 0m;
@@ -349,16 +349,16 @@
     private TopProductResult? FeaturedProduct => topProducts is { Length: > 0 } ? topProducts.OrderByDescending(p => p.Revenue).First() : null;
     private DayOfWeekResult? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
     private RecentRecordResult? RecentHeadline => recentRecords is { Length: > 0 } ? recentRecords[0] : null;
-    private string HeroRevenueDisplay => loading ? "Loading..." : TotalRevenueDisplay;
-    private string HeroRevenueSubtext => loading ? "Calculating current month totals." : $"{ServiceRevenueDisplay} from services and {RetailRevenueDisplay} from retail.";
-    private string ServiceShareDisplay => loading ? "Loading..." : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
-    private string ServiceShareSubtext => loading ? "Checking the revenue mix." : HasRevenueSources ? $"{serviceRevenueTotal.ToString("C")} came from services." : "Revenue sources will appear here.";
-    private string StrongestDayLabel => loading ? "Loading..." : StrongestDay?.Day ?? "No data yet";
-    private string StrongestDaySubtext => loading ? "Finding the strongest weekday." : StrongestDay == null ? "Weekday performance will appear here." : $"{StrongestDay.Revenue.ToString("C")} across {StrongestDay.Count} bookings.";
-    private string FeaturedProductLabel => loading ? "Loading..." : FeaturedProduct?.Product ?? "No product sales";
-    private string FeaturedProductSubtext => loading ? "Checking retail activity." : FeaturedProduct == null ? "Retail highlights will appear here." : $"{FeaturedProduct.Quantity} units sold for {FeaturedProduct.Revenue.ToString("C")}.";
-    private string LatestActivityLabel => loading ? "Loading..." : RecentHeadline?.Service ?? "No recent activity";
-    private string LatestActivitySubtext => loading ? "Loading recent records." : RecentHeadline == null ? "New records will show up here." : $"{RecentHeadline.Worker} logged {RecentHeadline.AmountPaid.ToString("C")}";
+    private string HeroRevenueDisplay => loading ? L["dashboardLoading"] : TotalRevenueDisplay;
+    private string HeroRevenueSubtext => loading ? L["dashboardCalcTotals"] : L.T("dashboardFromServicesAndRetail", ServiceRevenueDisplay, RetailRevenueDisplay);
+    private string ServiceShareDisplay => loading ? L["dashboardLoading"] : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
+    private string ServiceShareSubtext => loading ? L["dashboardCheckingMix"] : HasRevenueSources ? L.T("dashboardCameFromServices", serviceRevenueTotal.ToString("C")) : L["dashboardSourcesWillAppear"];
+    private string StrongestDayLabel => loading ? L["dashboardLoading"] : StrongestDay?.Day ?? L["dashboardNoDataYet"];
+    private string StrongestDaySubtext => loading ? L["dashboardFindingStrongest"] : StrongestDay == null ? L["dashboardWeekdayWillAppear"] : L.T("dashboardStrongestDaySub", StrongestDay.Revenue.ToString("C"), StrongestDay.Count);
+    private string FeaturedProductLabel => loading ? L["dashboardLoading"] : FeaturedProduct?.Product ?? L["dashboardNoProductSales"];
+    private string FeaturedProductSubtext => loading ? L["dashboardCheckingRetail"] : FeaturedProduct == null ? L["dashboardRetailWillAppear"] : L.T("dashboardFeaturedSub", FeaturedProduct.Quantity, FeaturedProduct.Revenue.ToString("C"));
+    private string LatestActivityLabel => loading ? L["dashboardLoading"] : RecentHeadline?.Service ?? L["dashboardNoRecentActivity"];
+    private string LatestActivitySubtext => loading ? L["dashboardLoadingRecent"] : RecentHeadline == null ? L["dashboardNewRecordsWillAppear"] : L.T("dashboardLatestSub", RecentHeadline.Worker, RecentHeadline.AmountPaid.ToString("C"));
 
     protected override async Task OnInitializedAsync()
     {
@@ -497,8 +497,8 @@
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                    new { label = L["dashboardRevenueServices"], data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
+                    new { label = L["dashboardRevenueProducts"], data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
             }
@@ -511,7 +511,7 @@
             {
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart",
                     "revenueSourcesChart",
-                    new[] { "Services", "Products" },
+                    new[] { L["dashboardRevenueServices"], L["dashboardRevenueProducts"] },
                     new[] { serviceRevenueTotal, productRevenueTotal },
                     new[] { "#0d9488", "#8b5cf6" });
             }

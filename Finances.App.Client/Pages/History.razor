@@ -5,17 +5,17 @@
 @inject ToastService Toast
 @inject ExportService Export
 
-<PageTitle>History</PageTitle>
+<PageTitle>@L["historyPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--history">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">Service ledger</span>
-            <h1 class="workspace-title">Service history</h1>
-            <p class="workspace-description">Review completed services, tips, and worker payouts for the selected date range.</p>
+            <span class="workspace-kicker">@L["historyKicker"]</span>
+            <h1 class="workspace-title">@L["historyTitle"]</h1>
+            <p class="workspace-description">@L["historyDescription"]</p>
             <div class="workspace-hero-meta">
                 <div class="workspace-hero-note">
-                    <span>Worker scope</span>
+                    <span>@L["historyWorkerScope"]</span>
                     <strong>@WorkerScopeLabel</strong>
                 </div>
             </div>
@@ -24,11 +24,11 @@
             @if (WorkerContext.SelectedWorkerId.HasValue)
             {
                 <div class="workspace-action-row">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">Clear worker filter</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearWorkerFilter">@L["historyClearWorkerFilter"]</button>
                 </div>
             }
             <div class="workspace-filter-panel">
-                <span>Date range</span>
+                <span>@L["historyDateRange"]</span>
                 <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
             </div>
         </div>
@@ -44,31 +44,31 @@
 
         <div class="workspace-summary-grid">
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Records</span>
+                <span class="workspace-summary-label">@L["historySummaryRecords"]</span>
                 <strong>@filtered.Count</strong>
-                <p>Completed services in the selected window.</p>
+                <p>@L["historySummaryRecordsDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Revenue</span>
+                <span class="workspace-summary-label">@L["historySummaryRevenue"]</span>
                 <strong>@filtered.Sum(r => r.AmountPaid).ToString("C")</strong>
-                <p>Gross service revenue before worker payout.</p>
+                <p>@L["historySummaryRevenueDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Tips</span>
+                <span class="workspace-summary-label">@L["historySummaryTips"]</span>
                 <strong>@filtered.Sum(r => r.Tips).ToString("C")</strong>
-                <p>Guest gratuities recorded in this period.</p>
+                <p>@L["historySummaryTipsDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Worker share</span>
+                <span class="workspace-summary-label">@L["historySummaryWorkerShare"]</span>
                 <strong>@filtered.Sum(r => r.WorkerShare).ToString("C")</strong>
-                <p>Commission payout across the filtered services.</p>
+                <p>@L["historySummaryWorkerShareDesc"]</p>
             </div>
         </div>
 
         @if (filtered.Count == 0)
         {
             <div class="workspace-empty-state">
-                <p>No service records were found for the selected period.</p>
+                <p>@L["historyEmpty"]</p>
             </div>
         }
         else
@@ -76,19 +76,19 @@
             <section class="workspace-panel">
                 <div class="workspace-panel-header workspace-panel-header-split">
                     <div>
-                        <p class="workspace-panel-eyebrow">Records</p>
-                        <h2>Completed service records</h2>
-                        <p>Edit notes, fix pricing, or remove incorrect entries from the salon ledger.</p>
+                        <p class="workspace-panel-eyebrow">@L["historyPanelEyebrow"]</p>
+                        <h2>@L["historyPanelTitle"]</h2>
+                        <p>@L["historyPanelDesc"]</p>
                     </div>
-                    <span class="workspace-badge">@filtered.Count record@(filtered.Count == 1 ? "" : "s")</span>
+                    <span class="workspace-badge">@L.T(filtered.Count == 1 ? "historyBadgeRecords" : "historyBadgeRecordsPlural", filtered.Count)</span>
                     <div class="d-flex gap-2 ms-2">
                         <button class="btn btn-sm btn-outline-success" @onclick="() => ExportExcel(filtered)" disabled="@exporting">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                            Excel
+                            @L["commonExcel"]
                         </button>
                         <button class="btn btn-sm btn-outline-danger" @onclick="() => ExportPdf(filtered)" disabled="@exporting">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            PDF
+                            @L["commonPdf"]
                         </button>
                     </div>
                 </div>
@@ -97,21 +97,21 @@
                         <thead>
                             <tr>
                                 <th @onclick='() => SetSort("date")' style="cursor:pointer;">
-                                    Date @SortIcon("date")
+                                    @L["historyThDate"] @SortIcon("date")
                                 </th>
-                                <th>Worker</th>
-                                <th>Service</th>
-                                <th>Client</th>
+                                <th>@L["historyThWorker"]</th>
+                                <th>@L["historyThService"]</th>
+                                <th>@L["historyThClient"]</th>
                                 <th @onclick='() => SetSort("amount")' style="cursor:pointer;">
-                                    Amount @SortIcon("amount")
+                                    @L["historyThAmount"] @SortIcon("amount")
                                 </th>
-                                <th>Commission</th>
-                                <th>Tips</th>
+                                <th>@L["historyThCommission"]</th>
+                                <th>@L["historyThTips"]</th>
                                 <th @onclick='() => SetSort("worker_share")' style="cursor:pointer;">
-                                    Worker Share @SortIcon("worker_share")
+                                    @L["historyThWorkerShare"] @SortIcon("worker_share")
                                 </th>
-                                <th>Notes</th>
-                                <th class="workspace-table-actions">Actions</th>
+                                <th>@L["historyThNotes"]</th>
+                                <th class="workspace-table-actions">@L["historyThActions"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -128,15 +128,15 @@
                                     <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
                                     <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
                                     <td class="workspace-table-actions">
-                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">@L["commonEdit"]</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">@L["commonDelete"]</button>
                                     </td>
                                 </tr>
                             }
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="4">Totals</td>
+                                <td colspan="4">@L["historyTotals"]</td>
                                 <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
                                 <td></td>
                                 <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
@@ -157,7 +157,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Service Record</h5>
+                    <h5 class="modal-title">@L["historyEditTitle"]</h5>
                     <button type="button" class="btn-close" @onclick="CloseEditModal"></button>
                 </div>
                 <EditForm Model="@editModel" OnValidSubmit="HandleEditSubmit">
@@ -165,7 +165,7 @@
                     <div class="modal-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Worker</label>
+                                <label class="form-label">@L["historyEditLabelWorker"]</label>
                                 <select class="form-select" value="@editModel.WorkerId" @onchange="OnEditWorkerChanged">
                                     @if (workers != null)
                                     {
@@ -177,7 +177,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Service</label>
+                                <label class="form-label">@L["historyEditLabelService"]</label>
                                 <select class="form-select" value="@editModel.ServiceId" @onchange="OnEditServiceChanged">
                                     @if (services != null)
                                     {
@@ -189,35 +189,35 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Date</label>
+                                <label class="form-label">@L["historyEditLabelDate"]</label>
                                 <InputDate class="form-control" @bind-Value="editModel.DatePerformed" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Client Name</label>
-                                <InputText class="form-control" @bind-Value="editModel.ClientName" placeholder="Optional" />
+                                <label class="form-label">@L["historyEditLabelClient"]</label>
+                                <InputText class="form-control" @bind-Value="editModel.ClientName" placeholder="@L["historyEditClientPlaceholder"]" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Amount Paid</label>
+                                <label class="form-label">@L["historyEditLabelAmount"]</label>
                                 <InputNumber class="form-control" @bind-Value="editModel.AmountPaid" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Commission %</label>
+                                <label class="form-label">@L["historyEditLabelCommission"]</label>
                                 <InputNumber class="form-control" @bind-Value="editModel.CommissionPercentageApplied" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Tips</label>
+                                <label class="form-label">@L["historyEditLabelTips"]</label>
                                 <InputNumber class="form-control" @bind-Value="editModel.Tips" />
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Notes</label>
+                                <label class="form-label">@L["historyEditLabelNotes"]</label>
                                 <InputTextArea class="form-control" @bind-Value="editModel.Notes" rows="2" />
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">@L["historyEditCancel"]</button>
                         <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : "Update")
+                            @(saving ? L["historyEditSaving"] : L["historyEditUpdate"])
                         </button>
                     </div>
                 </EditForm>
@@ -227,9 +227,9 @@
 }
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Record"
-               Message="@($"Are you sure you want to delete this service record from {deleteTarget?.DatePerformed.ToString("yyyy-MM-dd")}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["historyDeleteTitle"]"
+               Message="@L.T("historyDeleteMsg", deleteTarget?.DatePerformed.ToString("yyyy-MM-dd") ?? "")"
+               ConfirmText="@L["historyDeleteConfirm"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -270,7 +270,7 @@
             }).ToArray();
             await Export.ExportExcelAsync("service-history.xlsx", "Service History", headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -296,7 +296,7 @@
                 : null;
             await Export.ExportPdfAsync("service-history.pdf", "Service History", headers, rows, subtitle, true);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -415,13 +415,13 @@
         try
         {
             await Finance.UpdateServiceRecordAsync(editModel.Id, editModel);
-            Toast.Show("Record updated");
+            Toast.Show(L["historyToastUpdated"]);
             allRecords = (await Finance.GetServiceRecordsAsync()).ToList();
             showEditModal = false;
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to update record", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["historyToastUpdateFailed"], ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -438,12 +438,12 @@
         try
         {
             await Finance.DeleteServiceRecordAsync(deleteTarget.Id);
-            Toast.Show("Record deleted");
+            Toast.Show(L["historyToastDeleted"]);
             allRecords = (await Finance.GetServiceRecordsAsync()).ToList();
         }
         catch
         {
-            Toast.Show("Failed to delete record", ToastLevel.Error);
+            Toast.Show(L["historyToastDeleteFailed"], ToastLevel.Error);
         }
         showDeleteConfirm = false;
         deleteTarget = null;

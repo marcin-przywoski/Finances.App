@@ -5,14 +5,14 @@
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
 
-<PageTitle>Record Service</PageTitle>
+<PageTitle>@L["recordPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--record">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">New entry</span>
-            <h1 class="workspace-title">Record a service</h1>
-            <p class="workspace-description">Log a completed service for a client. Select the worker and service, then fill in the details.</p>
+            <span class="workspace-kicker">@L["recordKicker"]</span>
+            <h1 class="workspace-title">@L["recordTitle"]</h1>
+            <p class="workspace-description">@L["recordDescription"]</p>
         </div>
     </section>
 
@@ -28,9 +28,9 @@ else
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Worker</label>
+                    <label class="form-label">@L["recordLabelWorker"]</label>
                     <select class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
-                        <option value="0">-- Select Worker --</option>
+                        <option value="0">@L["recordSelectWorker"]</option>
                         @foreach (var w in workers)
                         {
                             <option value="@w.Id">@w.Name</option>
@@ -39,9 +39,9 @@ else
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Service</label>
+                    <label class="form-label">@L["recordLabelService"]</label>
                     <select class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
-                        <option value="0">-- Select Service --</option>
+                        <option value="0">@L["recordSelectService"]</option>
                         @foreach (var s in services)
                         {
                             <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
@@ -50,36 +50,36 @@ else
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Date</label>
+                    <label class="form-label">@L["recordLabelDate"]</label>
                     <InputDate class="form-control" @bind-Value="record.DatePerformed" />
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Client Name</label>
+                    <label class="form-label">@L["recordLabelClient"]</label>
                     <ClientSelector @bind-Value="record.ClientName" @bind-ClientId="record.ClientId" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Amount Paid</label>
+                    <label class="form-label">@L["recordLabelAmount"]</label>
                     <InputNumber class="form-control" @bind-Value="record.AmountPaid" />
                     <ValidationMessage For="() => record.AmountPaid" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Commission %</label>
+                    <label class="form-label">@L["recordLabelCommission"]</label>
                     <InputNumber class="form-control" @bind-Value="record.CommissionPercentageApplied" />
                     <ValidationMessage For="() => record.CommissionPercentageApplied" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Tips</label>
+                    <label class="form-label">@L["recordLabelTips"]</label>
                     <InputNumber class="form-control" @bind-Value="record.Tips" />
                     <ValidationMessage For="() => record.Tips" />
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Notes</label>
-                    <InputTextArea class="form-control" @bind-Value="record.Notes" rows="2" placeholder="Optional notes..." />
+                    <label class="form-label">@L["recordLabelNotes"]</label>
+                    <InputTextArea class="form-control" @bind-Value="record.Notes" rows="2" placeholder="@L["recordNotesPlaceholder"]" />
                 </div>
             </div>
 
@@ -92,12 +92,12 @@ else
                         var workerShare = record.AmountPaid * (record.CommissionPercentageApplied / 100);
                         var salonShare = record.AmountPaid - workerShare;
                         <span class="text-muted" style="font-size: 0.875rem;">
-                            Worker: <strong>@workerShare.ToString("C")</strong> &middot; Salon: <strong>@salonShare.ToString("C")</strong>
+                            @L["recordWorkerLabel"] <strong>@workerShare.ToString("C")</strong> &middot; @L["recordSalonLabel"] <strong>@salonShare.ToString("C")</strong>
                         </span>
                     }
                 </div>
                 <button type="submit" class="btn btn-primary" disabled="@saving">
-                    @(saving ? "Saving..." : "Save Record")
+                    @(saving ? L["recordSaving"] : L["recordSaveButton"])
                 </button>
             </div>
         </EditForm>
@@ -163,7 +163,7 @@ else
     {
         if (record.WorkerId == 0 || record.ServiceId == 0)
         {
-            Toast.Show("Please select a worker and a service.", ToastLevel.Error);
+            Toast.Show(L["recordValidation"], ToastLevel.Error);
             return;
         }
 
@@ -177,7 +177,7 @@ else
                 await WorkerContext.SetWorkerAsync(record.WorkerId);
             }
 
-            Toast.Show("Service recorded successfully!");
+            Toast.Show(L["recordToastSuccess"]);
             record = new ServiceRecord
             {
                 DatePerformed = DateTime.Today,
@@ -187,7 +187,7 @@ else
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save record.", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["recordToastFailed"], ToastLevel.Error);
         }
         finally { saving = false; }
     }

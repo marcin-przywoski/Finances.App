@@ -15,7 +15,7 @@
             </button>
             <div class="top-bar-right">
                 <NotificationBell />
-                <button class="theme-toggle" @onclick="ToggleTheme" title="@(Theme.IsDark ? "Switch to light mode" : "Switch to dark mode")">
+                <button class="theme-toggle" @onclick="ToggleTheme" title="@(Theme.IsDark ? L["themeSwitchToLight"] : L["themeSwitchToDark"])">
                     @if (Theme.IsDark)
                     {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -25,7 +25,13 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     }
                 </button>
-                <span class="top-bar-user">Stored only in this browser</span>
+                <select class="form-select form-select-sm locale-select" value="@L.CurrentLocale" @onchange="OnLocaleChanged">
+                    @foreach (var loc in L.AvailableLocales)
+                    {
+                        <option value="@loc">@L.GetLocaleDisplayName(loc)</option>
+                    }
+                </select>
+                <span class="top-bar-user">@L["topBarStoredInBrowser"]</span>
                 <WorkerSelector />
             </div>
         </div>
@@ -40,9 +46,9 @@
                 <ErrorContent>
                     <div class="error-boundary-ui">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <h4>Something went wrong</h4>
-                        <p>An unexpected error occurred. Please try again.</p>
-                        <button class="btn btn-primary" @onclick="ResetError">Reload page</button>
+                        <h4>@L["errorBoundaryTitle"]</h4>
+                        <p>@L["errorBoundaryMessage"]</p>
+                        <button class="btn btn-primary" @onclick="ResetError">@L["errorBoundaryReload"]</button>
                     </div>
                 </ErrorContent>
             </ErrorBoundary>
@@ -66,6 +72,9 @@
     {
         if (firstRender)
         {
+            await L.InitializeAsync();
+            L.OnChange += HandleLocaleChanged;
+
             await Theme.InitializeAsync();
             Theme.OnChange += StateHasChanged;
 
@@ -90,7 +99,7 @@
 
             items.Add((
                 isOverdue ? NotificationType.Warning : NotificationType.Action,
-                isOverdue ? "Overdue recurring service" : "Recurring service due today",
+                isOverdue ? L["notificationOverdue"] : L["notificationDueToday"],
                 $"{serviceName} with {workerName}" + (r.Client is not null ? $" for {r.Client.Name}" : "")
             ));
         }
@@ -101,8 +110,8 @@
         {
             items.Add((
                 NotificationType.Warning,
-                "Low stock",
-                $"{p.Name} has only {p.StockQuantity} left"
+                L["notificationLowStock"],
+                L.T("notificationLowStockMsg", p.Name, p.StockQuantity)
             ));
         }
 
@@ -126,6 +135,18 @@
     private async Task ToggleTheme()
     {
         await Theme.ToggleAsync();
+    }
+
+    private async Task OnLocaleChanged(ChangeEventArgs e)
+    {
+        var locale = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(locale))
+            await L.SetLocaleAsync(locale);
+    }
+
+    private async void HandleLocaleChanged()
+    {
+        await InvokeAsync(StateHasChanged);
     }
 
     private void ResetError()

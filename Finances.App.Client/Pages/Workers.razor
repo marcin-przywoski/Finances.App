@@ -5,20 +5,20 @@
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
 
-<PageTitle>Workers</PageTitle>
+<PageTitle>@L["workersPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--team">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">Team setup</span>
-            <h1 class="workspace-title">Workers</h1>
-            <p class="workspace-description">Manage your team roster and default commission settings so service records and analytics reflect the right people and payout splits.</p>
+            <span class="workspace-kicker">@L["workersKicker"]</span>
+            <h1 class="workspace-title">@L["workersTitle"]</h1>
+            <p class="workspace-description">@L["workersDescription"]</p>
         </div>
         <div class="workspace-hero-actions">
             <div class="workspace-action-row">
                 <button class="btn btn-primary" @onclick="OpenAddModal">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
-                    Add worker
+                    @L["workersAddButton"]
                 </button>
             </div>
         </div>
@@ -32,31 +32,31 @@
     {
         <div class="workspace-summary-grid">
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Team members</span>
+                <span class="workspace-summary-label">@L["workersSummaryTeam"]</span>
                 <strong>@workers.Count</strong>
-                <p>Workers available to assign in records and dashboards.</p>
+                <p>@L["workersSummaryTeamDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Average commission</span>
+                <span class="workspace-summary-label">@L["workersSummaryAvgComm"]</span>
                 <strong>@(workers.Count > 0 ? workers.Average(w => w.DefaultCommissionPercentage).ToString("0.##") : "0")%</strong>
-                <p>Typical default payout percentage across the team.</p>
+                <p>@L["workersSummaryAvgCommDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Highest commission</span>
+                <span class="workspace-summary-label">@L["workersSummaryHighestComm"]</span>
                 <strong>@(workers.Count > 0 ? workers.Max(w => w.DefaultCommissionPercentage).ToString("0.##") : "0")%</strong>
-                <p>Top commission rate currently configured.</p>
+                <p>@L["workersSummaryHighestCommDesc"]</p>
             </div>
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Linked users</span>
+                <span class="workspace-summary-label">@L["workersSummaryLinked"]</span>
                 <strong>@workers.Count(w => !string.IsNullOrWhiteSpace(w.ApplicationUserId))</strong>
-                <p>Team members already tied to an app user identity.</p>
+                <p>@L["workersSummaryLinkedDesc"]</p>
             </div>
         </div>
 
         @if (workers.Count == 0)
         {
             <div class="workspace-empty-state">
-                <p>No workers yet. Add the first team member to start assigning services.</p>
+                <p>@L["workersEmpty"]</p>
             </div>
         }
         else
@@ -64,9 +64,9 @@
             <section class="workspace-panel">
                 <div class="workspace-panel-header workspace-panel-header-split">
                     <div>
-                        <p class="workspace-panel-eyebrow">Roster</p>
-                        <h2>Team member list</h2>
-                        <p>Update names, payout defaults, and linked accounts for each stylist or staff member.</p>
+                        <p class="workspace-panel-eyebrow">@L["workersPanelEyebrow"]</p>
+                        <h2>@L["workersPanelTitle"]</h2>
+                        <p>@L["workersPanelDesc"]</p>
                     </div>
                     <span class="workspace-badge">@workers.Count worker@(workers.Count == 1 ? "" : "s")</span>
                 </div>
@@ -74,10 +74,10 @@
                     <table class="data-table workspace-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Commission %</th>
-                                <th>Linked User</th>
-                                <th class="workspace-table-actions">Actions</th>
+                                <th>@L["workersThName"]</th>
+                                <th>@L["workersThCommission"]</th>
+                                <th>@L["workersThLinkedUser"]</th>
+                                <th class="workspace-table-actions">@L["workersThActions"]</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -88,9 +88,9 @@
                                     <td>@worker.DefaultCommissionPercentage%</td>
                                     <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
                                     <td class="workspace-table-actions">
-                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenAnalytics(worker)">Analytics</button>
-                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenAnalytics(worker)">@L["workersAnalyticsButton"]</button>
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">@L["commonEdit"]</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">@L["commonDelete"]</button>
                                     </td>
                                 </tr>
                             }
@@ -108,27 +108,27 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Worker" : "Add Worker")</h5>
+                    <h5 class="modal-title">@(isEditing ? L["workersModalTitleEdit"] : L["workersModalTitleAdd"])</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">@L["workersModalLabelName"]</label>
                             <InputText class="form-control" @bind-Value="formModel.Name" />
                             <ValidationMessage For="() => formModel.Name" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Default Commission (%)</label>
+                            <label class="form-label">@L["workersModalLabelCommission"]</label>
                             <InputNumber class="form-control" @bind-Value="formModel.DefaultCommissionPercentage" />
                             <ValidationMessage For="() => formModel.DefaultCommissionPercentage" />
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["workersModalCancel"]</button>
                         <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+                            @(saving ? L["workersModalSaving"] : (isEditing ? L["workersModalUpdate"] : L["workersModalAdd"]))
                         </button>
                     </div>
                 </EditForm>
@@ -138,9 +138,9 @@
 }
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Worker"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["workersDeleteTitle"]"
+               Message="@(L.T("workersDeleteMsg", deleteTarget?.Name ?? ""))"
+               ConfirmText="@L["workersDeleteConfirm"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -187,19 +187,19 @@
             if (isEditing)
             {
                 await Finance.UpdateWorkerAsync(editId, formModel);
-                Toast.Show("Worker updated");
+                Toast.Show(L["workersToastUpdated"]);
             }
             else
             {
                 await Finance.AddWorkerAsync(formModel);
-                Toast.Show("Worker added");
+                Toast.Show(L["workersToastAdded"]);
             }
             await LoadWorkers();
             showModal = false;
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save worker", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["workersToastFailed"], ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -220,8 +220,8 @@
     {
         if (deleteTarget == null) return;
         var result = await Finance.DeleteWorkerAsync(deleteTarget.Id);
-        if (result.Success) Toast.Show("Worker deleted");
-        else Toast.Show(result.ErrorMessage ?? "Failed to delete worker. It may have related records.", ToastLevel.Error);
+        if (result.Success) Toast.Show(L["workersToastDeleted"]);
+        else Toast.Show(result.ErrorMessage ?? L["workersToastDeleteFailed"], ToastLevel.Error);
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadWorkers();
