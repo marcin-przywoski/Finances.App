@@ -1044,3 +1044,62 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ── Goal progress ─────────────────────────── */
+.goal-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.goal-progress-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.goal-progress-item:last-child {
+    border-bottom: none;
+}
+
+.goal-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+}
+
+.goal-progress-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.goal-progress-scope {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-left: 0.5rem;
+}
+
+.goal-progress-values {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.goal-progress-bar {
+    height: 8px;
+    margin-bottom: 0.35rem;
+}
+
+.goal-progress-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.goal-progress-achieved {
+    color: #10b981;
+    font-weight: 600;
+}

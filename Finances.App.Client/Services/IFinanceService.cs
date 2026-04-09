@@ -71,6 +71,7 @@ public interface IFinanceService
     Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? from, DateTime? to);
     Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? from, DateTime? to, int count = 5);
     Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? from, DateTime? to);
+    Task<IReadOnlyList<ClientRetentionResult>> GetClientRetentionAsync(int? workerId, DateTime? from, DateTime? to);
     Task<DataStateSummary> GetDataStateSummaryAsync();
 
     // Data management

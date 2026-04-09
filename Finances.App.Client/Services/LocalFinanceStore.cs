@@ -51,9 +51,13 @@ public sealed record ClientProductSaleResult(int Id, string Date, string Product
 
 public sealed record TopClientResult(string Client, int Visits, decimal Revenue);
 
+public sealed record GoalProgressResult(Goal Goal, decimal CurrentValue, decimal TargetValue, decimal ProgressPercent, string? WorkerName);
+
+public sealed record ClientRetentionResult(string Period, int NewClients, int ReturningClients);
+
 public sealed class LocalFinanceStore : IFinanceService
 {
-    private const int CurrentSchemaVersion = 3;
+    private const int CurrentSchemaVersion = 4;
     private const string StorageKey = "Finances.App.snapshot";
     private readonly IJSRuntime _js;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
@@ -668,6 +672,110 @@ public sealed class LocalFinanceStore : IFinanceService
             .ToList();
     }
 
+    // ── Goals ────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<Goal>> GetGoalsAsync()
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.Goals.Select(CloneGoal).ToList();
+    }
+
+    public async Task<Goal> AddGoalAsync(Goal goal)
+    {
+        ArgumentNullException.ThrowIfNull(goal);
+        await EnsureLoadedAsync();
+
+        if (goal.WorkerId.HasValue && !_snapshot!.Workers.Any(w => w.Id == goal.WorkerId.Value))
+            throw new InvalidDataException("The selected worker does not exist.");
+
+        var created = CloneGoal(goal);
+        created.Id = _snapshot!.NextGoalId++;
+        created.Label = NormalizeOptionalText(created.Label);
+
+        _snapshot.Goals.Add(created);
+        await PersistAsync();
+
+        return CloneGoal(created);
+    }
+
+    public async Task UpdateGoalAsync(int id, Goal goal)
+    {
+        ArgumentNullException.ThrowIfNull(goal);
+        await EnsureLoadedAsync();
+
+        if (id != goal.Id)
+            throw new InvalidDataException("Goal identifier mismatch.");
+
+        var existing = _snapshot!.Goals.FirstOrDefault(g => g.Id == id)
+            ?? throw new KeyNotFoundException();
+
+        if (goal.WorkerId.HasValue && !_snapshot.Workers.Any(w => w.Id == goal.WorkerId.Value))
+            throw new InvalidDataException("The selected worker does not exist.");
+
+        existing.Type = goal.Type;
+        existing.TargetValue = goal.TargetValue;
+        existing.Period = goal.Period;
+        existing.WorkerId = goal.WorkerId;
+        existing.Label = NormalizeOptionalText(goal.Label);
+        existing.IsActive = goal.IsActive;
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteGoalAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var existing = _snapshot!.Goals.FirstOrDefault(g => g.Id == id)
+            ?? throw new KeyNotFoundException();
+        _snapshot.Goals.Remove(existing);
+        await PersistAsync();
+    }
+
+    public async Task<IReadOnlyList<GoalProgressResult>> GetGoalProgressAsync(int? workerId)
+    {
+        await EnsureLoadedAsync();
+        var today = DateTime.Today;
+        var results = new List<GoalProgressResult>();
+
+        foreach (var goal in _snapshot!.Goals.Where(g => g.IsActive))
+        {
+            // Skip goals for other workers when a worker filter is active
+            if (workerId.HasValue && goal.WorkerId.HasValue && goal.WorkerId.Value != workerId.Value)
+                continue;
+
+            var (periodStart, periodEnd) = GetGoalPeriodDates(goal.Period, today);
+            var effectiveWorkerId = goal.WorkerId ?? workerId;
+
+            decimal current = goal.Type switch
+            {
+                GoalType.Revenue => FilterStoredRecords(effectiveWorkerId, periodStart, periodEnd).Sum(r => r.AmountPaid)
+                                  + FilterStoredProductSales(effectiveWorkerId, periodStart, periodEnd).Sum(s => s.UnitPrice * s.Quantity),
+                GoalType.ServiceCount => FilterStoredRecords(effectiveWorkerId, periodStart, periodEnd).Count(),
+                GoalType.ProductSaleCount => FilterStoredProductSales(effectiveWorkerId, periodStart, periodEnd).Count(),
+                _ => 0m
+            };
+
+            var pct = goal.TargetValue > 0 ? Math.Min(Math.Round(current / goal.TargetValue * 100, 1), 100m) : 0m;
+            var workerName = goal.WorkerId.HasValue
+                ? _snapshot.Workers.FirstOrDefault(w => w.Id == goal.WorkerId.Value)?.Name
+                : null;
+
+            results.Add(new GoalProgressResult(CloneGoal(goal), current, goal.TargetValue, pct, workerName));
+        }
+
+        return results;
+    }
+
+    private static (DateTime Start, DateTime End) GetGoalPeriodDates(GoalPeriod period, DateTime today)
+    {
+        return period switch
+        {
+            GoalPeriod.Weekly => (today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday), today),
+            GoalPeriod.Monthly => (new DateTime(today.Year, today.Month, 1), today),
+            _ => (new DateTime(today.Year, today.Month, 1), today)
+        };
+    }
+
     public async Task<decimal> GetProductSalesRevenueAsync(DateTime? from, DateTime? to)
     {
         await EnsureLoadedAsync();
@@ -1006,6 +1114,63 @@ public sealed class LocalFinanceStore : IFinanceService
         return new CombinedTimelineResult(points);
     }
 
+    public async Task<IReadOnlyList<ClientRetentionResult>> GetClientRetentionAsync(int? workerId, DateTime? from, DateTime? to)
+    {
+        await EnsureLoadedAsync();
+
+        var records = FilterStoredRecords(workerId, from, to)
+            .Where(r => r.ClientId.HasValue)
+            .OrderBy(r => r.DatePerformed)
+            .ToList();
+
+        var sales = FilterStoredProductSales(workerId, from, to)
+            .Where(s => s.ClientId.HasValue)
+            .OrderBy(s => s.DateSold)
+            .ToList();
+
+        // Build a set of all client IDs seen before the period starts
+        var allRecords = _snapshot!.ServiceRecords.Where(r => r.ClientId.HasValue).ToList();
+        var allSales = _snapshot.ProductSales.Where(s => s.ClientId.HasValue).ToList();
+
+        var periodStart = from ?? records.Select(r => (DateTime?)r.DatePerformed).FirstOrDefault() ?? DateTime.Today;
+        var clientsSeenBefore = new HashSet<int>(
+            allRecords.Where(r => r.DatePerformed.Date < periodStart.Date).Select(r => r.ClientId!.Value)
+            .Concat(allSales.Where(s => s.DateSold.Date < periodStart.Date).Select(s => s.ClientId!.Value))
+        );
+
+        // Group interactions by month
+        var interactions = records.Select(r => new { r.DatePerformed.Year, r.DatePerformed.Month, ClientId = r.ClientId!.Value })
+            .Concat(sales.Select(s => new { s.DateSold.Year, s.DateSold.Month, ClientId = s.ClientId!.Value }))
+            .GroupBy(x => new { x.Year, x.Month })
+            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+            .ToList();
+
+        var seenSoFar = new HashSet<int>(clientsSeenBefore);
+        var results = new List<ClientRetentionResult>();
+
+        foreach (var group in interactions)
+        {
+            var clientsThisPeriod = group.Select(x => x.ClientId).Distinct().ToList();
+            int newCount = 0, returningCount = 0;
+
+            foreach (var cid in clientsThisPeriod)
+            {
+                if (seenSoFar.Contains(cid))
+                    returningCount++;
+                else
+                {
+                    newCount++;
+                    seenSoFar.Add(cid);
+                }
+            }
+
+            var label = new DateTime(group.Key.Year, group.Key.Month, 1).ToString("MMM yyyy");
+            results.Add(new ClientRetentionResult(label, newCount, returningCount));
+        }
+
+        return results;
+    }
+
     public async Task<DataStateSummary> GetDataStateSummaryAsync()
     {
         await EnsureLoadedAsync();
@@ -1199,6 +1364,20 @@ public sealed class LocalFinanceStore : IFinanceService
         return clone;
     }
 
+    private static Goal CloneGoal(Goal g)
+    {
+        return new Goal
+        {
+            Id = g.Id,
+            Type = g.Type,
+            TargetValue = g.TargetValue,
+            Period = g.Period,
+            WorkerId = g.WorkerId,
+            Label = g.Label,
+            IsActive = g.IsActive
+        };
+    }
+
     private ServiceRecord EnrichRecord(ServiceRecord record)
     {
         return new ServiceRecord
@@ -1382,6 +1561,13 @@ public sealed class LocalFinanceStore : IFinanceService
             if (recurring.NextOccurrence == default) recurring.NextOccurrence = DateTime.Today;
         }
 
+        snapshot.Goals ??= [];
+
+        foreach (var goal in snapshot.Goals)
+        {
+            goal.Label = NormalizeOptionalText(goal.Label);
+        }
+
         snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
@@ -1390,6 +1576,7 @@ public sealed class LocalFinanceStore : IFinanceService
         snapshot.NextProductSaleId = Math.Max(snapshot.NextProductSaleId, snapshot.ProductSales.Select(sale => sale.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextClientId = Math.Max(snapshot.NextClientId, snapshot.Clients.Select(client => client.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextRecurringServiceId = Math.Max(snapshot.NextRecurringServiceId, snapshot.RecurringServices.Select(r => r.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextGoalId = Math.Max(snapshot.NextGoalId, snapshot.Goals.Select(g => g.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
@@ -1444,6 +1631,13 @@ public sealed class LocalFinanceStore : IFinanceService
             snapshot.SchemaVersion = 3;
         }
 
+        // v3 → v4: Add goals collection
+        if (snapshot.SchemaVersion < 4)
+        {
+            snapshot.Goals ??= [];
+            snapshot.SchemaVersion = 4;
+        }
+
         if (snapshot.SchemaVersion < CurrentSchemaVersion)
         {
             snapshot.SchemaVersion = CurrentSchemaVersion;
@@ -1459,6 +1653,7 @@ public sealed class LocalFinanceStore : IFinanceService
         EnsureDistinctIds(snapshot.ProductSales, sale => sale.Id, "product sales");
         EnsureDistinctIds(snapshot.Clients, client => client.Id, "clients");
         EnsureDistinctIds(snapshot.RecurringServices, r => r.Id, "recurring services");
+        EnsureDistinctIds(snapshot.Goals, g => g.Id, "goals");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();

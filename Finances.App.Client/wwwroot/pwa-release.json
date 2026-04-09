@@ -1,22 +1,16 @@
 {
   "releaseId": "2026-04-09-modernization",
   "publishedUtc": "2026-04-09T18:00:00Z",
-  "title": "Major modernization — Dark mode, Clients, Recurring services & Notifications",
-  "summary": "A large modernization pass that refactors the architecture, adds dark mode with theme persistence, introduces client management with visit tracking, recurring service scheduling with automatic reminders, and an in-app notification system.",
+  "title": "Major modernization — Dark mode, Clients, Recurring, Notifications, Advanced analytics & Goals",
+  "summary": "A large modernization pass covering architecture refactoring, dark mode, client management, recurring services, in-app notifications, period-over-period analytics comparisons, revenue goal tracking, and client retention insights.",
   "changes": [
-    "Architecture: Introduced IFinanceService interface — all pages now depend on an abstraction instead of the concrete store, making future backend swaps straightforward.",
-    "Architecture: Removed the legacy LocalApiMessageHandler HTTP-faking layer and unused AnalyticsDtos.cs; the store is now called directly.",
-    "Dark mode: Added a full light/dark theme toggle (sun/moon icon in the top bar) with automatic localStorage persistence.",
-    "Dark mode: All CSS variables, cards, modals, tables, charts, hero sections, and PWA banners respect the selected theme.",
-    "Dark mode: Chart.js graphs now read CSS variables for grid lines and text, so they adapt to light or dark automatically.",
-    "Error handling: Wrapped the main content area in an ErrorBoundary with a friendly recovery UI.",
-    "Client management: New Clients page with full add/edit/delete, search/filter, and a detailed drill-down panel showing visit history and spending.",
-    "Client management: New ClientSelector autocomplete component used on Record Service and Product Sales pages.",
-    "Client management: Existing records with client names were automatically migrated to proper client records (schema v2).",
-    "Recurring services: New Recurring page to set up repeating weekly, biweekly, or monthly appointments per worker/service/client.",
-    "Recurring services: Due and overdue items are highlighted in the table with a one-click 'Mark done' button that auto-advances the next date.",
-    "Notifications: New notification bell in the top bar with a badge count and dropdown panel.",
-    "Notifications: Automatic alerts for overdue recurring services and low-stock products (≤ 3 remaining) — refreshed on every data change.",
-    "Data schema upgraded to v3 with automatic migration from older versions."
+    "Notifications: Automatic alerts for overdue recurring services and low-stock products (3 or fewer remaining) — refreshed on every data change.",
+    "Analytics: Period comparison — the four summary stat cards on the Analytics page now show percentage change arrows comparing the selected date range against the preceding period of equal length.",
+    "Analytics: New client retention chart showing new versus returning clients month by month.",
+    "Analytics: New top clients by revenue leaderboard on the Analytics page.",
+    "Goals: New Goal model with revenue, service count, or product sale count targets scoped weekly or monthly, optionally per worker.",
+    "Goals: Goal progress bars appear on the Dashboard with color indicators (blue → amber → green) and target-reached badges.",
+    "Goals: Full CRUD for goals via the data store with schema v4 migration.",
+    "Data schema upgraded to v4 with automatic migration from all older versions."
   ]
 }

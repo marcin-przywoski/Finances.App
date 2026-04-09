@@ -91,6 +91,50 @@
             </div>
         </div>
 
+        @if (goalProgress != null && goalProgress.Length > 0)
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    <section class="card dashboard-panel">
+                        <div class="dashboard-panel-header">
+                            <p class="dashboard-panel-eyebrow">Targets</p>
+                            <h2>Goal progress</h2>
+                            <p>Track how close you are to hitting your set targets this period.</p>
+                        </div>
+                        <div class="goal-progress-list">
+                            @foreach (var gp in goalProgress)
+                            {
+                                var label = !string.IsNullOrEmpty(gp.Goal.Label) ? gp.Goal.Label : $"{gp.Goal.Type} ({gp.Goal.Period})";
+                                var scope = gp.WorkerName ?? "Salon-wide";
+                                var barColor = gp.ProgressPercent >= 100 ? "#10b981" : gp.ProgressPercent >= 75 ? "#f59e0b" : "#3b82f6";
+                                <div class="goal-progress-item">
+                                    <div class="goal-progress-header">
+                                        <div>
+                                            <span class="goal-progress-label">@label</span>
+                                            <span class="goal-progress-scope">@scope</span>
+                                        </div>
+                                        <span class="goal-progress-values">
+                                            @FormatGoalValue(gp.CurrentValue, gp.Goal.Type) / @FormatGoalValue(gp.TargetValue, gp.Goal.Type)
+                                        </span>
+                                    </div>
+                                    <div class="progress-bar-custom goal-progress-bar">
+                                        <div class="progress-fill" style="width: @($"{gp.ProgressPercent:F0}")%; background: @barColor;"></div>
+                                    </div>
+                                    <div class="goal-progress-footer">
+                                        <span>@gp.ProgressPercent.ToString("F0")% complete</span>
+                                        @if (gp.ProgressPercent >= 100)
+                                        {
+                                            <span class="goal-progress-achieved">&#10003; Target reached!</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                </div>
+            </div>
+        }
+
         <div class="row g-3 mb-4">
             <div class="col-xl-8">
                 <section class="card dashboard-panel dashboard-panel-spotlight">
@@ -288,6 +332,7 @@
     private CombinedTimelineResult? combinedTimeline;
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
+    private GoalProgressResult[]? goalProgress;
 
     private string TotalRevenueDisplay => (totalRevenueValue + productRevenueTotal).ToString("C");
     private string ServiceRevenueDisplay => totalRevenueValue.ToString("C");
@@ -340,6 +385,7 @@
         combinedTimeline = null;
         serviceRevenueTotal = 0;
         productRevenueTotal = 0;
+        goalProgress = null;
 
         try
         {
@@ -395,6 +441,9 @@
                 }
             }
             catch { }
+
+            try { goalProgress = (await Finance.GetGoalProgressAsync(wId)).ToArray(); }
+            catch { goalProgress = []; }
         }
         catch { }
         finally
@@ -408,6 +457,11 @@
     {
         if (previous == 0) return current > 0 ? 100m : null;
         return Math.Round((current - previous) / previous * 100, 1);
+    }
+
+    private static string FormatGoalValue(decimal value, GoalType type)
+    {
+        return type == GoalType.Revenue ? value.ToString("C") : ((int)value).ToString();
     }
 
     private bool needsChartRender;

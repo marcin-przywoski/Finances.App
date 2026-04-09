@@ -468,6 +468,71 @@
                 </section>
             </div>
         </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Retention</p>
+                        <h2>Client retention</h2>
+                        <p>New versus returning clients each month in the selected range.</p>
+                    </div>
+                    @if (clientRetention != null && clientRetention.Length > 0)
+                    {
+                        <div class="analytics-chart analytics-chart-regular">
+                            <canvas id="clientRetentionChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state">
+                            <p>Client retention data will appear once clients are linked to service records.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+            <div class="col-lg-6">
+                <section class="card analytics-panel">
+                    <div class="analytics-panel-header">
+                        <p class="analytics-panel-eyebrow">Clients</p>
+                        <h2>Top clients by revenue</h2>
+                        <p>Your highest-value clients for the selected range.</p>
+                    </div>
+                    @if (topClients != null && topClients.Length > 0)
+                    {
+                        var maxClientRevenue = topClients.Max(c => c.Revenue);
+                        <div class="analytics-ranked-list">
+                            @for (var index = 0; index < topClients.Length; index++)
+                            {
+                                var client = topClients[index];
+                                var pct = maxClientRevenue > 0 ? (double)client.Revenue / (double)maxClientRevenue * 100 : 0;
+                                <div class="analytics-ranked-item">
+                                    <div class="analytics-ranked-row">
+                                        <div class="analytics-ranked-index">@(index + 1)</div>
+                                        <div class="analytics-ranked-copy">
+                                            <div class="analytics-ranked-title">
+                                                <span class="analytics-ranked-name">@client.Client</span>
+                                                <span class="analytics-ranked-value">@client.Revenue.ToString("C")</span>
+                                            </div>
+                                            <div class="analytics-ranked-subtitle">@client.Visits visits</div>
+                                            <div class="progress-bar-custom analytics-ranked-bar">
+                                                <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="analytics-empty-state analytics-empty-state-compact">
+                            <p>Client revenue rankings will appear once clients are linked to records.</p>
+                        </div>
+                    }
+                </section>
+            </div>
+        </div>
     }
 </div>
 
@@ -483,6 +548,8 @@
     private DayOfWeekResult[]? dayOfWeekData;
     private TopProductResult[]? topProducts;
     private CombinedTimelineResult? combinedTimeline;
+    private ClientRetentionResult[]? clientRetention;
+    private TopClientResult[]? topClients;
     private bool needsChartRender;
     private decimal? revenueTrend;
     private decimal? tipsTrend;
@@ -554,6 +621,12 @@
 
             try { combinedTimeline = await Finance.GetCombinedTimelineAsync(wId, dateFrom, dateTo); }
             catch { }
+
+            try { clientRetention = (await Finance.GetClientRetentionAsync(wId, dateFrom, dateTo)).ToArray(); }
+            catch { clientRetention = []; }
+
+            try { topClients = (await Finance.GetTopClientsAsync(wId, dateFrom, dateTo)).ToArray(); }
+            catch { topClients = []; }
 
             // Period comparison: compare selected range against preceding equal-length range
             revenueTrend = null;
@@ -697,6 +770,21 @@
                     new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray(), color = "#0d9488" }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets);
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (clientRetention != null && clientRetention.Length > 0)
+            {
+                var labels = clientRetention.Select(r => r.Period).ToArray();
+                var datasets = new object[]
+                {
+                    new { label = "Returning", data = clientRetention.Select(r => (decimal)r.ReturningClients).ToArray(), color = "#0d9488" },
+                    new { label = "New", data = clientRetention.Select(r => (decimal)r.NewClients).ToArray(), color = "#8b5cf6" }
+                };
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "clientRetentionChart", labels, datasets);
             }
         }
         catch { }
