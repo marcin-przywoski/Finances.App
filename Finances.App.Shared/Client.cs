@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Finances.App.Shared;
 
-public class Client
+public class SalonClient
 {
     public int Id { get; set; }
 

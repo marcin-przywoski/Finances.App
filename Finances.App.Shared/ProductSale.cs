@@ -28,7 +28,7 @@ public class ProductSale
     public string? ClientName { get; set; }
 
     public int? ClientId { get; set; }
-    public Client? Client { get; set; }
+    public SalonClient? Client { get; set; }
 
     public string? Notes { get; set; }
 }

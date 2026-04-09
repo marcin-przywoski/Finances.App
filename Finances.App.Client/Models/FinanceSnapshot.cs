@@ -17,5 +17,5 @@ public sealed class FinanceSnapshot
     public List<Product> Products { get; set; } = [];
     public List<ServiceRecord> ServiceRecords { get; set; } = [];
     public List<ProductSale> ProductSales { get; set; } = [];
-    public List<Client> Clients { get; set; } = [];
+    public List<SalonClient> Clients { get; set; } = [];
 }

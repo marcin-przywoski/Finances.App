@@ -23,7 +23,7 @@ public sealed record ForecastResult(HistoricalPointResult[] Historical, Forecast
 
 public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
 
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc);
+public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int ClientCount, int SchemaVersion, DateTime LastUpdatedUtc);
 
 public sealed record MonthComparisonResult(
     decimal CurrentRevenue, decimal PreviousRevenue,
@@ -40,7 +40,7 @@ public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, 
 public sealed record CombinedTimelineResult(CombinedTimelinePoint[] Points);
 
 public sealed record ClientDetailResult(
-    Client Client,
+    SalonClient Client,
     int TotalVisits,
     decimal TotalSpend,
     DateTime? LastVisit,
@@ -53,7 +53,7 @@ public sealed record TopClientResult(string Client, int Visits, decimal Revenue)
 
 public sealed class LocalFinanceStore : IFinanceService
 {
-    private const int CurrentSchemaVersion = 1;
+    private const int CurrentSchemaVersion = 2;
     private const string StorageKey = "Finances.App.snapshot";
     private readonly IJSRuntime _js;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
@@ -305,8 +305,17 @@ public sealed class LocalFinanceStore : IFinanceService
             Quantity = sale.Quantity,
             UnitPrice = sale.UnitPrice,
             ClientName = NormalizeOptionalText(sale.ClientName),
+            ClientId = sale.ClientId,
             Notes = NormalizeOptionalText(sale.Notes)
         };
+
+        // Auto-link client by name if no ClientId provided
+        if (!stored.ClientId.HasValue && stored.ClientName is not null)
+        {
+            var client = _snapshot.Clients.FirstOrDefault(c =>
+                string.Equals(c.Name.Trim(), stored.ClientName, StringComparison.CurrentCultureIgnoreCase));
+            if (client is not null) stored.ClientId = client.Id;
+        }
 
         _snapshot.ProductSales.Add(stored);
         product.StockQuantity -= stored.Quantity;
@@ -361,7 +370,16 @@ public sealed class LocalFinanceStore : IFinanceService
             existing.Quantity = sale.Quantity;
             existing.UnitPrice = sale.UnitPrice;
             existing.ClientName = NormalizeOptionalText(sale.ClientName);
+            existing.ClientId = sale.ClientId;
             existing.Notes = NormalizeOptionalText(sale.Notes);
+
+            // Auto-link client by name if no ClientId provided
+            if (!existing.ClientId.HasValue && existing.ClientName is not null)
+            {
+                var client = _snapshot.Clients.FirstOrDefault(c =>
+                    string.Equals(c.Name.Trim(), existing.ClientName, StringComparison.CurrentCultureIgnoreCase));
+                if (client is not null) existing.ClientId = client.Id;
+            }
 
             await PersistAsync();
         }
@@ -391,13 +409,13 @@ public sealed class LocalFinanceStore : IFinanceService
 
     // ── Clients ──────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<Client>> GetClientsAsync()
+    public async Task<IReadOnlyList<SalonClient>> GetClientsAsync()
     {
         await EnsureLoadedAsync();
         return _snapshot!.Clients.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).Select(CloneClient).ToList();
     }
 
-    public async Task<Client> AddClientAsync(Client client)
+    public async Task<SalonClient> AddClientAsync(SalonClient client)
     {
         ArgumentNullException.ThrowIfNull(client);
         await EnsureLoadedAsync();
@@ -416,7 +434,7 @@ public sealed class LocalFinanceStore : IFinanceService
         return CloneClient(created);
     }
 
-    public async Task UpdateClientAsync(int id, Client client)
+    public async Task UpdateClientAsync(int id, SalonClient client)
     {
         ArgumentNullException.ThrowIfNull(client);
         await EnsureLoadedAsync();
@@ -456,7 +474,7 @@ public sealed class LocalFinanceStore : IFinanceService
         return new DeleteResult(true);
     }
 
-    public async Task<Client?> GetOrCreateClientByNameAsync(string? name)
+    public async Task<SalonClient?> GetOrCreateClientByNameAsync(string? name)
     {
         var normalized = NormalizeOptionalText(name);
         if (normalized is null) return null;
@@ -468,7 +486,7 @@ public sealed class LocalFinanceStore : IFinanceService
 
         if (existing is not null) return CloneClient(existing);
 
-        var created = new Client
+        var created = new SalonClient
         {
             Id = _snapshot.NextClientId++,
             Name = normalized,
@@ -597,8 +615,17 @@ public sealed class LocalFinanceStore : IFinanceService
             CommissionPercentageApplied = record.CommissionPercentageApplied,
             Tips = record.Tips,
             ClientName = NormalizeOptionalText(record.ClientName),
+            ClientId = record.ClientId,
             Notes = NormalizeOptionalText(record.Notes)
         };
+
+        // Auto-link client by name if no ClientId provided
+        if (!stored.ClientId.HasValue && stored.ClientName is not null)
+        {
+            var client = _snapshot.Clients.FirstOrDefault(c =>
+                string.Equals(c.Name.Trim(), stored.ClientName, StringComparison.CurrentCultureIgnoreCase));
+            if (client is not null) stored.ClientId = client.Id;
+        }
 
         _snapshot.ServiceRecords.Add(stored);
         await PersistAsync();
@@ -630,7 +657,16 @@ public sealed class LocalFinanceStore : IFinanceService
         existing.CommissionPercentageApplied = record.CommissionPercentageApplied;
         existing.Tips = record.Tips;
         existing.ClientName = NormalizeOptionalText(record.ClientName);
+        existing.ClientId = record.ClientId;
         existing.Notes = NormalizeOptionalText(record.Notes);
+
+        // Auto-link client by name if no ClientId provided
+        if (!existing.ClientId.HasValue && existing.ClientName is not null)
+        {
+            var client = _snapshot.Clients.FirstOrDefault(c =>
+                string.Equals(c.Name.Trim(), existing.ClientName, StringComparison.CurrentCultureIgnoreCase));
+            if (client is not null) existing.ClientId = client.Id;
+        }
 
         await PersistAsync();
     }
@@ -892,6 +928,7 @@ public sealed class LocalFinanceStore : IFinanceService
             _snapshot.Products.Count,
             _snapshot.ServiceRecords.Count,
             _snapshot.ProductSales.Count,
+            _snapshot.Clients.Count,
             _snapshot.SchemaVersion,
             _snapshot.LastUpdatedUtc);
     }
@@ -1035,6 +1072,19 @@ public sealed class LocalFinanceStore : IFinanceService
         };
     }
 
+    private static SalonClient CloneClient(SalonClient client)
+    {
+        return new SalonClient
+        {
+            Id = client.Id,
+            Name = client.Name,
+            Phone = client.Phone,
+            Email = client.Email,
+            Notes = client.Notes,
+            CreatedDate = client.CreatedDate
+        };
+    }
+
     private ServiceRecord EnrichRecord(ServiceRecord record)
     {
         return new ServiceRecord
@@ -1049,6 +1099,10 @@ public sealed class LocalFinanceStore : IFinanceService
             CommissionPercentageApplied = record.CommissionPercentageApplied,
             Tips = record.Tips,
             ClientName = record.ClientName,
+            ClientId = record.ClientId,
+            Client = record.ClientId.HasValue
+                ? _snapshot.Clients.Where(c => c.Id == record.ClientId.Value).Select(CloneClient).FirstOrDefault()
+                : null,
             Notes = record.Notes
         };
     }
@@ -1068,6 +1122,10 @@ public sealed class LocalFinanceStore : IFinanceService
             Quantity = sale.Quantity,
             UnitPrice = sale.UnitPrice,
             ClientName = sale.ClientName,
+            ClientId = sale.ClientId,
+            Client = sale.ClientId.HasValue
+                ? _snapshot.Clients.Where(c => c.Id == sale.ClientId.Value).Select(CloneClient).FirstOrDefault()
+                : null,
             Notes = sale.Notes
         };
     }
@@ -1170,6 +1228,7 @@ public sealed class LocalFinanceStore : IFinanceService
         {
             record.Worker = null;
             record.Service = null;
+            record.Client = null;
             record.ClientName = NormalizeOptionalText(record.ClientName);
             record.Notes = NormalizeOptionalText(record.Notes);
             record.DatePerformed = record.DatePerformed == default ? DateTime.Today : record.DatePerformed.Date;
@@ -1181,9 +1240,21 @@ public sealed class LocalFinanceStore : IFinanceService
         {
             sale.Product = null;
             sale.Worker = null;
+            sale.Client = null;
             sale.ClientName = NormalizeOptionalText(sale.ClientName);
             sale.Notes = NormalizeOptionalText(sale.Notes);
             sale.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
+        }
+
+        snapshot.Clients ??= [];
+
+        foreach (var client in snapshot.Clients)
+        {
+            client.Name = client.Name.Trim();
+            client.Phone = NormalizeOptionalText(client.Phone);
+            client.Email = NormalizeOptionalText(client.Email);
+            client.Notes = NormalizeOptionalText(client.Notes);
+            if (client.CreatedDate == default) client.CreatedDate = DateTime.Today;
         }
 
         snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
@@ -1192,6 +1263,7 @@ public sealed class LocalFinanceStore : IFinanceService
         snapshot.NextProductId = Math.Max(snapshot.NextProductId, snapshot.Products.Select(product => product.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceRecordId = Math.Max(snapshot.NextServiceRecordId, snapshot.ServiceRecords.Select(record => record.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductSaleId = Math.Max(snapshot.NextProductSaleId, snapshot.ProductSales.Select(sale => sale.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextClientId = Math.Max(snapshot.NextClientId, snapshot.Clients.Select(client => client.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
@@ -1200,6 +1272,43 @@ public sealed class LocalFinanceStore : IFinanceService
         if (snapshot.SchemaVersion <= 0)
         {
             snapshot.SchemaVersion = 1;
+        }
+
+        // v1 → v2: Create Client records from existing ClientName strings
+        if (snapshot.SchemaVersion < 2)
+        {
+            snapshot.Clients ??= [];
+            var nextClientId = snapshot.NextClientId > 0 ? snapshot.NextClientId : 1;
+            var nameToClient = new Dictionary<string, SalonClient>(StringComparer.CurrentCultureIgnoreCase);
+
+            foreach (var record in snapshot.ServiceRecords)
+            {
+                var name = NormalizeOptionalText(record.ClientName);
+                if (name is null) continue;
+                if (!nameToClient.TryGetValue(name, out var client))
+                {
+                    client = new SalonClient { Id = nextClientId++, Name = name, CreatedDate = record.DatePerformed.Date };
+                    nameToClient[name] = client;
+                    snapshot.Clients.Add(client);
+                }
+                record.ClientId = client.Id;
+            }
+
+            foreach (var sale in snapshot.ProductSales ?? [])
+            {
+                var name = NormalizeOptionalText(sale.ClientName);
+                if (name is null) continue;
+                if (!nameToClient.TryGetValue(name, out var client))
+                {
+                    client = new SalonClient { Id = nextClientId++, Name = name, CreatedDate = sale.DateSold.Date };
+                    nameToClient[name] = client;
+                    snapshot.Clients.Add(client);
+                }
+                sale.ClientId = client.Id;
+            }
+
+            snapshot.NextClientId = nextClientId;
+            snapshot.SchemaVersion = 2;
         }
 
         if (snapshot.SchemaVersion < CurrentSchemaVersion)
@@ -1215,6 +1324,7 @@ public sealed class LocalFinanceStore : IFinanceService
         EnsureDistinctIds(snapshot.Products, product => product.Id, "products");
         EnsureDistinctIds(snapshot.ServiceRecords, record => record.Id, "service records");
         EnsureDistinctIds(snapshot.ProductSales, sale => sale.Id, "product sales");
+        EnsureDistinctIds(snapshot.Clients, client => client.Id, "clients");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();
