@@ -110,7 +110,7 @@ public sealed class PwaUpdateFlowTests
 
     private static async Task<string> PublishClientAsync(string repositoryRoot, string outputName)
     {
-        var publishDirectory = Path.Combine(Path.GetTempPath(), $"kubiczplace-finances-pwa-{Guid.NewGuid():N}", outputName);
+        var publishDirectory = Path.Combine(Path.GetTempPath(), $"finances-app-pwa-{Guid.NewGuid():N}", outputName);
         Directory.CreateDirectory(publishDirectory);
 
         var projectPath = Path.Combine(repositoryRoot, "Finances.App.Client", "Finances.App.Client.csproj");
@@ -137,7 +137,7 @@ public sealed class PwaUpdateFlowTests
 
     private static string CreatePublishSandbox(string repositoryRoot)
     {
-        var sandboxRoot = Path.Combine(Path.GetTempPath(), $"kubiczplace-finances-sandbox-{Guid.NewGuid():N}");
+        var sandboxRoot = Path.Combine(Path.GetTempPath(), $"finances-app-sandbox-{Guid.NewGuid():N}");
         CopyProjectTree(Path.Combine(repositoryRoot, "Finances.App.Client"), Path.Combine(sandboxRoot, "Finances.App.Client"));
         CopyProjectTree(Path.Combine(repositoryRoot, "Finances.App.Shared"), Path.Combine(sandboxRoot, "Finances.App.Shared"));
         return sandboxRoot;
