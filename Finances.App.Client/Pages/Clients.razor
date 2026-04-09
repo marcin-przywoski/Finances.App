@@ -7,19 +7,19 @@
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--catalog">
         <div class="workspace-hero-copy">
-            <p class="workspace-kicker">Client Management</p>
-            <h1 class="workspace-title">Clients</h1>
-            <p class="workspace-description">Manage your client database. Track visit history, spending, and notes for each client.</p>
+            <p class="workspace-kicker">@L["clientsKicker"]</p>
+            <h1 class="workspace-title">@L["clientsTitle"]</h1>
+            <p class="workspace-description">@L["clientsDescription"]</p>
         </div>
         <div class="workspace-hero-actions">
             <button class="btn btn-primary" @onclick="OpenAddModal">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-                Add client
+                @L["clientsAddButton"]
             </button>
 
             <div class="workspace-hero-meta">
                 <div class="workspace-hero-note">
-                    <span>Total clients</span>
+                    <span>@L["clientsTotalClients"]</span>
                     <strong>@clients.Count</strong>
                 </div>
             </div>
@@ -30,9 +30,9 @@
     {
         <div class="workspace-summary-grid">
             <div class="workspace-summary-card">
-                <span class="workspace-summary-label">Search results</span>
+                <span class="workspace-summary-label">@L["clientsSearchResults"]</span>
                 <strong>@filteredClients.Count</strong>
-                <p>of @clients.Count clients</p>
+                <p>@L.T("clientsSearchOf", clients.Count)</p>
             </div>
         </div>
     }
@@ -40,21 +40,21 @@
     <section class="workspace-panel">
         <div class="workspace-panel-header workspace-panel-header-split d-flex">
             <div>
-                <p class="workspace-panel-eyebrow">Directory</p>
-                <h2>All Clients</h2>
+                <p class="workspace-panel-eyebrow">@L["clientsPanelEyebrow"]</p>
+                <h2>@L["clientsPanelTitle"]</h2>
             </div>
             <div>
-                <input type="text" class="form-control" placeholder="Search clients…"
+                <input type="text" class="form-control" placeholder="@L["clientsSearchPlaceholder"]"
                        @bind="searchQuery" @bind:event="oninput" style="min-width: 220px;" />
             </div>
             <div class="d-flex gap-2 ms-2">
                 <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    Excel
+                    @L["commonExcel"]
                 </button>
                 <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    PDF
+                    @L["commonPdf"]
                 </button>
             </div>
         </div>
@@ -62,7 +62,7 @@
         @if (filteredClients.Count == 0)
         {
             <div class="workspace-empty-state">
-                <p>@(clients.Count == 0 ? "No clients yet. Add your first client to start tracking." : "No clients match your search.")</p>
+                <p>@(clients.Count == 0 ? L["clientsNoClients"] : L["clientsNoMatch"])</p>
             </div>
         }
         else
@@ -71,11 +71,11 @@
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Created</th>
-                            <th class="text-end">Actions</th>
+                            <th>@L["clientsThName"]</th>
+                            <th>@L["clientsThPhone"]</th>
+                            <th>@L["clientsThEmail"]</th>
+                            <th>@L["clientsThCreated"]</th>
+                            <th class="text-end">@L["clientsThActions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -91,10 +91,10 @@
                                 <td class="text-muted">@(c.Email ?? "—")</td>
                                 <td class="text-muted">@c.CreatedDate.ToString("yyyy-MM-dd")</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModal(c)" title="Edit">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModal(c)" title="@L["commonEdit"]">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(c)" title="Delete">
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(c)" title="@L["commonDelete"]">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                     </button>
                                 </td>
@@ -112,42 +112,42 @@
         <section class="workspace-panel">
             <div class="workspace-panel-header workspace-panel-header-split d-flex">
                 <div>
-                    <p class="workspace-panel-eyebrow">Client Profile</p>
+                    <p class="workspace-panel-eyebrow">@L["clientsDetailEyebrow"]</p>
                     <h2>@detailResult.Client.Name</h2>
                     @if (!string.IsNullOrWhiteSpace(detailResult.Client.Notes))
                     {
                         <p>@detailResult.Client.Notes</p>
                     }
                 </div>
-                <button class="btn btn-sm btn-outline-primary" @onclick="CloseDetail">Close</button>
+                <button class="btn btn-sm btn-outline-primary" @onclick="CloseDetail">@L["clientsDetailClose"]</button>
             </div>
 
             <div class="workspace-summary-grid mb-3">
                 <div class="workspace-summary-card">
-                    <span class="workspace-summary-label">Total visits</span>
+                    <span class="workspace-summary-label">@L["clientsDetailVisits"]</span>
                     <strong>@detailResult.TotalVisits</strong>
                 </div>
                 <div class="workspace-summary-card">
-                    <span class="workspace-summary-label">Total spend</span>
+                    <span class="workspace-summary-label">@L["clientsDetailSpend"]</span>
                     <strong>@detailResult.TotalSpend.ToString("N2") PLN</strong>
                 </div>
                 <div class="workspace-summary-card">
-                    <span class="workspace-summary-label">Last visit</span>
+                    <span class="workspace-summary-label">@L["clientsDetailLastVisit"]</span>
                     <strong>@(detailResult.LastVisit?.ToString("yyyy-MM-dd") ?? "—")</strong>
                 </div>
                 <div class="workspace-summary-card">
-                    <span class="workspace-summary-label">Client since</span>
+                    <span class="workspace-summary-label">@L["clientsDetailSince"]</span>
                     <strong>@detailResult.Client.CreatedDate.ToString("yyyy-MM-dd")</strong>
                 </div>
             </div>
 
             @if (detailResult.RecentServices.Count > 0)
             {
-                <h6 class="mt-3 mb-2">Recent Services</h6>
+                <h6 class="mt-3 mb-2">@L["clientsDetailRecentServices"]</h6>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Date</th><th>Service</th><th>Worker</th><th class="text-end">Amount</th><th class="text-end">Tips</th></tr>
+                            <tr><th>@L["clientsDetailThDate"]</th><th>@L["clientsDetailThService"]</th><th>@L["clientsDetailThWorker"]</th><th class="text-end">@L["clientsDetailThAmount"]</th><th class="text-end">@L["clientsDetailThTips"]</th></tr>
                         </thead>
                         <tbody>
                             @foreach (var r in detailResult.RecentServices)
@@ -167,11 +167,11 @@
 
             @if (detailResult.RecentProductSales.Count > 0)
             {
-                <h6 class="mt-3 mb-2">Recent Product Purchases</h6>
+                <h6 class="mt-3 mb-2">@L["clientsDetailRecentPurchases"]</h6>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Date</th><th>Product</th><th>Qty</th><th class="text-end">Total</th><th>Sold by</th></tr>
+                            <tr><th>@L["clientsDetailThDate"]</th><th>@L["clientsDetailThProduct"]</th><th>@L["clientsDetailThQty"]</th><th class="text-end">@L["clientsDetailThTotal"]</th><th>@L["clientsDetailThSoldBy"]</th></tr>
                         </thead>
                         <tbody>
                             @foreach (var s in detailResult.RecentProductSales)
@@ -192,7 +192,7 @@
             @if (detailResult.TotalVisits == 0)
             {
                 <div class="workspace-empty-state" style="min-height: 120px;">
-                    <p>No visit history yet for this client.</p>
+                    <p>@L["clientsDetailNoHistory"]</p>
                 </div>
             }
         </section>
@@ -206,33 +206,33 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Client" : "Add Client")</h5>
+                    <h5 class="modal-title">@(isEditing ? L["clientsModalTitleEdit"] : L["clientsModalTitleAdd"])</h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
                     <DataAnnotationsValidator />
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">@L["clientsModalLabelName"]</label>
                             <InputText class="form-control" @bind-Value="formModel.Name" />
                             <ValidationMessage For="() => formModel.Name" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Phone</label>
-                            <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="Optional" />
+                            <label class="form-label">@L["clientsModalLabelPhone"]</label>
+                            <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="@L["clientsModalPhonePlaceholder"]" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <InputText class="form-control" @bind-Value="formModel.Email" placeholder="Optional" />
+                            <label class="form-label">@L["clientsModalLabelEmail"]</label>
+                            <InputText class="form-control" @bind-Value="formModel.Email" placeholder="@L["clientsModalEmailPlaceholder"]" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Notes</label>
-                            <InputTextArea class="form-control" @bind-Value="formModel.Notes" rows="3" placeholder="Optional" />
+                            <label class="form-label">@L["clientsModalLabelNotes"]</label>
+                            <InputTextArea class="form-control" @bind-Value="formModel.Notes" rows="3" placeholder="@L["clientsModalNotesPlaceholder"]" />
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">@(isEditing ? "Save changes" : "Add client")</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">@L["clientsModalCancel"]</button>
+                        <button type="submit" class="btn btn-primary">@(isEditing ? L["clientsModalSaveChanges"] : L["clientsModalAddClient"])</button>
                     </div>
                 </EditForm>
             </div>
@@ -247,15 +247,15 @@
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Delete Client</h5>
+                    <h5 class="modal-title">@L["clientsDeleteTitle"]</h5>
                     <button type="button" class="btn-close" @onclick="() => clientToDelete = null"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Delete <strong>@clientToDelete.Name</strong>? Any linked service records and product sales will be unlinked but not deleted.</p>
+                    <p>@L.T("clientsDeleteMsg", clientToDelete.Name)</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" @onclick="() => clientToDelete = null">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="HandleDelete">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => clientToDelete = null">@L["clientsDeleteCancel"]</button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleDelete">@L["clientsDeleteConfirm"]</button>
                 </div>
             </div>
         </div>
@@ -284,7 +284,7 @@
             }).ToArray();
             await Export.ExportExcelAsync("clients.xlsx", "Clients", headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -300,7 +300,7 @@
             }).ToArray();
             await Export.ExportPdfAsync("clients.pdf", "Client Directory", headers, rows);
         }
-        catch { Toast.Show("Export failed", ToastLevel.Error); }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
         finally { exporting = false; }
     }
 
@@ -352,12 +352,12 @@
             if (isEditing)
             {
                 await Finance.UpdateClientAsync(formModel.Id, formModel);
-                Toast.Show("Client updated");
+                Toast.Show(L["clientsToastUpdated"]);
             }
             else
             {
                 await Finance.AddClientAsync(formModel);
-                Toast.Show("Client added");
+                Toast.Show(L["clientsToastAdded"]);
             }
 
             showModal = false;
@@ -365,7 +365,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to save client", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["clientsToastFailed"], ToastLevel.Error);
         }
     }
 
@@ -383,12 +383,12 @@
             var result = await Finance.DeleteClientAsync(clientToDelete.Id);
             if (result.Success)
             {
-                Toast.Show("Client deleted");
+                Toast.Show(L["clientsToastDeleted"]);
                 if (detailResult?.Client.Id == clientToDelete.Id) detailResult = null;
             }
             else
             {
-                Toast.Show(result.ErrorMessage ?? "Failed to delete client", ToastLevel.Error);
+                Toast.Show(result.ErrorMessage ?? L["clientsToastDeleteFailed"], ToastLevel.Error);
             }
 
             clientToDelete = null;
@@ -396,7 +396,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Show(ex is InvalidDataException ? ex.Message : "Failed to delete client", ToastLevel.Error);
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["clientsToastDeleteFailed"], ToastLevel.Error);
         }
     }
 
@@ -408,7 +408,7 @@
         }
         catch
         {
-            Toast.Show("Failed to load client details", ToastLevel.Error);
+            Toast.Show(L["clientsToastDetailFailed"], ToastLevel.Error);
         }
     }
 

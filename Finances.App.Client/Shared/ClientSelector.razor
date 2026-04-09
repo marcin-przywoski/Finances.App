@@ -3,7 +3,7 @@
 <div class="client-selector position-relative">
     <input type="text"
            class="form-control"
-           placeholder="@Placeholder"
+           placeholder="@ResolvedPlaceholder"
            value="@inputText"
            @oninput="OnInput"
            @onfocusin="() => showSuggestions = filteredClients.Count > 0"
@@ -32,7 +32,9 @@
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
     [Parameter] public int? ClientId { get; set; }
     [Parameter] public EventCallback<int?> ClientIdChanged { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Client name (optional)";
+    [Parameter] public string? Placeholder { get; set; }
+
+    private string ResolvedPlaceholder => Placeholder ?? L["clientSelectorPlaceholder"];
 
     private string inputText = string.Empty;
     private List<SalonClient> allClients = [];

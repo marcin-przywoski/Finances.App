@@ -1,13 +1,13 @@
 <div class="date-range-filter">
-    <button class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Today</button>
-    <button class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>This Week</button>
-    <button class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>This Month</button>
-    <button class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Custom</button>
+    <button class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>@L["dateFilterToday"]</button>
+    <button class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>@L["dateFilterThisWeek"]</button>
+    <button class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>@L["dateFilterThisMonth"]</button>
+    <button class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>@L["dateFilterCustom"]</button>
 
     @if (ActivePreset == "custom")
     {
         <input type="date" class="form-control form-control-sm" style="width: auto;" value="@From?.ToString("yyyy-MM-dd")" @onchange="OnFromChanged" />
-        <span style="color: var(--text-muted);">to</span>
+        <span style="color: var(--text-muted);">@L["dateFilterTo"]</span>
         <input type="date" class="form-control form-control-sm" style="width: auto;" value="@To?.ToString("yyyy-MM-dd")" @onchange="OnToChanged" />
     }
 </div>

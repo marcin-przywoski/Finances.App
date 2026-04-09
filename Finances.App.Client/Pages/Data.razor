@@ -6,24 +6,24 @@
 @inject PwaUpdateService PwaUpdate
 @inject ToastService Toast
 
-<PageTitle>Data</PageTitle>
+<PageTitle>@L["dataPageTitle"]</PageTitle>
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--data">
         <div class="workspace-hero-copy">
-            <span class="workspace-kicker">Local control</span>
-            <h1 class="workspace-title">Local data vault</h1>
-            <p class="workspace-description">Back up, restore, and update the salon data that lives only in this browser profile for this standalone PWA build.</p>
+            <span class="workspace-kicker">@L["dataKicker"]</span>
+            <h1 class="workspace-title">@L["dataTitle"]</h1>
+            <p class="workspace-description">@L["dataDescription"]</p>
 
             @if (summary is not null)
             {
                 <div class="workspace-hero-meta">
                     <div class="workspace-hero-note">
-                        <span>Backup schema</span>
+                        <span>@L["dataBackupSchema"]</span>
                         <strong>v@(summary.SchemaVersion)</strong>
                     </div>
                     <div class="workspace-hero-note">
-                        <span>Last local update</span>
+                        <span>@L["dataLastUpdate"]</span>
                         <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong>
                     </div>
                 </div>
@@ -32,23 +32,23 @@
 
         <div class="workspace-hero-actions">
             <div class="workspace-filter-panel">
-                <span>Storage model</span>
-                <strong>Browser-only PWA</strong>
-                <small class="text-muted">No server account or hosted database is used in this branch.</small>
+                <span>@L["dataStorageModel"]</span>
+                <strong>@L["dataStorageModelValue"]</strong>
+                <small class="text-muted">@L["dataStorageModelNote"]</small>
             </div>
 
             @if (summary is not null)
             {
                 <div class="workspace-summary-grid">
                     <div class="workspace-summary-card">
-                        <span class="workspace-summary-label">Update status</span>
+                        <span class="workspace-summary-label">@L["dataUpdateStatus"]</span>
                         <strong>@GetPwaStatusLabel()</strong>
-                        <p>Installed build: @GetBuildLabel()</p>
+                        <p>@L["dataInstalledBuild"]: @GetBuildLabel()</p>
                     </div>
                     <div class="workspace-summary-card">
-                        <span class="workspace-summary-label">Available build</span>
+                        <span class="workspace-summary-label">@L["dataAvailableBuild"]</span>
                         <strong>@GetAvailableBuildLabel()</strong>
-                        <p>Last checked: @FormatDateTime(PwaUpdate.State.LastCheckedUtc)</p>
+                        <p>@L["dataLastChecked"]: @FormatDateTime(PwaUpdate.State.LastCheckedUtc)</p>
                     </div>
                 </div>
             }
@@ -63,35 +63,35 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@summary.WorkerCount.ToString()" Label="Workers" IconBg="#dbeafe" IconColor="#3b82f6" Subtitle="Saved locally">
+                <StatCard Value="@summary.WorkerCount.ToString()" Label="@L["dataStatWorkers"]" IconBg="#dbeafe" IconColor="#3b82f6" Subtitle="@L["dataStatWorkersSub"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@summary.ServiceCount.ToString()" Label="Services" IconBg="#fef3c7" IconColor="#f59e0b" Subtitle="Catalog entries">
+                <StatCard Value="@summary.ServiceCount.ToString()" Label="@L["dataStatServices"]" IconBg="#fef3c7" IconColor="#f59e0b" Subtitle="@L["dataStatServicesSub"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@summary.ProductCount.ToString()" Label="Products" IconBg="#ede9fe" IconColor="#7c3aed" Subtitle="Retail catalog">
+                <StatCard Value="@summary.ProductCount.ToString()" Label="@L["dataStatProducts"]" IconBg="#ede9fe" IconColor="#7c3aed" Subtitle="@L["dataStatProductsSub"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="Recorded Services" IconBg="#d1fae5" IconColor="#10b981" Subtitle="Appointment history">
+                <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="@L["dataStatRecords"]" IconBg="#d1fae5" IconColor="#10b981" Subtitle="@L["dataStatRecordsSub"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
                     </IconContent>
                 </StatCard>
             </div>
             <div class="col-sm-6 col-xl-3">
-                <StatCard Value="@summary.ProductSaleCount.ToString()" Label="Product Sales" IconBg="#fce7f3" IconColor="#ec4899" Subtitle="Retail history">
+                <StatCard Value="@summary.ProductSaleCount.ToString()" Label="@L["dataStatSales"]" IconBg="#fce7f3" IconColor="#ec4899" Subtitle="@L["dataStatSalesSub"]">
                     <IconContent>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                     </IconContent>
@@ -103,17 +103,17 @@
             <div class="col-lg-7">
                 <section class="workspace-panel">
                     <div class="workspace-panel-header">
-                        <p class="workspace-panel-eyebrow">Backup</p>
-                        <h2>Back up or restore</h2>
-                        <p>Export a JSON snapshot for safekeeping, then import it into this browser or another device when you need to restore salon data.</p>
+                        <p class="workspace-panel-eyebrow">@L["dataBackupEyebrow"]</p>
+                        <h2>@L["dataBackupTitle"]</h2>
+                        <p>@L["dataBackupDesc"]</p>
                     </div>
                     <div class="workspace-action-row">
-                        <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? "Working..." : "Export JSON")</button>
+                        <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? L["dataExportBusy"] : L["dataExportButton"])</button>
                         <label class="btn btn-outline-primary mb-0 @(busy ? "disabled" : string.Empty)">
-                            Import JSON
+                            @L["dataImportButton"]
                             <InputFile OnChange="ImportAsync" accept=".json,application/json" class="d-none" disabled="@busy" />
                         </label>
-                        <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Reset starter data</button>
+                        <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">@L["dataResetButton"]</button>
                     </div>
                 </section>
             </div>
@@ -122,41 +122,41 @@
                 <section class="workspace-panel">
                     <div class="workspace-panel-header workspace-panel-header-split">
                         <div>
-                            <p class="workspace-panel-eyebrow">Updates</p>
-                            <h2>App updates</h2>
-                            <p>Check for a newer offline build, then reload once to switch the installed PWA to it.</p>
+                            <p class="workspace-panel-eyebrow">@L["dataUpdatesEyebrow"]</p>
+                            <h2>@L["dataUpdatesTitle"]</h2>
+                            <p>@L["dataUpdatesDesc"]</p>
                         </div>
                         <span class="workspace-badge">@GetPwaStatusLabel()</span>
                     </div>
 
                     <dl class="row mb-3 small">
-                        <dt class="col-5 text-muted">Installed build</dt>
+                        <dt class="col-5 text-muted">@L["dataInstalledBuild"]</dt>
                         <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
 
-                        <dt class="col-5 text-muted">Available build</dt>
+                        <dt class="col-5 text-muted">@L["dataAvailableBuild"]</dt>
                         <dd class="col-7">@GetAvailableBuildLabel()</dd>
 
-                        <dt class="col-5 text-muted">Last checked</dt>
+                        <dt class="col-5 text-muted">@L["dataLastChecked"]</dt>
                         <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
 
                         <dt class="col-5 text-muted">Last applied</dt>
                         <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
 
-                        <dt class="col-5 text-muted">Backup schema</dt>
+                        <dt class="col-5 text-muted">@L["dataBackupSchema"]</dt>
                         <dd class="col-7">v@(summary.SchemaVersion)</dd>
                     </dl>
 
                     <div class="workspace-action-row mb-3">
-                        <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? "Checking..." : "Check for updates")</button>
+                        <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? L["dataCheckBusy"] : L["dataCheckUpdates"])</button>
 
                         @if (PwaUpdate.State.UpdateAvailable)
                         {
-                            <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">Reload to update</button>
+                            <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">@L["dataReloadToUpdate"]</button>
                         }
 
                         @if (PwaUpdate.State.InstallAvailable && !PwaUpdate.State.IsStandalone)
                         {
-                            <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
+                            <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">@L["dataInstallApp"]</button>
                         }
                     </div>
 
@@ -196,15 +196,15 @@
                     }
 
                     <div class="workspace-panel-header mb-0">
-                        <p class="workspace-panel-eyebrow">Privacy</p>
-                        <h2>Privacy and install notes</h2>
+                        <p class="workspace-panel-eyebrow">@L["dataPrivacyEyebrow"]</p>
+                        <h2>@L["dataPrivacyTitle"]</h2>
                     </div>
                     <ul class="workspace-note-list">
-                        <li>Your data is stored only in this browser's local storage.</li>
-                        <li>No server-side account or database is used in this branch.</li>
-                        <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
-                        <li>Use exported backups if you want to keep data across devices or browsers.</li>
-                        <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
+                        <li>@L["dataPrivacyNote1"]</li>
+                        <li>@L["dataPrivacyNote2"]</li>
+                        <li>@L["dataPrivacyNote3"]</li>
+                        <li>@L["dataPrivacyNote4"]</li>
+                        <li>@L.T("dataPrivacyNote5", summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</li>
                     </ul>
                 </section>
             </div>
@@ -213,9 +213,9 @@
 </div>
 
 <ConfirmDialog IsVisible="showResetConfirm"
-               Title="Reset Local Data"
-               Message="Replace the current browser data with the starter workers and services? This also removes all recorded history in this browser."
-               ConfirmText="Reset Data"
+               Title="@L["dataResetTitle"]"
+               Message="@L["dataResetMsg"]"
+               ConfirmText="@L["dataResetConfirm"]"
                OnConfirm="HandleResetAsync"
                OnCancel="() => showResetConfirm = false" />
 
@@ -259,7 +259,7 @@
             var json = await Finance.ExportAsync();
             var fileName = $"finances-app-{DateTime.Now:yyyyMMdd-HHmmss}.json";
             await JS.InvokeVoidAsync("financeBrowser.downloadTextFile", fileName, "application/json;charset=utf-8", json);
-            Toast.Show("Backup exported.");
+            Toast.Show(L["dataToastExported"]);
             await RefreshSummaryAsync();
         }
         catch (Exception ex)
@@ -295,7 +295,7 @@
             await Finance.ImportAsync(json);
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Backup imported.");
+            Toast.Show(L["dataToastImported"]);
         }
         catch (Exception ex)
         {
@@ -322,7 +322,7 @@
             await Finance.ResetAsync();
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Local data reset to starter values.");
+            Toast.Show(L["dataToastReset"]);
         }
         catch (Exception ex)
         {
@@ -353,8 +353,8 @@
         {
             var updateReady = await PwaUpdate.CheckForUpdatesAsync();
             Toast.Show(updateReady
-                ? "A newer offline build is ready. Reload to apply it."
-                : "You already have the latest available offline build.");
+                ? L["dataToastUpdateReady"]
+                : L["dataToastUpToDate"]);
         }
         catch (Exception ex)
         {
@@ -380,7 +380,7 @@
             var updateStarted = await PwaUpdate.ApplyUpdateAsync();
             if (!updateStarted)
             {
-                Toast.Show("No pending update was found.", ToastLevel.Error);
+                Toast.Show(L["dataToastNoPending"], ToastLevel.Error);
             }
         }
         catch (Exception ex)
@@ -407,7 +407,7 @@
             var accepted = await PwaUpdate.PromptInstallAsync();
             if (!accepted)
             {
-                Toast.Show("The install prompt is not available right now.", ToastLevel.Error);
+                Toast.Show(L["dataToastInstallNotAvailable"], ToastLevel.Error);
             }
         }
         catch (Exception ex)
@@ -424,33 +424,33 @@
     {
         if (pwaBusy || PwaUpdate.State.IsCheckingForUpdates)
         {
-            return "Checking";
+            return L["dataPwaChecking"];
         }
 
         if (PwaUpdate.State.UpdateAvailable)
         {
-            return "Update ready";
+            return L["dataPwaUpdateReady"];
         }
 
         if (PwaUpdate.State.JustUpdated)
         {
-            return "Updated";
+            return L["dataPwaUpdated"];
         }
 
-        return PwaUpdate.State.IsOfflineReady ? "Up to date" : "Initializing";
+        return PwaUpdate.State.IsOfflineReady ? L["dataPwaUpToDate"] : L["dataPwaInitializing"];
     }
 
     private string GetBuildLabel()
     {
         return string.IsNullOrWhiteSpace(PwaUpdate.State.CurrentVersion)
-            ? "Detecting..."
+            ? L["dataBuildDetecting"]
             : PwaUpdate.State.CurrentVersion!;
     }
 
     private string GetAvailableBuildLabel()
     {
         return string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableVersion)
-            ? "No pending update"
+            ? L["dataAvailableNone"]
             : PwaUpdate.State.AvailableVersion!;
     }
 
@@ -462,13 +462,13 @@
     private string GetReleaseHeading()
     {
         return PwaUpdate.State.AvailableRelease is not null
-            ? "What changed"
-            : "Current release";
+            ? L["dataReleaseChanged"]
+            : L["dataReleaseCurrent"];
     }
 
-    private static string FormatDateTime(DateTimeOffset? value)
+    private string FormatDateTime(DateTimeOffset? value)
     {
-        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "Not yet";
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? L["dataLastCheckedNotYet"];
     }
 
     private void HandlePwaStateChanged()

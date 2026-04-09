@@ -5,10 +5,10 @@
 @inject WorkerContextService WorkerContext
 
 <div class="d-flex align-items-center gap-2">
-    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;">Worker:</label>
+    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;">@L["workerSelectorLabel"]</label>
     <select class="form-select form-select-sm" style="width: auto; min-width: 160px;"
             value="@WorkerContext.SelectedWorkerId" @onchange="OnWorkerChanged">
-        <option value="">-- Select --</option>
+        <option value="">@L["workerSelectorPlaceholder"]</option>
         @if (workers != null)
         {
             @foreach (var w in workers)

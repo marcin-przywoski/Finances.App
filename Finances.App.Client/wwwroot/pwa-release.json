@@ -1,10 +1,9 @@
 {
   "releaseId": "2026-04-09-modernization",
   "publishedUtc": "2026-04-09T18:00:00Z",
-  "title": "Major modernization — Dark mode, Clients, Recurring, Notifications, Analytics, Goals & PDF/Excel export",
-  "summary": "A large modernization pass covering architecture refactoring, dark mode, client management, recurring services, in-app notifications, period-over-period analytics comparisons, revenue goal tracking, client retention insights, and PDF/Excel export from all data pages.",
+  "title": "Major modernization — Localization, export, dark mode, client management, recurring services, notifications, analytics improvements",
+  "summary": "A large modernization release introducing localization",
   "changes": [
-    "Export: PDF and Excel export buttons on Service History, Product Sales, Analytics (commission report), Products, and Clients pages.",
-    "Export: Excel files generated via SheetJS with auto-sized columns; PDF files via jsPDF with styled tables, page numbers, and date stamps."
+    "Added localization support with English and Polish translations"
   ]
 }

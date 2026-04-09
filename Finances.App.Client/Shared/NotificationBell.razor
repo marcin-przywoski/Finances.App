@@ -1,7 +1,7 @@
 @inject NotificationService Notifications
 
 <div class="notification-bell-wrapper">
-    <button class="notification-bell-btn" @onclick="ToggleDropdown" title="Notifications">
+    <button class="notification-bell-btn" @onclick="ToggleDropdown" title="@L["notificationBellTitle"]">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -16,16 +16,16 @@
     {
         <div class="notification-dropdown">
             <div class="notification-dropdown-header">
-                <span>Notifications</span>
+                <span>@L["notificationBellHeader"]</span>
                 @if (Notifications.UnreadCount > 0)
                 {
-                    <button class="notification-dismiss-all" @onclick="DismissAll">Clear all</button>
+                    <button class="notification-dismiss-all" @onclick="DismissAll">@L["notificationBellClearAll"]</button>
                 }
             </div>
 
             @if (Notifications.Notifications.Count == 0)
             {
-                <div class="notification-empty">No notifications</div>
+                <div class="notification-empty">@L["notificationBellEmpty"]</div>
             }
             else
             {
@@ -51,7 +51,7 @@
                                 <div class="notification-item-title">@n.Title</div>
                                 <div class="notification-item-message">@n.Message</div>
                             </div>
-                            <button class="notification-item-dismiss" @onclick="() => Dismiss(n.Id)" title="Dismiss">
+                            <button class="notification-item-dismiss" @onclick="() => Dismiss(n.Id)" title="@L["notificationDismiss"]">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                             </button>
                         </div>
