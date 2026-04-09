@@ -31,6 +31,11 @@
     animation: analyticsFloat 16s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .analytics-hero::before {
+        animation: none;
+    }
+}
 .analytics-hero-copy,
 .analytics-toolbar,
 .analytics-panel {
