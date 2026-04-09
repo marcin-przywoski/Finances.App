@@ -18,6 +18,7 @@ static class Program
         builder.Services.AddScoped<WorkerContextService>();
         builder.Services.AddScoped<PwaUpdateService>();
         builder.Services.AddScoped<ThemeService>();
+        builder.Services.AddSingleton<NotificationService>();
 
         await builder.Build().RunAsync();
     }

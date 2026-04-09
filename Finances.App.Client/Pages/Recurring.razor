@@ -1,0 +1,368 @@
+@page "/recurring"
+@implements IDisposable
+@inject IFinanceService Finance
+@inject ToastService Toast
+
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--catalog">
+        <div class="workspace-hero-copy">
+            <p class="workspace-kicker">Scheduling</p>
+            <h1 class="workspace-title">Recurring Services</h1>
+            <p class="workspace-description">Set up repeating appointments so you never miss a scheduled service. Due items generate notifications automatically.</p>
+        </div>
+        <div class="workspace-hero-actions">
+            <button class="btn btn-primary" @onclick="OpenAddModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
+                Add recurring
+            </button>
+
+            <div class="workspace-hero-meta">
+                <div class="workspace-hero-note">
+                    <span>Active</span>
+                    <strong>@recurringList.Count(r => r.IsActive)</strong>
+                </div>
+                <div class="workspace-hero-note">
+                    <span>Due today</span>
+                    <strong>@recurringList.Count(r => r.IsActive && r.NextOccurrence.Date <= DateTime.Today)</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="workspace-panel">
+        <div class="workspace-panel-header">
+            <p class="workspace-panel-eyebrow">Schedule</p>
+            <h2>All Recurring Services</h2>
+        </div>
+
+        @if (recurringList.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>No recurring services yet. Add one to get started.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Worker</th>
+                            <th>Service</th>
+                            <th>Client</th>
+                            <th>Frequency</th>
+                            <th>Next Due</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in recurringList)
+                        {
+                            var workerName = workers.FirstOrDefault(w => w.Id == item.WorkerId)?.Name ?? "—";
+                            var serviceName = services.FirstOrDefault(s => s.Id == item.ServiceId)?.Name ?? "—";
+                            var clientName = item.ClientId.HasValue
+                                ? (clients.FirstOrDefault(c => c.Id == item.ClientId.Value)?.Name ?? "—")
+                                : "—";
+                            var isDue = item.IsActive && item.NextOccurrence.Date <= DateTime.Today;
+                            var isOverdue = item.IsActive && item.NextOccurrence.Date < DateTime.Today;
+
+                            <tr class="@(isDue ? "table-warning" : "")">
+                                <td>@workerName</td>
+                                <td>@serviceName</td>
+                                <td>@clientName</td>
+                                <td>@item.Frequency</td>
+                                <td>
+                                    <span class="@(isOverdue ? "text-danger fw-bold" : isDue ? "text-warning fw-bold" : "")">
+                                        @item.NextOccurrence.ToString("yyyy-MM-dd")
+                                    </span>
+                                    @if (isOverdue)
+                                    {
+                                        <small class="text-danger ms-1">(overdue)</small>
+                                    }
+                                    else if (isDue)
+                                    {
+                                        <small class="text-warning ms-1">(due today)</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Paused</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (isDue)
+                                    {
+                                        <button class="btn btn-sm btn-outline-success me-1" @onclick="() => MarkCompleted(item)" title="Mark as done & advance">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModal(item)" title="Edit">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(item)" title="Delete">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@if (showModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? "Edit Recurring Service" : "Add Recurring Service")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <EditForm Model="form" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Worker</label>
+                            <select class="form-select" @bind="form.WorkerId">
+                                <option value="0">Select worker…</option>
+                                @foreach (var w in workers)
+                                {
+                                    <option value="@w.Id">@w.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Service</label>
+                            <select class="form-select" @bind="form.ServiceId">
+                                <option value="0">Select service…</option>
+                                @foreach (var s in services)
+                                {
+                                    <option value="@s.Id">@s.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Client (optional)</label>
+                            <ClientSelector @bind-ClientId="form.ClientId" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Frequency</label>
+                            <select class="form-select" @bind="form.Frequency">
+                                @foreach (var freq in Enum.GetValues<RecurrenceFrequency>())
+                                {
+                                    <option value="@freq">@freq</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Next occurrence</label>
+                            <input type="date" class="form-control" @bind="form.NextOccurrence" />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="recurring-active" @bind="form.IsActive" />
+                            <label class="form-check-label" for="recurring-active">Active</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" rows="2" @bind="form.Notes" maxlength="300"></textarea>
+                        </div>
+                        <ValidationSummary />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">@(isEditing ? "Save changes" : "Add")</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDeleteConfirm)
+{
+    <ConfirmDialog IsVisible="true"
+                   Title="Delete Recurring Service"
+                   Message="Are you sure you want to delete this recurring service?"
+                   ConfirmText="Delete"
+                   OnConfirm="DeleteConfirmedAsync"
+                   OnCancel="() => showDeleteConfirm = false" />
+}
+
+@code {
+    private List<RecurringService> recurringList = [];
+    private List<Worker> workers = [];
+    private List<Service> services = [];
+    private List<SalonClient> clients = [];
+
+    private bool showModal;
+    private bool isEditing;
+    private RecurringService form = new();
+    private int? editingId;
+
+    private bool showDeleteConfirm;
+    private int? deletingId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Finance.OnChange += HandleDataChanged;
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        recurringList = (await Finance.GetRecurringServicesAsync()).ToList();
+        workers = (await Finance.GetWorkersAsync()).ToList();
+        services = (await Finance.GetServicesAsync()).ToList();
+        clients = (await Finance.GetClientsAsync()).ToList();
+    }
+
+    private void OpenAddModal()
+    {
+        isEditing = false;
+        editingId = null;
+        form = new RecurringService
+        {
+            NextOccurrence = DateTime.Today,
+            IsActive = true,
+            Frequency = RecurrenceFrequency.Monthly
+        };
+        showModal = true;
+    }
+
+    private void OpenEditModal(RecurringService item)
+    {
+        isEditing = true;
+        editingId = item.Id;
+        form = new RecurringService
+        {
+            Id = item.Id,
+            WorkerId = item.WorkerId,
+            ServiceId = item.ServiceId,
+            ClientId = item.ClientId,
+            Frequency = item.Frequency,
+            NextOccurrence = item.NextOccurrence,
+            IsActive = item.IsActive,
+            Notes = item.Notes
+        };
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (form.WorkerId == 0)
+        {
+            Toast.Show("Please select a worker.", "warning");
+            return;
+        }
+        if (form.ServiceId == 0)
+        {
+            Toast.Show("Please select a service.", "warning");
+            return;
+        }
+
+        try
+        {
+            if (isEditing && editingId.HasValue)
+            {
+                form.Id = editingId.Value;
+                await Finance.UpdateRecurringServiceAsync(editingId.Value, form);
+                Toast.Show("Recurring service updated.", "success");
+            }
+            else
+            {
+                await Finance.AddRecurringServiceAsync(form);
+                Toast.Show("Recurring service added.", "success");
+            }
+
+            showModal = false;
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, "danger");
+        }
+    }
+
+    private void ConfirmDelete(RecurringService item)
+    {
+        deletingId = item.Id;
+        showDeleteConfirm = true;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (deletingId.HasValue)
+        {
+            try
+            {
+                await Finance.DeleteRecurringServiceAsync(deletingId.Value);
+                Toast.Show("Recurring service deleted.", "success");
+                await LoadDataAsync();
+            }
+            catch (Exception ex)
+            {
+                Toast.Show(ex.Message, "danger");
+            }
+        }
+        showDeleteConfirm = false;
+        deletingId = null;
+    }
+
+    private async Task MarkCompleted(RecurringService item)
+    {
+        // Advance the next occurrence based on frequency
+        var next = item.Frequency switch
+        {
+            RecurrenceFrequency.Weekly => item.NextOccurrence.AddDays(7),
+            RecurrenceFrequency.Biweekly => item.NextOccurrence.AddDays(14),
+            RecurrenceFrequency.Monthly => item.NextOccurrence.AddMonths(1),
+            _ => item.NextOccurrence.AddMonths(1)
+        };
+
+        // Keep advancing until NextOccurrence is in the future
+        while (next.Date <= DateTime.Today)
+        {
+            next = item.Frequency switch
+            {
+                RecurrenceFrequency.Weekly => next.AddDays(7),
+                RecurrenceFrequency.Biweekly => next.AddDays(14),
+                RecurrenceFrequency.Monthly => next.AddMonths(1),
+                _ => next.AddMonths(1)
+            };
+        }
+
+        item.NextOccurrence = next;
+        await Finance.UpdateRecurringServiceAsync(item.Id, item);
+        Toast.Show("Marked as done. Next due: " + next.ToString("yyyy-MM-dd"), "success");
+        await LoadDataAsync();
+    }
+
+    private async void HandleDataChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Finance.OnChange -= HandleDataChanged;
+    }
+}

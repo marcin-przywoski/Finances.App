@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @inject ThemeService Theme
+@inject IFinanceService Finance
+@inject NotificationService Notifications
 
 <div class="page @(sidebarOpen ? "sidebar-open" : "")">
     <div class="sidebar">
@@ -12,6 +14,7 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <div class="top-bar-right">
+                <NotificationBell />
                 <button class="theme-toggle" @onclick="ToggleTheme" title="@(Theme.IsDark ? "Switch to light mode" : "Switch to dark mode")">
                     @if (Theme.IsDark)
                     {
@@ -65,8 +68,54 @@
         {
             await Theme.InitializeAsync();
             Theme.OnChange += StateHasChanged;
+
+            await RefreshNotificationsAsync();
+            Finance.OnChange += HandleFinanceChanged;
+
             StateHasChanged();
         }
+    }
+
+    private async Task RefreshNotificationsAsync()
+    {
+        var items = new List<(NotificationType Type, string Title, string Message)>();
+
+        // Check due recurring services
+        var due = await Finance.GetDueRecurringServicesAsync();
+        foreach (var r in due)
+        {
+            var workerName = r.Worker?.Name ?? "Unknown";
+            var serviceName = r.Service?.Name ?? "Unknown";
+            var isOverdue = r.NextOccurrence.Date < DateTime.Today;
+
+            items.Add((
+                isOverdue ? NotificationType.Warning : NotificationType.Action,
+                isOverdue ? "Overdue recurring service" : "Recurring service due today",
+                $"{serviceName} with {workerName}" + (r.Client is not null ? $" for {r.Client.Name}" : "")
+            ));
+        }
+
+        // Check low-stock products
+        var products = await Finance.GetProductsAsync();
+        foreach (var p in products.Where(p => p.StockQuantity > 0 && p.StockQuantity <= 3))
+        {
+            items.Add((
+                NotificationType.Warning,
+                "Low stock",
+                $"{p.Name} has only {p.StockQuantity} left"
+            ));
+        }
+
+        Notifications.ReplaceAll(items);
+    }
+
+    private async void HandleFinanceChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await RefreshNotificationsAsync();
+            StateHasChanged();
+        });
     }
 
     private void ToggleSidebar()
