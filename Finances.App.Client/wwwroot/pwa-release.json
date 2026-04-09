@@ -1,14 +1,22 @@
 {
-  "releaseId": "2026-04-09-cleanup",
-  "publishedUtc": "2026-04-09T12:00:00Z",
-  "title": "Code cleanup and consistency pass",
-  "summary": "Shared analytics DTOs, centralized toast notifications, reactive CRUD pages, and a consistent layout across all views.",
+  "releaseId": "2026-04-09-modernization",
+  "publishedUtc": "2026-04-09T18:00:00Z",
+  "title": "Major modernization — Dark mode, Clients, Recurring services & Notifications",
+  "summary": "A large modernization pass that refactors the architecture, adds dark mode with theme persistence, introduces client management with visit tracking, recurring service scheduling with automatic reminders, and an in-app notification system.",
   "changes": [
-    "Extracted shared analytics DTO records into a dedicated Models/AnalyticsDtos.cs file, removing duplicate inline definitions from Dashboard and Analytics pages.",
-    "Moved the Toast component into MainLayout so notifications work globally from a single instance.",
-    "Workers, Services, and Products pages now subscribe to store changes and auto-refresh when data is imported or reset.",
-    "The Record Service page now uses the same workspace-hero layout as all other pages.",
-    "Fixed the mobile sidebar toggle so it actually slides the nav in and out.",
-    "Removed an unused IJSRuntime inject from ConfirmDialog."
+    "Architecture: Introduced IFinanceService interface — all pages now depend on an abstraction instead of the concrete store, making future backend swaps straightforward.",
+    "Architecture: Removed the legacy LocalApiMessageHandler HTTP-faking layer and unused AnalyticsDtos.cs; the store is now called directly.",
+    "Dark mode: Added a full light/dark theme toggle (sun/moon icon in the top bar) with automatic localStorage persistence.",
+    "Dark mode: All CSS variables, cards, modals, tables, charts, hero sections, and PWA banners respect the selected theme.",
+    "Dark mode: Chart.js graphs now read CSS variables for grid lines and text, so they adapt to light or dark automatically.",
+    "Error handling: Wrapped the main content area in an ErrorBoundary with a friendly recovery UI.",
+    "Client management: New Clients page with full add/edit/delete, search/filter, and a detailed drill-down panel showing visit history and spending.",
+    "Client management: New ClientSelector autocomplete component used on Record Service and Product Sales pages.",
+    "Client management: Existing records with client names were automatically migrated to proper client records (schema v2).",
+    "Recurring services: New Recurring page to set up repeating weekly, biweekly, or monthly appointments per worker/service/client.",
+    "Recurring services: Due and overdue items are highlighted in the table with a one-click 'Mark done' button that auto-advances the next date.",
+    "Notifications: New notification bell in the top bar with a badge count and dropdown panel.",
+    "Notifications: Automatic alerts for overdue recurring services and low-stock products (≤ 3 remaining) — refreshed on every data change.",
+    "Data schema upgraded to v3 with automatic migration from older versions."
   ]
 }

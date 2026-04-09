@@ -266,12 +266,12 @@
     {
         if (form.WorkerId == 0)
         {
-            Toast.Show("Please select a worker.", "warning");
+            Toast.Show("Please select a worker.", ToastLevel.Error);
             return;
         }
         if (form.ServiceId == 0)
         {
-            Toast.Show("Please select a service.", "warning");
+            Toast.Show("Please select a service.", ToastLevel.Error);
             return;
         }
 
@@ -281,12 +281,12 @@
             {
                 form.Id = editingId.Value;
                 await Finance.UpdateRecurringServiceAsync(editingId.Value, form);
-                Toast.Show("Recurring service updated.", "success");
+                Toast.Show("Recurring service updated.");
             }
             else
             {
                 await Finance.AddRecurringServiceAsync(form);
-                Toast.Show("Recurring service added.", "success");
+                Toast.Show("Recurring service added.");
             }
 
             showModal = false;
@@ -294,7 +294,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Show(ex.Message, "danger");
+            Toast.Show(ex.Message, ToastLevel.Error);
         }
     }
 
@@ -311,12 +311,12 @@
             try
             {
                 await Finance.DeleteRecurringServiceAsync(deletingId.Value);
-                Toast.Show("Recurring service deleted.", "success");
+                Toast.Show("Recurring service deleted.");
                 await LoadDataAsync();
             }
             catch (Exception ex)
             {
-                Toast.Show(ex.Message, "danger");
+                Toast.Show(ex.Message, ToastLevel.Error);
             }
         }
         showDeleteConfirm = false;
@@ -348,7 +348,7 @@
 
         item.NextOccurrence = next;
         await Finance.UpdateRecurringServiceAsync(item.Id, item);
-        Toast.Show("Marked as done. Next due: " + next.ToString("yyyy-MM-dd"), "success");
+        Toast.Show("Marked as done. Next due: " + next.ToString("yyyy-MM-dd"));
         await LoadDataAsync();
     }
 
