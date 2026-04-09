@@ -1,0 +1,100 @@
+@inject IFinanceService Finance
+
+<div class="client-selector position-relative">
+    <input type="text"
+           class="form-control"
+           placeholder="@Placeholder"
+           value="@inputText"
+           @oninput="OnInput"
+           @onfocusin="() => showSuggestions = filteredClients.Count > 0"
+           @onfocusout="HideSuggestionsDelayed"
+           @onkeydown="OnKeyDown" />
+
+    @if (showSuggestions && filteredClients.Count > 0)
+    {
+        <ul class="client-suggestions list-unstyled">
+            @foreach (var client in filteredClients)
+            {
+                <li class="client-suggestion-item" @onmousedown="() => SelectClient(client)" @onmousedown:preventDefault>
+                    <strong>@client.Name</strong>
+                    @if (!string.IsNullOrWhiteSpace(client.Phone))
+                    {
+                        <span class="text-muted ms-2" style="font-size: 0.8rem;">@client.Phone</span>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public int? ClientId { get; set; }
+    [Parameter] public EventCallback<int?> ClientIdChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Client name (optional)";
+
+    private string inputText = string.Empty;
+    private List<SalonClient> allClients = [];
+    private bool showSuggestions;
+
+    private List<SalonClient> filteredClients =>
+        string.IsNullOrWhiteSpace(inputText)
+            ? []
+            : allClients.Where(c => c.Name.Contains(inputText, StringComparison.CurrentCultureIgnoreCase))
+                        .Take(8)
+                        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        allClients = (await Finance.GetClientsAsync()).ToList();
+        inputText = Value ?? string.Empty;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Value != inputText)
+        {
+            inputText = Value ?? string.Empty;
+        }
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        inputText = e.Value?.ToString() ?? string.Empty;
+        showSuggestions = filteredClients.Count > 0;
+        await ValueChanged.InvokeAsync(string.IsNullOrWhiteSpace(inputText) ? null : inputText);
+
+        // Try to match existing client
+        var match = allClients.FirstOrDefault(c =>
+            string.Equals(c.Name, inputText.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        await ClientIdChanged.InvokeAsync(match?.Id);
+    }
+
+    private async Task SelectClient(SalonClient client)
+    {
+        inputText = client.Name;
+        showSuggestions = false;
+        await ValueChanged.InvokeAsync(client.Name);
+        await ClientIdChanged.InvokeAsync(client.Id);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            showSuggestions = false;
+        }
+        else if (e.Key == "Enter" && filteredClients.Count == 1)
+        {
+            await SelectClient(filteredClients[0]);
+        }
+    }
+
+    private async Task HideSuggestionsDelayed()
+    {
+        await Task.Delay(200);
+        showSuggestions = false;
+        StateHasChanged();
+    }
+}

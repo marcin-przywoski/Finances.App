@@ -115,7 +115,7 @@
                                     <td>@s.DateSold.ToString("yyyy-MM-dd")</td>
                                     <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
                                     <td>@(s.Worker?.Name ?? "—")</td>
-                                    <td class="text-muted">@(s.ClientName ?? "—")</td>
+                                    <td class="text-muted">@(s.Client?.Name ?? s.ClientName ?? "—")</td>
                                     <td>@s.Quantity</td>
                                     <td>@s.UnitPrice.ToString("C")</td>
                                     <td class="fw-semibold">@s.TotalPrice.ToString("C")</td>
@@ -206,7 +206,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Client Name</label>
-                                <InputText class="form-control" @bind-Value="formModel.ClientName" placeholder="Optional" />
+                                <ClientSelector @bind-Value="formModel.ClientName" @bind-ClientId="formModel.ClientId" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Notes</label>
@@ -363,6 +363,7 @@
             Quantity = sale.Quantity,
             UnitPrice = sale.UnitPrice,
             ClientName = sale.ClientName,
+            ClientId = sale.ClientId,
             Notes = sale.Notes
         };
         editId = sale.Id;

@@ -1,0 +1,30 @@
+.client-selector {
+    position: relative;
+}
+
+.client-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--card-shadow-hover);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.client-suggestion-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 150ms ease;
+}
+
+.client-suggestion-item:hover {
+    background-color: rgba(13, 148, 136, 0.08);
+}

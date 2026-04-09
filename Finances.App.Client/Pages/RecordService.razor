@@ -56,7 +56,7 @@ else
 
                 <div class="col-md-6">
                     <label class="form-label">Client Name</label>
-                    <InputText class="form-control" @bind-Value="record.ClientName" placeholder="Optional" />
+                    <ClientSelector @bind-Value="record.ClientName" @bind-ClientId="record.ClientId" />
                 </div>
 
                 <div class="col-md-4">
