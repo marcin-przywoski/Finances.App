@@ -468,6 +468,46 @@
     private TopProduct[]? topProducts;
     private CombinedTimeline? combinedTimeline;
     private bool needsChartRender;
+    private WorkerRevenue[]? highlightCacheWorkerData;
+    private ServicePopularity[]? highlightCacheServiceData;
+    private DayOfWeekEntry[]? highlightCacheDayOfWeekData;
+    private ForecastResult? highlightCacheForecastResult;
+    private WorkerRevenue? topWorker;
+    private ServicePopularity? topService;
+    private DayOfWeekEntry? strongestDay;
+    private ForecastPoint? finalForecastPoint;
+
+    private void EnsureHighlightCache()
+    {
+        if (ReferenceEquals(highlightCacheWorkerData, workerData) &&
+            ReferenceEquals(highlightCacheServiceData, serviceData) &&
+            ReferenceEquals(highlightCacheDayOfWeekData, dayOfWeekData) &&
+            ReferenceEquals(highlightCacheForecastResult, forecastResult))
+        {
+            return;
+        }
+
+        highlightCacheWorkerData = workerData;
+        highlightCacheServiceData = serviceData;
+        highlightCacheDayOfWeekData = dayOfWeekData;
+        highlightCacheForecastResult = forecastResult;
+
+        topWorker = workerData?
+            .OrderByDescending(w => w.Revenue + w.Tips)
+            .FirstOrDefault();
+
+        topService = serviceData?
+            .OrderByDescending(s => s.Revenue)
+            .FirstOrDefault();
+
+        strongestDay = dayOfWeekData?
+            .OrderByDescending(d => d.Revenue)
+            .FirstOrDefault();
+
+        finalForecastPoint = forecastResult is { Forecast.Length: > 0 }
+            ? forecastResult.Forecast[^1]
+            : null;
+    }
 
     private decimal TotalRevenueForRange => dailyData?.Sum(d => d.Revenue) ?? workerData?.Sum(w => w.Revenue) ?? 0m;
     private decimal TotalTipsForRange => dailyData?.Sum(d => d.Tips) ?? workerData?.Sum(w => w.Tips) ?? 0m;
@@ -475,11 +515,46 @@
     private decimal AverageDailyRevenue => dailyData != null && dailyData.Length > 0 ? Math.Round(dailyData.Average(d => d.Revenue), 2) : 0m;
     private decimal TotalServiceRevenue => combinedTimeline?.Points.Sum(p => p.ServiceRevenue) ?? 0m;
     private decimal TotalProductRevenue => combinedTimeline?.Points.Sum(p => p.ProductRevenue) ?? 0m;
-    private WorkerRevenue? TopWorker => workerData is { Length: > 0 } ? workerData.OrderByDescending(w => w.Revenue + w.Tips).First() : null;
-    private ServicePopularity? TopService => serviceData is { Length: > 0 } ? serviceData.OrderByDescending(s => s.Revenue).First() : null;
-    private DayOfWeekEntry? StrongestDay => dayOfWeekData is { Length: > 0 } ? dayOfWeekData.OrderByDescending(d => d.Revenue).First() : null;
-    private ForecastPoint? FinalForecastPoint => forecastResult is { Forecast.Length: > 0 } ? forecastResult.Forecast[^1] : null;
-    private bool HasHighlights => TopWorker != null || TopService != null || StrongestDay != null || FinalForecastPoint != null;
+    private WorkerRevenue? TopWorker
+    {
+        get
+        {
+            EnsureHighlightCache();
+            return topWorker;
+        }
+    }
+    private ServicePopularity? TopService
+    {
+        get
+        {
+            EnsureHighlightCache();
+            return topService;
+        }
+    }
+    private DayOfWeekEntry? StrongestDay
+    {
+        get
+        {
+            EnsureHighlightCache();
+            return strongestDay;
+        }
+    }
+    private ForecastPoint? FinalForecastPoint
+    {
+        get
+        {
+            EnsureHighlightCache();
+            return finalForecastPoint;
+        }
+    }
+    private bool HasHighlights
+    {
+        get
+        {
+            EnsureHighlightCache();
+            return topWorker != null || topService != null || strongestDay != null || finalForecastPoint != null;
+        }
+    }
     private string CurrentRangeLabel => FormatDateRange(dateFrom, dateTo);
     private string ForecastDirectionLabel => forecastResult == null ? "Pending" : forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Cooling" : "Flat";
     private string ForecastTrendChipClass => forecastResult == null ? "analytics-chip-neutral" : forecastResult.Slope > 0 ? "analytics-chip-positive" : forecastResult.Slope < 0 ? "analytics-chip-negative" : "analytics-chip-neutral";
