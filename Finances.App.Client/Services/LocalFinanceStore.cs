@@ -23,7 +23,7 @@ public sealed record ForecastResult(HistoricalPointResult[] Historical, Forecast
 
 public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
 
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int ClientCount, int SchemaVersion, DateTime LastUpdatedUtc);
+public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int ClientCount, int RecurringServiceCount, int SchemaVersion, DateTime LastUpdatedUtc);
 
 public sealed record MonthComparisonResult(
     decimal CurrentRevenue, decimal PreviousRevenue,
@@ -53,7 +53,7 @@ public sealed record TopClientResult(string Client, int Visits, decimal Revenue)
 
 public sealed class LocalFinanceStore : IFinanceService
 {
-    private const int CurrentSchemaVersion = 2;
+    private const int CurrentSchemaVersion = 3;
     private const string StorageKey = "Finances.App.snapshot";
     private readonly IJSRuntime _js;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
@@ -581,6 +581,93 @@ public sealed class LocalFinanceStore : IFinanceService
         return combined;
     }
 
+    // ── Recurring Services ───────────────────────────────────
+
+    public async Task<IReadOnlyList<RecurringService>> GetRecurringServicesAsync()
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.RecurringServices
+            .OrderBy(r => r.NextOccurrence)
+            .Select(CloneRecurring)
+            .ToList();
+    }
+
+    public async Task<RecurringService> AddRecurringServiceAsync(RecurringService recurring)
+    {
+        ArgumentNullException.ThrowIfNull(recurring);
+        await EnsureLoadedAsync();
+
+        if (!_snapshot!.Workers.Any(w => w.Id == recurring.WorkerId))
+            throw new InvalidDataException("The selected worker does not exist.");
+
+        if (!_snapshot.Services.Any(s => s.Id == recurring.ServiceId))
+            throw new InvalidDataException("The selected service does not exist.");
+
+        if (recurring.ClientId.HasValue && !_snapshot.Clients.Any(c => c.Id == recurring.ClientId.Value))
+            throw new InvalidDataException("The selected client does not exist.");
+
+        var created = CloneRecurring(recurring);
+        created.Id = _snapshot.NextRecurringServiceId++;
+        created.Notes = NormalizeOptionalText(created.Notes);
+        if (created.NextOccurrence == default) created.NextOccurrence = DateTime.Today;
+
+        _snapshot.RecurringServices.Add(created);
+        await PersistAsync();
+
+        return CloneRecurring(created);
+    }
+
+    public async Task UpdateRecurringServiceAsync(int id, RecurringService recurring)
+    {
+        ArgumentNullException.ThrowIfNull(recurring);
+        await EnsureLoadedAsync();
+
+        if (id != recurring.Id)
+            throw new InvalidDataException("Recurring service identifier mismatch.");
+
+        var existing = _snapshot!.RecurringServices.FirstOrDefault(r => r.Id == id)
+            ?? throw new KeyNotFoundException();
+
+        if (!_snapshot.Workers.Any(w => w.Id == recurring.WorkerId))
+            throw new InvalidDataException("The selected worker does not exist.");
+
+        if (!_snapshot.Services.Any(s => s.Id == recurring.ServiceId))
+            throw new InvalidDataException("The selected service does not exist.");
+
+        if (recurring.ClientId.HasValue && !_snapshot.Clients.Any(c => c.Id == recurring.ClientId.Value))
+            throw new InvalidDataException("The selected client does not exist.");
+
+        existing.WorkerId = recurring.WorkerId;
+        existing.ServiceId = recurring.ServiceId;
+        existing.ClientId = recurring.ClientId;
+        existing.Frequency = recurring.Frequency;
+        existing.NextOccurrence = recurring.NextOccurrence;
+        existing.IsActive = recurring.IsActive;
+        existing.Notes = NormalizeOptionalText(recurring.Notes);
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteRecurringServiceAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var existing = _snapshot!.RecurringServices.FirstOrDefault(r => r.Id == id)
+            ?? throw new KeyNotFoundException();
+        _snapshot.RecurringServices.Remove(existing);
+        await PersistAsync();
+    }
+
+    public async Task<IReadOnlyList<RecurringService>> GetDueRecurringServicesAsync()
+    {
+        await EnsureLoadedAsync();
+        var today = DateTime.Today;
+        return _snapshot!.RecurringServices
+            .Where(r => r.IsActive && r.NextOccurrence.Date <= today)
+            .OrderBy(r => r.NextOccurrence)
+            .Select(EnrichRecurring)
+            .ToList();
+    }
+
     public async Task<decimal> GetProductSalesRevenueAsync(DateTime? from, DateTime? to)
     {
         await EnsureLoadedAsync();
@@ -929,6 +1016,7 @@ public sealed class LocalFinanceStore : IFinanceService
             _snapshot.ServiceRecords.Count,
             _snapshot.ProductSales.Count,
             _snapshot.Clients.Count,
+            _snapshot.RecurringServices.Count(r => r.IsActive),
             _snapshot.SchemaVersion,
             _snapshot.LastUpdatedUtc);
     }
@@ -1083,6 +1171,32 @@ public sealed class LocalFinanceStore : IFinanceService
             Notes = client.Notes,
             CreatedDate = client.CreatedDate
         };
+    }
+
+    private static RecurringService CloneRecurring(RecurringService r)
+    {
+        return new RecurringService
+        {
+            Id = r.Id,
+            WorkerId = r.WorkerId,
+            ServiceId = r.ServiceId,
+            ClientId = r.ClientId,
+            Frequency = r.Frequency,
+            NextOccurrence = r.NextOccurrence,
+            IsActive = r.IsActive,
+            Notes = r.Notes
+        };
+    }
+
+    private RecurringService EnrichRecurring(RecurringService r)
+    {
+        var clone = CloneRecurring(r);
+        clone.Worker = _snapshot!.Workers.Where(w => w.Id == r.WorkerId).Select(CloneWorker).FirstOrDefault();
+        clone.Service = _snapshot.Services.Where(s => s.Id == r.ServiceId).Select(CloneService).FirstOrDefault();
+        clone.Client = r.ClientId.HasValue
+            ? _snapshot.Clients.Where(c => c.Id == r.ClientId.Value).Select(CloneClient).FirstOrDefault()
+            : null;
+        return clone;
     }
 
     private ServiceRecord EnrichRecord(ServiceRecord record)
@@ -1257,6 +1371,17 @@ public sealed class LocalFinanceStore : IFinanceService
             if (client.CreatedDate == default) client.CreatedDate = DateTime.Today;
         }
 
+        snapshot.RecurringServices ??= [];
+
+        foreach (var recurring in snapshot.RecurringServices)
+        {
+            recurring.Worker = null;
+            recurring.Service = null;
+            recurring.Client = null;
+            recurring.Notes = NormalizeOptionalText(recurring.Notes);
+            if (recurring.NextOccurrence == default) recurring.NextOccurrence = DateTime.Today;
+        }
+
         snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
@@ -1264,6 +1389,7 @@ public sealed class LocalFinanceStore : IFinanceService
         snapshot.NextServiceRecordId = Math.Max(snapshot.NextServiceRecordId, snapshot.ServiceRecords.Select(record => record.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductSaleId = Math.Max(snapshot.NextProductSaleId, snapshot.ProductSales.Select(sale => sale.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextClientId = Math.Max(snapshot.NextClientId, snapshot.Clients.Select(client => client.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextRecurringServiceId = Math.Max(snapshot.NextRecurringServiceId, snapshot.RecurringServices.Select(r => r.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
@@ -1311,6 +1437,13 @@ public sealed class LocalFinanceStore : IFinanceService
             snapshot.SchemaVersion = 2;
         }
 
+        // v2 → v3: Add recurring services collection
+        if (snapshot.SchemaVersion < 3)
+        {
+            snapshot.RecurringServices ??= [];
+            snapshot.SchemaVersion = 3;
+        }
+
         if (snapshot.SchemaVersion < CurrentSchemaVersion)
         {
             snapshot.SchemaVersion = CurrentSchemaVersion;
@@ -1325,6 +1458,7 @@ public sealed class LocalFinanceStore : IFinanceService
         EnsureDistinctIds(snapshot.ServiceRecords, record => record.Id, "service records");
         EnsureDistinctIds(snapshot.ProductSales, sale => sale.Id, "product sales");
         EnsureDistinctIds(snapshot.Clients, client => client.Id, "clients");
+        EnsureDistinctIds(snapshot.RecurringServices, r => r.Id, "recurring services");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();
