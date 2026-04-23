@@ -23,6 +23,7 @@ static class Program
         builder.Services.AddScoped<LocalizationService>();
         builder.Services.AddScoped<AttachmentStore>();
         builder.Services.AddScoped<BrowserNotificationService>();
+        builder.Services.AddScoped<InvoiceParserService>();
 
         await builder.Build().RunAsync();
     }

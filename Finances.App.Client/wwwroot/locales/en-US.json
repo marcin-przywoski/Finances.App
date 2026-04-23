@@ -823,6 +823,8 @@
   "invoicesToastUpdated": "Invoice updated.",
   "invoicesToastDeleted": "Invoice removed.",
   "invoicesToastFailed": "Could not save the invoice.",
+  "invoicesParsingAttachment": "Reading attachment…",
+  "invoicesParseToast": "Filled from attachment — please double-check the values.",
 
   "dataStorageEyebrow": "Diagnostics",
   "dataStorageTitle": "Device storage",

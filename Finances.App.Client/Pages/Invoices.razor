@@ -4,6 +4,8 @@
 @inject ToastService Toast
 @inject ExportService Export
 @inject NavigationManager Nav
+@inject AttachmentStore Attachments
+@inject InvoiceParserService InvoiceParser
 
 <PageTitle>@L["invoicesPageTitle"]</PageTitle>
 
@@ -271,8 +273,13 @@
                             <label class="form-label">@L["invoicesModalLabelAttachment"]</label>
                             <AttachmentUploader EntityType="invoice"
                                                 EntityId="@(formModel.Id == 0 ? null : formModel.Id)"
-                                                @bind-AttachmentId="formModel.AttachmentId"
+                                                AttachmentId="@formModel.AttachmentId"
+                                                AttachmentIdChanged="HandleAttachmentChanged"
                                                 Label="@L["invoicesAttachmentLabel"]" />
+                            @if (parsing)
+                            {
+                                <p class="text-muted small mt-2 mb-0">@L["invoicesParsingAttachment"]</p>
+                            }
                         </div>
 
                         @if (!isEditing)
@@ -329,6 +336,7 @@
     private bool isEditing;
     private bool exporting;
     private bool saving;
+    private bool parsing;
     private bool trackAsExpense;
     private DateTime? fromFilter;
     private DateTime? toFilter;
@@ -525,6 +533,89 @@
     }
 
     private void CloseModal() => showModal = false;
+
+    private async Task HandleAttachmentChanged(string? newAttachmentId)
+    {
+        var previousId = formModel.AttachmentId;
+        formModel.AttachmentId = newAttachmentId;
+
+        // Only parse when a new attachment was just added (not on removal or
+        // when re-opening an existing invoice that already had one attached).
+        if (string.IsNullOrEmpty(newAttachmentId) || newAttachmentId == previousId)
+        {
+            return;
+        }
+
+        await TryPrefillFromAttachmentAsync(newAttachmentId);
+    }
+
+    private async Task TryPrefillFromAttachmentAsync(string attachmentId)
+    {
+        if (parsing) return;
+        parsing = true;
+        try
+        {
+            var blob = await Attachments.GetAsync(attachmentId);
+            if (blob is null || !InvoiceParserService.IsPdfMime(blob.Mime))
+            {
+                return;
+            }
+
+            var result = await InvoiceParser.TryParsePdfAsync(blob.Content, blob.Mime);
+            if (result is null)
+            {
+                return;
+            }
+
+            var filledAny = ApplyParseResult(result);
+            if (filledAny)
+            {
+                formModel.ParsedFromAttachment = true;
+                Toast.Show(L["invoicesParseToast"]);
+            }
+        }
+        catch
+        {
+            // Parsing is strictly a convenience — never surface failures to the
+            // user; they can always fill the form manually.
+        }
+        finally
+        {
+            parsing = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool ApplyParseResult(InvoiceParseResult result)
+    {
+        var filled = false;
+
+        if (result.Date is { } parsedDate && formModel.Date == DateTime.Today)
+        {
+            formModel.Date = parsedDate;
+            filled = true;
+        }
+
+        if (result.Total is { } parsedTotal && formModel.Total <= 0m)
+        {
+            formModel.Total = parsedTotal;
+            filled = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Vendor) && string.IsNullOrWhiteSpace(formModel.Vendor))
+        {
+            formModel.Vendor = result.Vendor;
+            filled = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Currency) && string.Equals(formModel.Currency, "PLN", StringComparison.OrdinalIgnoreCase))
+        {
+            formModel.Currency = result.Currency!;
+            filled = true;
+        }
+
+        return filled;
+    }
 
     private async Task ExportExcel()
     {

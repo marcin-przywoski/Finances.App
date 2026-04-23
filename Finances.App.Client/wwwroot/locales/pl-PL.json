@@ -823,6 +823,8 @@
   "invoicesToastUpdated": "Zaktualizowano fakturę.",
   "invoicesToastDeleted": "Usunięto fakturę.",
   "invoicesToastFailed": "Nie udało się zapisać faktury.",
+  "invoicesParsingAttachment": "Czytam załącznik…",
+  "invoicesParseToast": "Wypełniono z załącznika — sprawdź wartości przed zapisem.",
 
   "dataStorageEyebrow": "Diagnostyka",
   "dataStorageTitle": "Pamięć urządzenia",

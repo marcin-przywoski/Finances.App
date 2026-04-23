@@ -7,6 +7,7 @@
     "Client profile page with comment timeline and optional reminders",
     "Business expenses with category filters, Excel/PDF export, and net profit in Analytics + Dashboard",
     "Invoices with line items, paid/unpaid status, and PDF/photo attachments stored in IndexedDB",
+    "PDF invoices are parsed on upload to pre-fill vendor, date, total, and currency",
     "Optional browser notifications for due client reminders",
     "Device storage diagnostics and versioned backups during schema migrations",
     "CI pipeline with i18n parity check and regression tests"
