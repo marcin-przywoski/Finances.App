@@ -30,10 +30,10 @@
                 <span class="dashboard-glance-subtext">@HeroRevenueSubtext</span>
             </div>
             <div class="dashboard-glance-grid">
-                <div class="dashboard-glance-card">
-                    <span class="dashboard-glance-label">@L["dashboardGlanceServicesShare"]</span>
-                    <strong class="dashboard-glance-value">@ServiceShareDisplay</strong>
-                    <span class="dashboard-glance-subtext">@ServiceShareSubtext</span>
+                <div class="dashboard-glance-card" title="@NetProfitHoverSubtext">
+                    <span class="dashboard-glance-label">@L["dashboardGlanceNetProfit"]</span>
+                    <strong class="dashboard-glance-value">@NetProfitDisplay</strong>
+                    <span class="dashboard-glance-subtext">@NetProfitSubtext</span>
                 </div>
                 <div class="dashboard-glance-card">
                     <span class="dashboard-glance-label">@L["dashboardGlanceTopDay"]</span>
@@ -333,6 +333,7 @@
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
     private GoalProgressResult[]? goalProgress;
+    private NetProfitResult? netProfit;
 
     private string TotalRevenueDisplay => (totalRevenueValue + productRevenueTotal).ToString("C");
     private string ServiceRevenueDisplay => totalRevenueValue.ToString("C");
@@ -353,6 +354,15 @@
     private string HeroRevenueSubtext => loading ? L["dashboardCalcTotals"] : L.T("dashboardFromServicesAndRetail", ServiceRevenueDisplay, RetailRevenueDisplay);
     private string ServiceShareDisplay => loading ? L["dashboardLoading"] : HasRevenueSources ? $"{ServiceRevenueShare:F0}%" : "--";
     private string ServiceShareSubtext => loading ? L["dashboardCheckingMix"] : HasRevenueSources ? L.T("dashboardCameFromServices", serviceRevenueTotal.ToString("C")) : L["dashboardSourcesWillAppear"];
+    private string NetProfitDisplay => loading
+        ? L["dashboardLoading"]
+        : (netProfit is null ? "—" : netProfit.Net.ToString("C"));
+    private string NetProfitSubtext => loading
+        ? L["dashboardCalcTotals"]
+        : (netProfit is null ? L["dashboardGlanceNetProfitEmpty"] : L.T("dashboardGlanceNetProfitSub", netProfit.Expenses.ToString("C")));
+    private string NetProfitHoverSubtext => netProfit is null
+        ? string.Empty
+        : L.T("dashboardGlanceNetProfitTooltip", netProfit.Revenue.ToString("C"), netProfit.Expenses.ToString("C"));
     private string StrongestDayLabel => loading ? L["dashboardLoading"] : StrongestDay?.Day ?? L["dashboardNoDataYet"];
     private string StrongestDaySubtext => loading ? L["dashboardFindingStrongest"] : StrongestDay == null ? L["dashboardWeekdayWillAppear"] : L.T("dashboardStrongestDaySub", StrongestDay.Revenue.ToString("C"), StrongestDay.Count);
     private string FeaturedProductLabel => loading ? L["dashboardLoading"] : FeaturedProduct?.Product ?? L["dashboardNoProductSales"];
@@ -386,6 +396,7 @@
         serviceRevenueTotal = 0;
         productRevenueTotal = 0;
         goalProgress = null;
+        netProfit = null;
 
         try
         {
@@ -439,6 +450,9 @@
                     serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
                     productRevenueTotal = combinedTimeline.Points.Sum(p => p.ProductRevenue);
                 }
+
+                try { netProfit = await Finance.GetNetProfitAsync(wId, monthStart, now); }
+                catch { netProfit = null; }
             }
             catch { }
 

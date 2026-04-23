@@ -22,6 +22,7 @@ static class Program
         builder.Services.AddScoped<ExportService>();
         builder.Services.AddScoped<LocalizationService>();
         builder.Services.AddScoped<AttachmentStore>();
+        builder.Services.AddScoped<BrowserNotificationService>();
 
         await builder.Build().RunAsync();
     }

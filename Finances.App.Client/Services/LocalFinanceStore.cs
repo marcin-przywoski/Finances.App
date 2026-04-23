@@ -57,8 +57,9 @@ public sealed record ClientRetentionResult(string Period, int NewClients, int Re
 
 public sealed class LocalFinanceStore : IFinanceService
 {
-    private const int CurrentSchemaVersion = 4;
+    private const int CurrentSchemaVersion = 5;
     private const string StorageKey = "Finances.App.snapshot";
+    private const string BackupKeyPrefix = "Finances.App.backup.v";
     private readonly IJSRuntime _js;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -1186,6 +1187,450 @@ public sealed class LocalFinanceStore : IFinanceService
             _snapshot.LastUpdatedUtc);
     }
 
+    // ---- Client Comments ---------------------------------------------------
+
+    public async Task<IReadOnlyList<ClientComment>> GetClientCommentsAsync(int clientId)
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.ClientComments
+            .Where(c => c.ClientId == clientId)
+            .OrderByDescending(c => c.CreatedUtc)
+            .ThenByDescending(c => c.Id)
+            .Select(CloneClientComment)
+            .ToList();
+    }
+
+    public async Task<ClientComment> AddClientCommentAsync(ClientComment comment)
+    {
+        ArgumentNullException.ThrowIfNull(comment);
+        await EnsureLoadedAsync();
+
+        if (_snapshot!.Clients.All(c => c.Id != comment.ClientId))
+        {
+            throw new InvalidDataException("The referenced client does not exist.");
+        }
+
+        var stored = new ClientComment
+        {
+            Id = _snapshot.NextClientCommentId++,
+            ClientId = comment.ClientId,
+            Body = (comment.Body ?? string.Empty).Trim(),
+            CreatedUtc = comment.CreatedUtc == default ? DateTime.UtcNow : comment.CreatedUtc,
+            ReminderUtc = comment.ReminderUtc,
+            ReminderHandled = comment.ReminderHandled
+        };
+
+        if (stored.Body.Length == 0)
+        {
+            throw new InvalidDataException("Comment body cannot be empty.");
+        }
+
+        _snapshot.ClientComments.Add(stored);
+        await PersistAsync();
+        return CloneClientComment(stored);
+    }
+
+    public async Task UpdateClientCommentAsync(int id, ClientComment comment)
+    {
+        ArgumentNullException.ThrowIfNull(comment);
+        await EnsureLoadedAsync();
+
+        if (id != comment.Id)
+        {
+            throw new InvalidDataException("Comment identifier mismatch.");
+        }
+
+        var existing = _snapshot!.ClientComments.FirstOrDefault(c => c.Id == id)
+            ?? throw new KeyNotFoundException();
+
+        existing.Body = (comment.Body ?? string.Empty).Trim();
+        if (existing.Body.Length == 0)
+        {
+            throw new InvalidDataException("Comment body cannot be empty.");
+        }
+
+        existing.ReminderUtc = comment.ReminderUtc;
+        existing.ReminderHandled = comment.ReminderHandled;
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteClientCommentAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var comment = _snapshot!.ClientComments.FirstOrDefault(c => c.Id == id)
+            ?? throw new KeyNotFoundException();
+        _snapshot.ClientComments.Remove(comment);
+        await PersistAsync();
+    }
+
+    public async Task<IReadOnlyList<ClientComment>> GetDueClientCommentRemindersAsync()
+    {
+        await EnsureLoadedAsync();
+        var now = DateTime.UtcNow;
+        return _snapshot!.ClientComments
+            .Where(c => !c.ReminderHandled && c.ReminderUtc is { } reminder && reminder <= now)
+            .OrderBy(c => c.ReminderUtc)
+            .Select(c =>
+            {
+                var clone = CloneClientComment(c);
+                clone.Client = _snapshot.Clients
+                    .Where(cl => cl.Id == c.ClientId)
+                    .Select(CloneClient)
+                    .FirstOrDefault();
+                return clone;
+            })
+            .ToList();
+    }
+
+    public async Task MarkCommentReminderHandledAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var comment = _snapshot!.ClientComments.FirstOrDefault(c => c.Id == id)
+            ?? throw new KeyNotFoundException();
+        comment.ReminderHandled = true;
+        await PersistAsync();
+    }
+
+    // ---- Expenses ----------------------------------------------------------
+
+    public async Task<IReadOnlyList<Expense>> GetExpensesAsync(DateTime? from = null, DateTime? to = null, ExpenseCategory? category = null)
+    {
+        await EnsureLoadedAsync();
+        var query = _snapshot!.Expenses.AsEnumerable();
+
+        if (from.HasValue) query = query.Where(e => e.Date.Date >= from.Value.Date);
+        if (to.HasValue) query = query.Where(e => e.Date.Date <= to.Value.Date);
+        if (category.HasValue) query = query.Where(e => e.Category == category.Value);
+
+        return query
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .Select(CloneExpense)
+            .ToList();
+    }
+
+    public async Task<Expense> AddExpenseAsync(Expense expense)
+    {
+        ArgumentNullException.ThrowIfNull(expense);
+        await EnsureLoadedAsync();
+
+        var stored = CloneExpense(expense);
+        stored.Id = _snapshot!.NextExpenseId++;
+        stored.Date = stored.Date == default ? DateTime.Today : stored.Date.Date;
+        stored.Vendor = NormalizeOptionalText(stored.Vendor);
+        stored.Notes = NormalizeOptionalText(stored.Notes);
+        stored.AttachmentId = NormalizeOptionalText(stored.AttachmentId);
+
+        if (stored.InvoiceId.HasValue && _snapshot.Invoices.All(i => i.Id != stored.InvoiceId.Value))
+        {
+            throw new InvalidDataException("The referenced invoice does not exist.");
+        }
+
+        _snapshot.Expenses.Add(stored);
+        await PersistAsync();
+        return CloneExpense(stored);
+    }
+
+    public async Task UpdateExpenseAsync(int id, Expense expense)
+    {
+        ArgumentNullException.ThrowIfNull(expense);
+        await EnsureLoadedAsync();
+
+        if (id != expense.Id)
+        {
+            throw new InvalidDataException("Expense identifier mismatch.");
+        }
+
+        var existing = _snapshot!.Expenses.FirstOrDefault(e => e.Id == id) ?? throw new KeyNotFoundException();
+
+        existing.Date = expense.Date == default ? DateTime.Today : expense.Date.Date;
+        existing.Category = expense.Category;
+        existing.Amount = expense.Amount;
+        existing.Vendor = NormalizeOptionalText(expense.Vendor);
+        existing.Notes = NormalizeOptionalText(expense.Notes);
+        existing.AttachmentId = NormalizeOptionalText(expense.AttachmentId);
+        existing.InvoiceId = expense.InvoiceId;
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteExpenseAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var expense = _snapshot!.Expenses.FirstOrDefault(e => e.Id == id) ?? throw new KeyNotFoundException();
+        _snapshot.Expenses.Remove(expense);
+        await PersistAsync();
+    }
+
+    public async Task<NetProfitResult> GetNetProfitAsync(int? workerId, DateTime? from, DateTime? to)
+    {
+        await EnsureLoadedAsync();
+
+        var services = FilterStoredRecords(workerId, from, to).Sum(r => r.AmountPaid);
+        var productRevenue = FilterStoredProductSales(workerId, from, to).Sum(s => s.Quantity * s.UnitPrice);
+        var revenue = services + productRevenue;
+
+        var expensesQuery = _snapshot!.Expenses.AsEnumerable();
+        if (from.HasValue) expensesQuery = expensesQuery.Where(e => e.Date.Date >= from.Value.Date);
+        if (to.HasValue) expensesQuery = expensesQuery.Where(e => e.Date.Date <= to.Value.Date);
+        var expenses = expensesQuery.Sum(e => e.Amount);
+
+        return new NetProfitResult(revenue, expenses, revenue - expenses);
+    }
+
+    public async Task<IReadOnlyList<MonthlyProfitPoint>> GetMonthlyProfitSeriesAsync(DateTime? from, DateTime? to)
+    {
+        await EnsureLoadedAsync();
+
+        var effectiveFrom = from ?? DateTime.Today.AddMonths(-11);
+        var effectiveTo = to ?? DateTime.Today;
+
+        var services = _snapshot!.ServiceRecords
+            .Where(r => r.DatePerformed.Date >= effectiveFrom.Date && r.DatePerformed.Date <= effectiveTo.Date)
+            .GroupBy(r => new { r.DatePerformed.Year, r.DatePerformed.Month })
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
+
+        var sales = _snapshot.ProductSales
+            .Where(s => s.DateSold.Date >= effectiveFrom.Date && s.DateSold.Date <= effectiveTo.Date)
+            .GroupBy(s => new { s.DateSold.Year, s.DateSold.Month })
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.Quantity * s.UnitPrice));
+
+        var expenses = _snapshot.Expenses
+            .Where(e => e.Date.Date >= effectiveFrom.Date && e.Date.Date <= effectiveTo.Date)
+            .GroupBy(e => new { e.Date.Year, e.Date.Month })
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
+
+        var keys = services.Keys
+            .Concat(sales.Keys)
+            .Concat(expenses.Keys)
+            .Distinct()
+            .OrderBy(k => k.Year)
+            .ThenBy(k => k.Month)
+            .ToList();
+
+        var results = new List<MonthlyProfitPoint>();
+        foreach (var key in keys)
+        {
+            var label = new DateTime(key.Year, key.Month, 1).ToString("yyyy-MM");
+            var revenue = (services.GetValueOrDefault(key, 0m)) + (sales.GetValueOrDefault(key, 0m));
+            results.Add(new MonthlyProfitPoint(label, revenue, expenses.GetValueOrDefault(key, 0m)));
+        }
+
+        return results;
+    }
+
+    // ---- Invoices ----------------------------------------------------------
+
+    public async Task<IReadOnlyList<Invoice>> GetInvoicesAsync(DateTime? from = null, DateTime? to = null, bool? paid = null, string? vendorSearch = null)
+    {
+        await EnsureLoadedAsync();
+        var query = _snapshot!.Invoices.AsEnumerable();
+
+        if (from.HasValue) query = query.Where(i => i.Date.Date >= from.Value.Date);
+        if (to.HasValue) query = query.Where(i => i.Date.Date <= to.Value.Date);
+        if (paid.HasValue) query = query.Where(i => i.Paid == paid.Value);
+        if (!string.IsNullOrWhiteSpace(vendorSearch))
+        {
+            var needle = vendorSearch.Trim();
+            query = query.Where(i => i.Vendor != null && i.Vendor.Contains(needle, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        return query
+            .OrderByDescending(i => i.Date)
+            .ThenByDescending(i => i.Id)
+            .Select(CloneInvoice)
+            .ToList();
+    }
+
+    public async Task<Invoice?> GetInvoiceAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var invoice = _snapshot!.Invoices.FirstOrDefault(i => i.Id == id);
+        return invoice is null ? null : CloneInvoice(invoice);
+    }
+
+    public async Task<Invoice> AddInvoiceAsync(Invoice invoice, IEnumerable<InvoiceLineItem>? lineItems = null, bool trackAsExpense = false)
+    {
+        ArgumentNullException.ThrowIfNull(invoice);
+        await EnsureLoadedAsync();
+
+        var stored = CloneInvoice(invoice);
+        stored.Id = _snapshot!.NextInvoiceId++;
+        stored.Date = stored.Date == default ? DateTime.Today : stored.Date.Date;
+        stored.Vendor = NormalizeOptionalText(stored.Vendor);
+        stored.Notes = NormalizeOptionalText(stored.Notes);
+        stored.AttachmentId = NormalizeOptionalText(stored.AttachmentId);
+        stored.Currency = string.IsNullOrWhiteSpace(stored.Currency) ? "PLN" : stored.Currency.Trim();
+
+        _snapshot.Invoices.Add(stored);
+
+        if (lineItems is not null)
+        {
+            foreach (var line in lineItems)
+            {
+                var storedLine = CloneInvoiceLineItem(line);
+                storedLine.Id = _snapshot.NextInvoiceLineItemId++;
+                storedLine.InvoiceId = stored.Id;
+                storedLine.Description = NormalizeOptionalText(storedLine.Description);
+                if (storedLine.Quantity == 0m) storedLine.Quantity = 1m;
+                if (storedLine.LineTotal == 0m) storedLine.LineTotal = storedLine.Quantity * storedLine.UnitPrice;
+                _snapshot.InvoiceLineItems.Add(storedLine);
+            }
+        }
+
+        if (trackAsExpense)
+        {
+            var expense = new Expense
+            {
+                Id = _snapshot.NextExpenseId++,
+                Date = stored.Date,
+                Category = ExpenseCategory.Other,
+                Amount = stored.Total,
+                Vendor = stored.Vendor,
+                Notes = stored.Notes,
+                AttachmentId = stored.AttachmentId,
+                InvoiceId = stored.Id
+            };
+            _snapshot.Expenses.Add(expense);
+        }
+
+        await PersistAsync();
+        return CloneInvoice(stored);
+    }
+
+    public async Task UpdateInvoiceAsync(int id, Invoice invoice, IEnumerable<InvoiceLineItem>? lineItems = null)
+    {
+        ArgumentNullException.ThrowIfNull(invoice);
+        await EnsureLoadedAsync();
+
+        if (id != invoice.Id)
+        {
+            throw new InvalidDataException("Invoice identifier mismatch.");
+        }
+
+        var existing = _snapshot!.Invoices.FirstOrDefault(i => i.Id == id) ?? throw new KeyNotFoundException();
+
+        existing.Date = invoice.Date == default ? DateTime.Today : invoice.Date.Date;
+        existing.Vendor = NormalizeOptionalText(invoice.Vendor);
+        existing.Currency = string.IsNullOrWhiteSpace(invoice.Currency) ? "PLN" : invoice.Currency.Trim();
+        existing.Total = invoice.Total;
+        existing.Paid = invoice.Paid;
+        existing.AttachmentId = NormalizeOptionalText(invoice.AttachmentId);
+        existing.ParsedFromAttachment = invoice.ParsedFromAttachment;
+        existing.Notes = NormalizeOptionalText(invoice.Notes);
+
+        if (lineItems is not null)
+        {
+            _snapshot.InvoiceLineItems.RemoveAll(l => l.InvoiceId == id);
+            foreach (var line in lineItems)
+            {
+                var storedLine = CloneInvoiceLineItem(line);
+                storedLine.Id = _snapshot.NextInvoiceLineItemId++;
+                storedLine.InvoiceId = id;
+                storedLine.Description = NormalizeOptionalText(storedLine.Description);
+                if (storedLine.Quantity == 0m) storedLine.Quantity = 1m;
+                if (storedLine.LineTotal == 0m) storedLine.LineTotal = storedLine.Quantity * storedLine.UnitPrice;
+                _snapshot.InvoiceLineItems.Add(storedLine);
+            }
+        }
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteInvoiceAsync(int id)
+    {
+        await EnsureLoadedAsync();
+        var invoice = _snapshot!.Invoices.FirstOrDefault(i => i.Id == id) ?? throw new KeyNotFoundException();
+        _snapshot.Invoices.Remove(invoice);
+        _snapshot.InvoiceLineItems.RemoveAll(l => l.InvoiceId == id);
+        foreach (var expense in _snapshot.Expenses.Where(e => e.InvoiceId == id))
+        {
+            expense.InvoiceId = null;
+        }
+        await PersistAsync();
+    }
+
+    public async Task<IReadOnlyList<InvoiceLineItem>> GetInvoiceLineItemsAsync(int invoiceId)
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.InvoiceLineItems
+            .Where(l => l.InvoiceId == invoiceId)
+            .OrderBy(l => l.Id)
+            .Select(CloneInvoiceLineItem)
+            .ToList();
+    }
+
+    // ---- Attachments (metadata) -------------------------------------------
+
+    public async Task<Attachment> RegisterAttachmentAsync(Attachment attachment)
+    {
+        ArgumentNullException.ThrowIfNull(attachment);
+        if (string.IsNullOrWhiteSpace(attachment.Id))
+        {
+            throw new InvalidDataException("Attachment id is required.");
+        }
+
+        await EnsureLoadedAsync();
+
+        var existing = _snapshot!.Attachments.FirstOrDefault(a => a.Id == attachment.Id);
+        if (existing is not null)
+        {
+            existing.Mime = attachment.Mime ?? existing.Mime;
+            existing.OriginalFileName = NormalizeOptionalText(attachment.OriginalFileName);
+            existing.SizeBytes = attachment.SizeBytes;
+            existing.EntityType = NormalizeOptionalText(attachment.EntityType);
+            existing.EntityId = attachment.EntityId;
+            await PersistAsync();
+            return CloneAttachment(existing);
+        }
+
+        var stored = CloneAttachment(attachment);
+        stored.Id = attachment.Id.Trim();
+        stored.Mime = string.IsNullOrWhiteSpace(stored.Mime) ? "application/octet-stream" : stored.Mime.Trim();
+        stored.OriginalFileName = NormalizeOptionalText(stored.OriginalFileName);
+        stored.EntityType = NormalizeOptionalText(stored.EntityType);
+        if (stored.CreatedUtc == default) stored.CreatedUtc = DateTime.UtcNow;
+
+        _snapshot.Attachments.Add(stored);
+        await PersistAsync();
+        return CloneAttachment(stored);
+    }
+
+    public async Task UnregisterAttachmentAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return;
+        await EnsureLoadedAsync();
+        _snapshot!.Attachments.RemoveAll(a => a.Id == id);
+        await PersistAsync();
+    }
+
+    public async Task<IReadOnlyList<Attachment>> GetAttachmentsAsync(string? entityType = null, int? entityId = null)
+    {
+        await EnsureLoadedAsync();
+        var query = _snapshot!.Attachments.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(entityType))
+        {
+            query = query.Where(a => string.Equals(a.EntityType, entityType, StringComparison.OrdinalIgnoreCase));
+        }
+        if (entityId.HasValue)
+        {
+            query = query.Where(a => a.EntityId == entityId.Value);
+        }
+        return query
+            .OrderByDescending(a => a.CreatedUtc)
+            .Select(CloneAttachment)
+            .ToList();
+    }
+
+    public async Task<Attachment?> GetAttachmentMetadataAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        await EnsureLoadedAsync();
+        var attachment = _snapshot!.Attachments.FirstOrDefault(a => a.Id == id);
+        return attachment is null ? null : CloneAttachment(attachment);
+    }
+
     public async Task<string> ExportAsync()
     {
         await EnsureLoadedAsync();
@@ -1213,6 +1658,11 @@ public sealed class LocalFinanceStore : IFinanceService
         if (imported is null)
         {
             throw new InvalidDataException("The selected file does not contain finance data.");
+        }
+
+        if (imported.SchemaVersion > CurrentSchemaVersion)
+        {
+            throw new InvalidDataException($"The selected backup is from a newer schema (v{imported.SchemaVersion}). Update the app before importing.");
         }
 
         MigrateSnapshot(imported);
@@ -1264,8 +1714,42 @@ public sealed class LocalFinanceStore : IFinanceService
             return;
         }
 
+        var incomingVersion = _snapshot.SchemaVersion;
+        if (incomingVersion > CurrentSchemaVersion)
+        {
+            throw new InvalidDataException($"The stored data is from a newer schema (v{incomingVersion}). Update the app before continuing.");
+        }
+
+        if (incomingVersion < CurrentSchemaVersion && incomingVersion > 0)
+        {
+            await WriteBackupAsync(incomingVersion, json);
+        }
+
         MigrateSnapshot(_snapshot);
         NormalizeSnapshot(_snapshot);
+
+        if (incomingVersion < CurrentSchemaVersion)
+        {
+            await SaveAsync();
+        }
+    }
+
+    private async Task WriteBackupAsync(int fromVersion, string json)
+    {
+        var key = $"{BackupKeyPrefix}{fromVersion}";
+        try
+        {
+            var existing = await _js.InvokeAsync<string?>("localStorage.getItem", key);
+            if (!string.IsNullOrEmpty(existing))
+            {
+                return;
+            }
+            await _js.InvokeVoidAsync("localStorage.setItem", key, json);
+        }
+        catch
+        {
+            // Backup is best-effort; quota/permission errors must not block migration.
+        }
     }
 
     private async Task PersistAsync()
@@ -1375,6 +1859,77 @@ public sealed class LocalFinanceStore : IFinanceService
             WorkerId = g.WorkerId,
             Label = g.Label,
             IsActive = g.IsActive
+        };
+    }
+
+    private static ClientComment CloneClientComment(ClientComment c)
+    {
+        return new ClientComment
+        {
+            Id = c.Id,
+            ClientId = c.ClientId,
+            Body = c.Body,
+            CreatedUtc = c.CreatedUtc,
+            ReminderUtc = c.ReminderUtc,
+            ReminderHandled = c.ReminderHandled
+        };
+    }
+
+    private static Expense CloneExpense(Expense e)
+    {
+        return new Expense
+        {
+            Id = e.Id,
+            Date = e.Date,
+            Category = e.Category,
+            Amount = e.Amount,
+            Vendor = e.Vendor,
+            Notes = e.Notes,
+            AttachmentId = e.AttachmentId,
+            InvoiceId = e.InvoiceId
+        };
+    }
+
+    private static Invoice CloneInvoice(Invoice i)
+    {
+        return new Invoice
+        {
+            Id = i.Id,
+            Date = i.Date,
+            Vendor = i.Vendor,
+            Currency = i.Currency,
+            Total = i.Total,
+            Paid = i.Paid,
+            AttachmentId = i.AttachmentId,
+            ParsedFromAttachment = i.ParsedFromAttachment,
+            Notes = i.Notes
+        };
+    }
+
+    private static InvoiceLineItem CloneInvoiceLineItem(InvoiceLineItem l)
+    {
+        return new InvoiceLineItem
+        {
+            Id = l.Id,
+            InvoiceId = l.InvoiceId,
+            Description = l.Description,
+            Quantity = l.Quantity,
+            UnitPrice = l.UnitPrice,
+            LineTotal = l.LineTotal
+        };
+    }
+
+    private static Attachment CloneAttachment(Attachment a)
+    {
+        return new Attachment
+        {
+            Id = a.Id,
+            Mime = a.Mime,
+            OriginalFileName = a.OriginalFileName,
+            SizeBytes = a.SizeBytes,
+            CreatedUtc = a.CreatedUtc,
+            EntityType = a.EntityType,
+            EntityId = a.EntityId
         };
     }
 
@@ -1568,6 +2123,62 @@ public sealed class LocalFinanceStore : IFinanceService
             goal.Label = NormalizeOptionalText(goal.Label);
         }
 
+        snapshot.ClientComments ??= [];
+
+        foreach (var comment in snapshot.ClientComments)
+        {
+            comment.Client = null;
+            comment.Body = (comment.Body ?? string.Empty).Trim();
+            if (comment.CreatedUtc == default) comment.CreatedUtc = DateTime.UtcNow;
+            if (comment.CreatedUtc.Kind == DateTimeKind.Unspecified)
+                comment.CreatedUtc = DateTime.SpecifyKind(comment.CreatedUtc, DateTimeKind.Utc);
+            if (comment.ReminderUtc is { } reminder && reminder.Kind == DateTimeKind.Unspecified)
+                comment.ReminderUtc = DateTime.SpecifyKind(reminder, DateTimeKind.Utc);
+        }
+
+        snapshot.Expenses ??= [];
+
+        foreach (var expense in snapshot.Expenses)
+        {
+            expense.Vendor = NormalizeOptionalText(expense.Vendor);
+            expense.Notes = NormalizeOptionalText(expense.Notes);
+            expense.AttachmentId = NormalizeOptionalText(expense.AttachmentId);
+            if (expense.Date == default) expense.Date = DateTime.Today;
+            else expense.Date = expense.Date.Date;
+        }
+
+        snapshot.Invoices ??= [];
+
+        foreach (var invoice in snapshot.Invoices)
+        {
+            invoice.Vendor = NormalizeOptionalText(invoice.Vendor);
+            invoice.Notes = NormalizeOptionalText(invoice.Notes);
+            invoice.AttachmentId = NormalizeOptionalText(invoice.AttachmentId);
+            invoice.Currency = string.IsNullOrWhiteSpace(invoice.Currency) ? "PLN" : invoice.Currency.Trim();
+            if (invoice.Date == default) invoice.Date = DateTime.Today;
+            else invoice.Date = invoice.Date.Date;
+        }
+
+        snapshot.InvoiceLineItems ??= [];
+
+        foreach (var line in snapshot.InvoiceLineItems)
+        {
+            line.Description = NormalizeOptionalText(line.Description);
+            if (line.Quantity == 0m) line.Quantity = 1m;
+            if (line.LineTotal == 0m) line.LineTotal = line.Quantity * line.UnitPrice;
+        }
+
+        snapshot.Attachments ??= [];
+
+        foreach (var attachment in snapshot.Attachments)
+        {
+            attachment.Id = (attachment.Id ?? string.Empty).Trim();
+            attachment.Mime = string.IsNullOrWhiteSpace(attachment.Mime) ? "application/octet-stream" : attachment.Mime.Trim();
+            attachment.OriginalFileName = NormalizeOptionalText(attachment.OriginalFileName);
+            attachment.EntityType = NormalizeOptionalText(attachment.EntityType);
+            if (attachment.CreatedUtc == default) attachment.CreatedUtc = DateTime.UtcNow;
+        }
+
         snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
@@ -1577,6 +2188,10 @@ public sealed class LocalFinanceStore : IFinanceService
         snapshot.NextClientId = Math.Max(snapshot.NextClientId, snapshot.Clients.Select(client => client.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextRecurringServiceId = Math.Max(snapshot.NextRecurringServiceId, snapshot.RecurringServices.Select(r => r.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextGoalId = Math.Max(snapshot.NextGoalId, snapshot.Goals.Select(g => g.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextClientCommentId = Math.Max(snapshot.NextClientCommentId, snapshot.ClientComments.Select(c => c.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextExpenseId = Math.Max(snapshot.NextExpenseId, snapshot.Expenses.Select(e => e.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextInvoiceId = Math.Max(snapshot.NextInvoiceId, snapshot.Invoices.Select(i => i.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextInvoiceLineItemId = Math.Max(snapshot.NextInvoiceLineItemId, snapshot.InvoiceLineItems.Select(l => l.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
@@ -1638,6 +2253,21 @@ public sealed class LocalFinanceStore : IFinanceService
             snapshot.SchemaVersion = 4;
         }
 
+        // v4 → v5: Add client comments, expenses, invoices, invoice line items, attachments
+        if (snapshot.SchemaVersion < 5)
+        {
+            snapshot.ClientComments ??= [];
+            snapshot.Expenses ??= [];
+            snapshot.Invoices ??= [];
+            snapshot.InvoiceLineItems ??= [];
+            snapshot.Attachments ??= [];
+            if (snapshot.NextClientCommentId <= 0) snapshot.NextClientCommentId = 1;
+            if (snapshot.NextExpenseId <= 0) snapshot.NextExpenseId = 1;
+            if (snapshot.NextInvoiceId <= 0) snapshot.NextInvoiceId = 1;
+            if (snapshot.NextInvoiceLineItemId <= 0) snapshot.NextInvoiceLineItemId = 1;
+            snapshot.SchemaVersion = 5;
+        }
+
         if (snapshot.SchemaVersion < CurrentSchemaVersion)
         {
             snapshot.SchemaVersion = CurrentSchemaVersion;
@@ -1654,6 +2284,10 @@ public sealed class LocalFinanceStore : IFinanceService
         EnsureDistinctIds(snapshot.Clients, client => client.Id, "clients");
         EnsureDistinctIds(snapshot.RecurringServices, r => r.Id, "recurring services");
         EnsureDistinctIds(snapshot.Goals, g => g.Id, "goals");
+        EnsureDistinctIds(snapshot.ClientComments, c => c.Id, "client comments");
+        EnsureDistinctIds(snapshot.Expenses, e => e.Id, "expenses");
+        EnsureDistinctIds(snapshot.Invoices, i => i.Id, "invoices");
+        EnsureDistinctIds(snapshot.InvoiceLineItems, l => l.Id, "invoice line items");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();

@@ -1,0 +1,381 @@
+@page "/expenses"
+@implements IDisposable
+@inject IFinanceService Finance
+@inject ToastService Toast
+@inject ExportService Export
+
+<PageTitle>@L["expensesPageTitle"]</PageTitle>
+
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--catalog">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">@L["expensesKicker"]</span>
+            <h1 class="workspace-title">@L["expensesTitle"]</h1>
+            <p class="workspace-description">@L["expensesDescription"]</p>
+        </div>
+        <div class="workspace-hero-actions">
+            <button class="btn btn-primary" @onclick="OpenAddModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14" /></svg>
+                @L["expensesAddButton"]
+            </button>
+        </div>
+    </section>
+
+    <section class="workspace-panel">
+        <div class="workspace-panel-header workspace-panel-header-split d-flex flex-wrap gap-2">
+            <div>
+                <p class="workspace-panel-eyebrow">@L["expensesFiltersEyebrow"]</p>
+                <h2>@L["expensesFiltersTitle"]</h2>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <DateRangeFilter OnRangeChanged="OnRangeChanged" />
+                <select class="form-select form-select-sm" value="@categoryFilter" @onchange="OnCategoryChanged" style="min-width: 160px;">
+                    <option value="">@L["expensesCategoryAll"]</option>
+                    @foreach (var cat in Enum.GetValues<ExpenseCategory>())
+                    {
+                        <option value="@cat">@LocalizeCategory(cat)</option>
+                    }
+                </select>
+                <input type="text" class="form-control form-control-sm" placeholder="@L["expensesSearchPlaceholder"]"
+                       value="@searchQuery" @oninput="OnSearchChanged" style="min-width: 180px;" />
+            </div>
+        </div>
+
+        <div class="workspace-summary-grid mt-2">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["expensesSummaryCount"]</span>
+                <strong>@filtered.Count</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["expensesSummaryTotal"]</span>
+                <strong>@filtered.Sum(e => e.Amount).ToString("N2") PLN</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["expensesSummaryTopCategory"]</span>
+                <strong>@TopCategoryLabel</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="workspace-panel">
+        <div class="workspace-panel-header workspace-panel-header-split">
+            <div>
+                <p class="workspace-panel-eyebrow">@L["expensesListEyebrow"]</p>
+                <h2>@L["expensesListTitle"]</h2>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    @L["commonExcel"]
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    @L["commonPdf"]
+                </button>
+            </div>
+        </div>
+
+        @if (filtered.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>@(expenses.Count == 0 ? L["expensesEmpty"] : L["expensesNoMatch"])</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table workspace-table">
+                    <thead>
+                        <tr>
+                            <th>@L["expensesThDate"]</th>
+                            <th>@L["expensesThCategory"]</th>
+                            <th>@L["expensesThVendor"]</th>
+                            <th>@L["expensesThNotes"]</th>
+                            <th class="text-end">@L["expensesThAmount"]</th>
+                            <th class="text-end">@L["expensesThActions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in filtered)
+                        {
+                            <tr>
+                                <td>@e.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@LocalizeCategory(e.Category)</td>
+                                <td class="text-muted">@(e.Vendor ?? "—")</td>
+                                <td class="text-muted">@(string.IsNullOrWhiteSpace(e.Notes) ? "—" : e.Notes)</td>
+                                <td class="text-end fw-semibold">@e.Amount.ToString("N2")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModal(e)">@L["commonEdit"]</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(e)">@L["commonDelete"]</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? L["expensesModalTitleEdit"] : L["expensesModalTitleAdd"])</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="row g-2">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@L["expensesModalLabelDate"]</label>
+                                <InputDate class="form-control" @bind-Value="formModel.Date" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@L["expensesModalLabelCategory"]</label>
+                                <InputSelect class="form-select" @bind-Value="formModel.Category">
+                                    @foreach (var cat in Enum.GetValues<ExpenseCategory>())
+                                    {
+                                        <option value="@cat">@LocalizeCategory(cat)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@L["expensesModalLabelAmount"]</label>
+                                <InputNumber class="form-control" @bind-Value="formModel.Amount" step="0.01" />
+                                <ValidationMessage For="() => formModel.Amount" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@L["expensesModalLabelVendor"]</label>
+                                <InputText class="form-control" @bind-Value="formModel.Vendor"
+                                           placeholder="@L["expensesModalVendorPlaceholder"]" />
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">@L["expensesModalLabelNotes"]</label>
+                                <InputTextArea class="form-control" @bind-Value="formModel.Notes" rows="3"
+                                               placeholder="@L["expensesModalNotesPlaceholder"]" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">@L["commonCancel"]</button>
+                        <button type="submit" class="btn btn-primary">@(isEditing ? L["expensesModalSave"] : L["expensesModalAdd"])</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@if (expenseToDelete is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@L["expensesDeleteTitle"]</h5>
+                    <button type="button" class="btn-close" @onclick="() => expenseToDelete = null"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@L.T("expensesDeleteConfirm", expenseToDelete.Amount.ToString("N2"), expenseToDelete.Date.ToString("yyyy-MM-dd"))</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => expenseToDelete = null">@L["commonCancel"]</button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleDelete">@L["commonDelete"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Expense> expenses = new();
+    private Expense formModel = new();
+    private Expense? expenseToDelete;
+    private bool showModal;
+    private bool isEditing;
+    private bool exporting;
+    private DateTime? fromFilter;
+    private DateTime? toFilter;
+    private string categoryFilter = string.Empty;
+    private string searchQuery = string.Empty;
+
+    private List<Expense> filtered => expenses
+        .Where(e =>
+            (!fromFilter.HasValue || e.Date.Date >= fromFilter.Value.Date) &&
+            (!toFilter.HasValue || e.Date.Date <= toFilter.Value.Date) &&
+            (string.IsNullOrEmpty(categoryFilter) || e.Category.ToString() == categoryFilter) &&
+            (string.IsNullOrWhiteSpace(searchQuery) ||
+             (e.Vendor?.Contains(searchQuery, StringComparison.CurrentCultureIgnoreCase) == true) ||
+             (e.Notes?.Contains(searchQuery, StringComparison.CurrentCultureIgnoreCase) == true)))
+        .ToList();
+
+    private string TopCategoryLabel
+    {
+        get
+        {
+            if (filtered.Count == 0) return "—";
+            var top = filtered
+                .GroupBy(e => e.Category)
+                .OrderByDescending(g => g.Sum(e => e.Amount))
+                .FirstOrDefault();
+            return top is null ? "—" : $"{LocalizeCategory(top.Key)} · {top.Sum(e => e.Amount):N2}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Finance.OnChange += HandleStoreChanged;
+        L.OnChange += HandleLocaleChanged;
+        await LoadExpenses();
+    }
+
+    private async Task LoadExpenses()
+    {
+        expenses = (await Finance.GetExpensesAsync()).ToList();
+    }
+
+    private async Task OnRangeChanged((DateTime? From, DateTime? To) range)
+    {
+        fromFilter = range.From;
+        toFilter = range.To;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs args)
+    {
+        categoryFilter = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnSearchChanged(ChangeEventArgs args)
+    {
+        searchQuery = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OpenAddModal()
+    {
+        formModel = new Expense { Date = DateTime.Today };
+        isEditing = false;
+        showModal = true;
+    }
+
+    private void OpenEditModal(Expense expense)
+    {
+        formModel = new Expense
+        {
+            Id = expense.Id,
+            Date = expense.Date,
+            Category = expense.Category,
+            Amount = expense.Amount,
+            Vendor = expense.Vendor,
+            Notes = expense.Notes,
+            AttachmentId = expense.AttachmentId,
+            InvoiceId = expense.InvoiceId
+        };
+        isEditing = true;
+        showModal = true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (isEditing)
+            {
+                await Finance.UpdateExpenseAsync(formModel.Id, formModel);
+                Toast.Show(L["expensesToastUpdated"]);
+            }
+            else
+            {
+                await Finance.AddExpenseAsync(formModel);
+                Toast.Show(L["expensesToastAdded"]);
+            }
+            showModal = false;
+            await LoadExpenses();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["expensesToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private void ConfirmDelete(Expense expense) => expenseToDelete = expense;
+
+    private async Task HandleDelete()
+    {
+        if (expenseToDelete is null) return;
+        try
+        {
+            await Finance.DeleteExpenseAsync(expenseToDelete.Id);
+            Toast.Show(L["expensesToastDeleted"]);
+            expenseToDelete = null;
+            await LoadExpenses();
+        }
+        catch
+        {
+            Toast.Show(L["expensesToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private string LocalizeCategory(ExpenseCategory category) =>
+        L["expensesCategory_" + category.ToString()];
+
+    private async Task ExportExcel()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Category", "Vendor", "Notes", "Amount" };
+            var rows = filtered.Select(e => new object[]
+            {
+                e.Date.ToString("yyyy-MM-dd"),
+                LocalizeCategory(e.Category),
+                e.Vendor ?? "",
+                e.Notes ?? "",
+                e.Amount
+            }).ToArray();
+            await Export.ExportExcelAsync("expenses.xlsx", "Expenses", headers, rows);
+        }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Category", "Vendor", "Notes", "Amount" };
+            var rows = filtered.Select(e => new object[]
+            {
+                e.Date.ToString("yyyy-MM-dd"),
+                LocalizeCategory(e.Category),
+                e.Vendor ?? "",
+                e.Notes ?? "",
+                e.Amount
+            }).ToArray();
+            await Export.ExportPdfAsync("expenses.pdf", "Expenses", headers, rows);
+        }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await LoadExpenses();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocaleChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Finance.OnChange -= HandleStoreChanged;
+        L.OnChange -= HandleLocaleChanged;
+    }
+}

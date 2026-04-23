@@ -2,6 +2,7 @@
 @inject ThemeService Theme
 @inject IFinanceService Finance
 @inject NotificationService Notifications
+@inject BrowserNotificationService BrowserNotifications
 
 <div class="page @(sidebarOpen ? "sidebar-open" : "")">
     <div class="sidebar">
@@ -36,6 +37,7 @@
             </div>
         </div>
 
+        <NotificationPermissionBanner />
         <PwaBanner />
 
         <article class="content px-4 py-3">
@@ -87,9 +89,9 @@
 
     private async Task RefreshNotificationsAsync()
     {
-        var items = new List<(NotificationType Type, string Title, string Message)>();
+        var drafts = new List<NotificationDraft>();
 
-        // Check due recurring services
+        // Due recurring services
         var due = await Finance.GetDueRecurringServicesAsync();
         foreach (var r in due)
         {
@@ -97,25 +99,52 @@
             var serviceName = r.Service?.Name ?? "Unknown";
             var isOverdue = r.NextOccurrence.Date < DateTime.Today;
 
-            items.Add((
+            drafts.Add(new NotificationDraft(
                 isOverdue ? NotificationType.Warning : NotificationType.Action,
                 isOverdue ? L["notificationOverdue"] : L["notificationDueToday"],
-                $"{serviceName} with {workerName}" + (r.Client is not null ? $" for {r.Client.Name}" : "")
+                $"{serviceName} with {workerName}" + (r.Client is not null ? $" for {r.Client.Name}" : ""),
+                ActionUrl: "/recurring",
+                Key: $"recurring:{r.Id}"
             ));
         }
 
-        // Check low-stock products
+        // Client comment reminders that have come due
+        var dueComments = await Finance.GetDueClientCommentRemindersAsync();
+        foreach (var c in dueComments)
+        {
+            var clientName = c.Client?.Name ?? "—";
+            var preview = c.Body.Length > 120 ? c.Body[..120] + "…" : c.Body;
+            var commentId = c.Id;
+            var title = L.T("notificationCommentReminderTitle", clientName);
+            var tag = $"comment:{c.Id}";
+            drafts.Add(new NotificationDraft(
+                NotificationType.Action,
+                title,
+                preview,
+                ActionUrl: $"/clients/{c.ClientId}",
+                ActionLabel: L["notificationOpenClient"],
+                Key: tag,
+                HandleAction: async () => await Finance.MarkCommentReminderHandledAsync(commentId),
+                HandleLabel: L["clientCommentMarkHandled"]
+            ));
+
+            _ = BrowserNotifications.NotifyAsync(tag, title, preview, $"/clients/{c.ClientId}");
+        }
+
+        // Low-stock products
         var products = await Finance.GetProductsAsync();
         foreach (var p in products.Where(p => p.StockQuantity > 0 && p.StockQuantity <= 3))
         {
-            items.Add((
+            drafts.Add(new NotificationDraft(
                 NotificationType.Warning,
                 L["notificationLowStock"],
-                L.T("notificationLowStockMsg", p.Name, p.StockQuantity)
+                L.T("notificationLowStockMsg", p.Name, p.StockQuantity),
+                ActionUrl: "/products",
+                Key: $"lowstock:{p.Id}"
             ));
         }
 
-        Notifications.ReplaceAll(items);
+        Notifications.ReplaceAll(drafts);
     }
 
     private async void HandleFinanceChanged()

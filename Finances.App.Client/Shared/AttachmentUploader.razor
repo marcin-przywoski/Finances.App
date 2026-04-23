@@ -1,0 +1,232 @@
+@implements IDisposable
+@inject AttachmentStore Store
+@inject IFinanceService Finance
+@inject ToastService Toast
+@inject IJSRuntime JS
+
+<div class="attachment-uploader">
+    @if (current is not null)
+    {
+        <div class="attachment-preview">
+            @if (IsImage(current.Mime))
+            {
+                <img src="@previewUrl" alt="@current.OriginalFileName" loading="lazy" />
+            }
+            else
+            {
+                <div class="attachment-preview-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                </div>
+            }
+            <div class="attachment-preview-info">
+                <strong>@(current.OriginalFileName ?? L["attachmentDefaultName"])</strong>
+                <span>@FormatSize(current.SizeBytes)</span>
+                <span>@current.Mime</span>
+            </div>
+            <div class="attachment-preview-actions">
+                @if (!string.IsNullOrEmpty(previewUrl))
+                {
+                    <a class="btn btn-sm btn-outline-secondary" href="@previewUrl" target="_blank" rel="noopener">
+                        @L["attachmentOpen"]
+                    </a>
+                }
+                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveAsync" disabled="@busy">
+                    @L["attachmentRemove"]
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <label class="attachment-drop-zone" for="@InputId">
+            <input id="@InputId" class="attachment-file-input" type="file"
+                   accept="@Accept" @onchange="HandleFileSelected" disabled="@busy" />
+            <div class="attachment-drop-body">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <div class="attachment-drop-copy">
+                    <strong>@(Label ?? L["attachmentAddFile"])</strong>
+                    <span>@L["attachmentHint"]</span>
+                </div>
+            </div>
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public string? AttachmentId { get; set; }
+    [Parameter] public EventCallback<string?> AttachmentIdChanged { get; set; }
+    [Parameter] public string? EntityType { get; set; }
+    [Parameter] public int? EntityId { get; set; }
+    [Parameter] public string Accept { get; set; } = "image/*,application/pdf";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public long MaxSizeBytes { get; set; } = 15 * 1024 * 1024;
+
+    private Attachment? current;
+    private string? previewUrl;
+    private bool busy;
+    private readonly string InputId = "attachment-" + Guid.NewGuid().ToString("N")[..8];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(AttachmentId) && AttachmentId != current?.Id)
+        {
+            await LoadMetadataAsync();
+        }
+        else if (string.IsNullOrEmpty(AttachmentId) && current is not null)
+        {
+            ReleasePreview();
+            current = null;
+        }
+    }
+
+    private async Task LoadMetadataAsync()
+    {
+        try
+        {
+            current = await Finance.GetAttachmentMetadataAsync(AttachmentId!);
+            if (current is null) return;
+            ReleasePreview();
+            previewUrl = await Store.GetBlobUrlAsync(current.Id);
+        }
+        catch
+        {
+            current = null;
+        }
+    }
+
+    private async Task HandleFileSelected(ChangeEventArgs args)
+    {
+        if (busy) return;
+        busy = true;
+        try
+        {
+            var content = await JS.InvokeAsync<JsFileContent?>("browserFiles.readFirstFile", InputId);
+            if (content is null) return;
+
+            if (content.SizeBytes > MaxSizeBytes)
+            {
+                Toast.Show(L.T("attachmentTooLarge", FormatSize(MaxSizeBytes)), ToastLevel.Error);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(content.Base64))
+            {
+                Toast.Show(L["attachmentReadFailed"], ToastLevel.Error);
+                return;
+            }
+
+            var id = Guid.NewGuid().ToString("N");
+            var bytes = Convert.FromBase64String(content.Base64);
+            await Store.PutAsync(id, content.Mime ?? "application/octet-stream", bytes,
+                content.Name, EntityType, EntityId);
+
+            var registered = await Finance.RegisterAttachmentAsync(new Attachment
+            {
+                Id = id,
+                Mime = content.Mime ?? "application/octet-stream",
+                OriginalFileName = content.Name,
+                SizeBytes = bytes.LongLength,
+                CreatedUtc = DateTime.UtcNow,
+                EntityType = EntityType,
+                EntityId = EntityId
+            });
+
+            current = registered;
+            ReleasePreview();
+            previewUrl = await Store.GetBlobUrlAsync(id);
+
+            if (AttachmentIdChanged.HasDelegate)
+            {
+                await AttachmentIdChanged.InvokeAsync(id);
+            }
+            else
+            {
+                AttachmentId = id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(L.T("attachmentUploadFailed", ex.Message), ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (current is null || busy) return;
+        busy = true;
+        try
+        {
+            var id = current.Id;
+            await Store.DeleteAsync(id);
+            await Finance.UnregisterAttachmentAsync(id);
+
+            ReleasePreview();
+            current = null;
+
+            if (AttachmentIdChanged.HasDelegate)
+            {
+                await AttachmentIdChanged.InvokeAsync(null);
+            }
+            else
+            {
+                AttachmentId = null;
+            }
+        }
+        catch
+        {
+            Toast.Show(L["attachmentDeleteFailed"], ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void ReleasePreview()
+    {
+        if (!string.IsNullOrEmpty(previewUrl))
+        {
+            _ = JS.InvokeVoidAsync("URL.revokeObjectURL", previewUrl).AsTask();
+            previewUrl = null;
+        }
+    }
+
+    private static bool IsImage(string? mime) => !string.IsNullOrEmpty(mime) && mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB"];
+        double size = bytes;
+        int unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:0.##} {units[unit]}";
+    }
+
+    public void Dispose()
+    {
+        ReleasePreview();
+    }
+
+    private sealed class JsFileContent
+    {
+        public string? Name { get; set; }
+        public string? Mime { get; set; }
+        public long SizeBytes { get; set; }
+        public string? Base64 { get; set; }
+    }
+}

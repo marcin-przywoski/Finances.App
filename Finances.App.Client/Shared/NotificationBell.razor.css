@@ -161,3 +161,15 @@
 .notification-item-dismiss:hover {
     color: var(--text-primary);
 }
+
+.notification-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+}
+
+.notification-item-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.55rem;
+}

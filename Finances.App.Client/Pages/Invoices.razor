@@ -1,0 +1,584 @@
+@page "/invoices"
+@implements IDisposable
+@inject IFinanceService Finance
+@inject ToastService Toast
+@inject ExportService Export
+@inject NavigationManager Nav
+
+<PageTitle>@L["invoicesPageTitle"]</PageTitle>
+
+<div class="workspace-page">
+    <section class="workspace-hero workspace-hero--catalog">
+        <div class="workspace-hero-copy">
+            <span class="workspace-kicker">@L["invoicesKicker"]</span>
+            <h1 class="workspace-title">@L["invoicesTitle"]</h1>
+            <p class="workspace-description">@L["invoicesDescription"]</p>
+        </div>
+        <div class="workspace-hero-actions">
+            <button class="btn btn-primary" @onclick="OpenAddModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                @L["invoicesAddButton"]
+            </button>
+        </div>
+    </section>
+
+    <section class="workspace-panel">
+        <div class="workspace-panel-header workspace-panel-header-split d-flex flex-wrap gap-2">
+            <div>
+                <p class="workspace-panel-eyebrow">@L["invoicesFiltersEyebrow"]</p>
+                <h2>@L["invoicesFiltersTitle"]</h2>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <DateRangeFilter OnRangeChanged="OnRangeChanged" />
+                <select class="form-select form-select-sm" value="@paidFilter" @onchange="OnPaidChanged" style="min-width: 140px;">
+                    <option value="">@L["invoicesPaidAll"]</option>
+                    <option value="paid">@L["invoicesPaidYes"]</option>
+                    <option value="unpaid">@L["invoicesPaidNo"]</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" placeholder="@L["invoicesSearchPlaceholder"]"
+                       value="@vendorSearch" @oninput="OnVendorSearchChanged" style="min-width: 180px;" />
+            </div>
+        </div>
+
+        <div class="workspace-summary-grid mt-2">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["invoicesSummaryCount"]</span>
+                <strong>@filtered.Count</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["invoicesSummaryTotal"]</span>
+                <strong>@filtered.Sum(i => i.Total).ToString("N2") PLN</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["invoicesSummaryUnpaid"]</span>
+                <strong>@filtered.Count(i => !i.Paid)</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["invoicesSummaryUnpaidTotal"]</span>
+                <strong>@filtered.Where(i => !i.Paid).Sum(i => i.Total).ToString("N2") PLN</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="workspace-panel">
+        <div class="workspace-panel-header workspace-panel-header-split">
+            <div>
+                <p class="workspace-panel-eyebrow">@L["invoicesListEyebrow"]</p>
+                <h2>@L["invoicesListTitle"]</h2>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success" @onclick="ExportExcel" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    @L["commonExcel"]
+                </button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="ExportPdf" disabled="@exporting">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    @L["commonPdf"]
+                </button>
+            </div>
+        </div>
+
+        @if (filtered.Count == 0)
+        {
+            <div class="workspace-empty-state">
+                <p>@(invoices.Count == 0 ? L["invoicesEmpty"] : L["invoicesNoMatch"])</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="data-table workspace-table">
+                    <thead>
+                        <tr>
+                            <th>@L["invoicesThDate"]</th>
+                            <th>@L["invoicesThVendor"]</th>
+                            <th>@L["invoicesThNotes"]</th>
+                            <th>@L["invoicesThAttachment"]</th>
+                            <th class="text-end">@L["invoicesThTotal"]</th>
+                            <th class="text-center">@L["invoicesThPaid"]</th>
+                            <th class="text-end">@L["invoicesThActions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in filtered)
+                        {
+                            <tr>
+                                <td>@inv.Date.ToString("yyyy-MM-dd")</td>
+                                <td>@(string.IsNullOrWhiteSpace(inv.Vendor) ? "—" : inv.Vendor)</td>
+                                <td class="text-muted">@(string.IsNullOrWhiteSpace(inv.Notes) ? "—" : inv.Notes)</td>
+                                <td class="text-muted">
+                                    @if (!string.IsNullOrEmpty(inv.AttachmentId))
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis">@L["invoicesAttachmentYes"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td class="text-end fw-semibold">@inv.Total.ToString("N2") @inv.Currency</td>
+                                <td class="text-center">
+                                    @if (inv.Paid)
+                                    {
+                                        <span class="badge bg-success-subtle text-success-emphasis">@L["invoicesPaidYes"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis">@L["invoicesPaidNo"]</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditModalAsync(inv)">@L["commonEdit"]</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(inv)">@L["commonDelete"]</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? L["invoicesModalTitleEdit"] : L["invoicesModalTitleAdd"])</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <div class="row g-2">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">@L["invoicesModalLabelDate"]</label>
+                                <InputDate class="form-control" @bind-Value="formModel.Date" />
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label">@L["invoicesModalLabelVendor"]</label>
+                                <InputText class="form-control" @bind-Value="formModel.Vendor"
+                                           placeholder="@L["invoicesModalVendorPlaceholder"]" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">@L["invoicesModalLabelCurrency"]</label>
+                                <InputText class="form-control" @bind-Value="formModel.Currency" maxlength="8" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">@L["invoicesModalLabelTotal"]</label>
+                                <InputNumber class="form-control" @bind-Value="formModel.Total" step="0.01" />
+                                <ValidationMessage For="() => formModel.Total" />
+                            </div>
+                            <div class="col-md-6 mb-3 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <InputCheckbox class="form-check-input" id="inv-paid" @bind-Value="formModel.Paid" />
+                                    <label class="form-check-label" for="inv-paid">@L["invoicesModalLabelPaid"]</label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label class="form-label">@L["invoicesModalLabelNotes"]</label>
+                                <InputTextArea class="form-control" @bind-Value="formModel.Notes" rows="2"
+                                               placeholder="@L["invoicesModalNotesPlaceholder"]" />
+                            </div>
+                        </div>
+
+                        <div class="workspace-panel-header workspace-panel-header-split mt-2 mb-2">
+                            <div>
+                                <p class="workspace-panel-eyebrow">@L["invoicesLineItemsEyebrow"]</p>
+                                <h3 class="h6 mb-0">@L["invoicesLineItemsTitle"]</h3>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="AddLineItem">
+                                + @L["invoicesLineItemAdd"]
+                            </button>
+                        </div>
+
+                        @if (formLines.Count == 0)
+                        {
+                            <p class="text-muted small mb-2">@L["invoicesLineItemsEmpty"]</p>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="data-table workspace-table">
+                                    <thead>
+                                        <tr>
+                                            <th>@L["invoicesLiThDescription"]</th>
+                                            <th style="width: 100px;" class="text-end">@L["invoicesLiThQuantity"]</th>
+                                            <th style="width: 130px;" class="text-end">@L["invoicesLiThUnitPrice"]</th>
+                                            <th style="width: 130px;" class="text-end">@L["invoicesLiThLineTotal"]</th>
+                                            <th style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (var i = 0; i < formLines.Count; i++)
+                                        {
+                                            var idx = i;
+                                            var line = formLines[idx];
+                                            <tr>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           value="@line.Description"
+                                                           @oninput="e => OnLineDescriptionChanged(idx, e)" />
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm text-end"
+                                                           step="0.01" value="@line.Quantity"
+                                                           @oninput="e => OnLineQuantityChanged(idx, e)" />
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm text-end"
+                                                           step="0.01" value="@line.UnitPrice"
+                                                           @oninput="e => OnLineUnitPriceChanged(idx, e)" />
+                                                </td>
+                                                <td class="text-end align-middle fw-semibold">@line.LineTotal.ToString("N2")</td>
+                                                <td class="text-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                            @onclick="() => RemoveLineItem(idx)"
+                                                            title="@L["commonDelete"]">×</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-end text-muted">@L["invoicesLineItemsSum"]</td>
+                                            <td class="text-end fw-semibold">@formLines.Sum(l => l.LineTotal).ToString("N2")</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link p-0" @onclick="ApplyLinesToTotal">
+                                @L["invoicesLineItemsApplyTotal"]
+                            </button>
+                        }
+
+                        <div class="mt-3">
+                            <label class="form-label">@L["invoicesModalLabelAttachment"]</label>
+                            <AttachmentUploader EntityType="invoice"
+                                                EntityId="@(formModel.Id == 0 ? null : formModel.Id)"
+                                                @bind-AttachmentId="formModel.AttachmentId"
+                                                Label="@L["invoicesAttachmentLabel"]" />
+                        </div>
+
+                        @if (!isEditing)
+                        {
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="inv-track-expense"
+                                       checked="@trackAsExpense"
+                                       @onchange="e => trackAsExpense = (bool)(e.Value ?? false)" />
+                                <label class="form-check-label" for="inv-track-expense">
+                                    @L["invoicesTrackAsExpense"]
+                                </label>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">@L["commonCancel"]</button>
+                        <button type="submit" class="btn btn-primary" disabled="@saving">
+                            @(isEditing ? L["invoicesModalSave"] : L["invoicesModalAdd"])
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@if (invoiceToDelete is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@L["invoicesDeleteTitle"]</h5>
+                    <button type="button" class="btn-close" @onclick="() => invoiceToDelete = null"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@L.T("invoicesDeleteConfirm", invoiceToDelete.Total.ToString("N2"), invoiceToDelete.Date.ToString("yyyy-MM-dd"))</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => invoiceToDelete = null">@L["commonCancel"]</button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleDelete">@L["commonDelete"]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Invoice> invoices = new();
+    private Invoice formModel = new();
+    private List<InvoiceLineItem> formLines = new();
+    private Invoice? invoiceToDelete;
+    private bool showModal;
+    private bool isEditing;
+    private bool exporting;
+    private bool saving;
+    private bool trackAsExpense;
+    private DateTime? fromFilter;
+    private DateTime? toFilter;
+    private string paidFilter = string.Empty;
+    private string vendorSearch = string.Empty;
+
+    private List<Invoice> filtered => invoices
+        .Where(i =>
+            (!fromFilter.HasValue || i.Date.Date >= fromFilter.Value.Date) &&
+            (!toFilter.HasValue || i.Date.Date <= toFilter.Value.Date) &&
+            (string.IsNullOrEmpty(paidFilter) ||
+                (paidFilter == "paid" && i.Paid) ||
+                (paidFilter == "unpaid" && !i.Paid)) &&
+            (string.IsNullOrWhiteSpace(vendorSearch) ||
+             (i.Vendor?.Contains(vendorSearch, StringComparison.CurrentCultureIgnoreCase) == true) ||
+             (i.Notes?.Contains(vendorSearch, StringComparison.CurrentCultureIgnoreCase) == true)))
+        .OrderByDescending(i => i.Date)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Finance.OnChange += HandleStoreChanged;
+        L.OnChange += HandleLocaleChanged;
+        await LoadInvoices();
+    }
+
+    private async Task LoadInvoices()
+    {
+        invoices = (await Finance.GetInvoicesAsync()).ToList();
+    }
+
+    private async Task OnRangeChanged((DateTime? From, DateTime? To) range)
+    {
+        fromFilter = range.From;
+        toFilter = range.To;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPaidChanged(ChangeEventArgs args)
+    {
+        paidFilter = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnVendorSearchChanged(ChangeEventArgs args)
+    {
+        vendorSearch = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OpenAddModal()
+    {
+        formModel = new Invoice { Date = DateTime.Today, Currency = "PLN" };
+        formLines = new List<InvoiceLineItem>();
+        trackAsExpense = false;
+        isEditing = false;
+        showModal = true;
+    }
+
+    private async Task OpenEditModalAsync(Invoice invoice)
+    {
+        formModel = new Invoice
+        {
+            Id = invoice.Id,
+            Date = invoice.Date,
+            Vendor = invoice.Vendor,
+            Currency = invoice.Currency,
+            Total = invoice.Total,
+            Paid = invoice.Paid,
+            AttachmentId = invoice.AttachmentId,
+            ParsedFromAttachment = invoice.ParsedFromAttachment,
+            Notes = invoice.Notes
+        };
+        try
+        {
+            var lines = await Finance.GetInvoiceLineItemsAsync(invoice.Id);
+            formLines = lines.Select(l => new InvoiceLineItem
+            {
+                Id = l.Id,
+                InvoiceId = l.InvoiceId,
+                Description = l.Description,
+                Quantity = l.Quantity,
+                UnitPrice = l.UnitPrice,
+                LineTotal = l.LineTotal
+            }).ToList();
+        }
+        catch
+        {
+            formLines = new List<InvoiceLineItem>();
+        }
+        trackAsExpense = false;
+        isEditing = true;
+        showModal = true;
+    }
+
+    private void AddLineItem()
+    {
+        formLines.Add(new InvoiceLineItem
+        {
+            Quantity = 1,
+            UnitPrice = 0,
+            LineTotal = 0
+        });
+    }
+
+    private void RemoveLineItem(int index)
+    {
+        if (index < 0 || index >= formLines.Count) return;
+        formLines.RemoveAt(index);
+    }
+
+    private void OnLineDescriptionChanged(int index, ChangeEventArgs args)
+    {
+        if (index < 0 || index >= formLines.Count) return;
+        formLines[index].Description = args.Value?.ToString();
+    }
+
+    private void OnLineQuantityChanged(int index, ChangeEventArgs args)
+    {
+        if (index < 0 || index >= formLines.Count) return;
+        if (decimal.TryParse(args.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var qty))
+        {
+            formLines[index].Quantity = qty;
+            RecalcLine(index);
+        }
+    }
+
+    private void OnLineUnitPriceChanged(int index, ChangeEventArgs args)
+    {
+        if (index < 0 || index >= formLines.Count) return;
+        if (decimal.TryParse(args.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var price))
+        {
+            formLines[index].UnitPrice = price;
+            RecalcLine(index);
+        }
+    }
+
+    private void RecalcLine(int index)
+    {
+        var line = formLines[index];
+        line.LineTotal = Math.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private void ApplyLinesToTotal()
+    {
+        formModel.Total = Math.Round(formLines.Sum(l => l.LineTotal), 2, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (saving) return;
+        saving = true;
+        try
+        {
+            if (isEditing)
+            {
+                await Finance.UpdateInvoiceAsync(formModel.Id, formModel, formLines);
+                Toast.Show(L["invoicesToastUpdated"]);
+            }
+            else
+            {
+                await Finance.AddInvoiceAsync(formModel, formLines, trackAsExpense);
+                Toast.Show(L["invoicesToastAdded"]);
+            }
+            showModal = false;
+            await LoadInvoices();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["invoicesToastFailed"], ToastLevel.Error);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void ConfirmDelete(Invoice invoice) => invoiceToDelete = invoice;
+
+    private async Task HandleDelete()
+    {
+        if (invoiceToDelete is null) return;
+        try
+        {
+            await Finance.DeleteInvoiceAsync(invoiceToDelete.Id);
+            Toast.Show(L["invoicesToastDeleted"]);
+            invoiceToDelete = null;
+            await LoadInvoices();
+        }
+        catch
+        {
+            Toast.Show(L["invoicesToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task ExportExcel()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Vendor", "Currency", "Total", "Paid", "Notes" };
+            var rows = filtered.Select(i => new object[]
+            {
+                i.Date.ToString("yyyy-MM-dd"),
+                i.Vendor ?? "",
+                i.Currency,
+                i.Total,
+                i.Paid ? L["invoicesPaidYes"] : L["invoicesPaidNo"],
+                i.Notes ?? ""
+            }).ToArray();
+            await Export.ExportExcelAsync("invoices.xlsx", "Invoices", headers, rows);
+        }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async Task ExportPdf()
+    {
+        exporting = true;
+        try
+        {
+            var headers = new[] { "Date", "Vendor", "Currency", "Total", "Paid", "Notes" };
+            var rows = filtered.Select(i => new object[]
+            {
+                i.Date.ToString("yyyy-MM-dd"),
+                i.Vendor ?? "",
+                i.Currency,
+                i.Total,
+                i.Paid ? L["invoicesPaidYes"] : L["invoicesPaidNo"],
+                i.Notes ?? ""
+            }).ToArray();
+            await Export.ExportPdfAsync("invoices.pdf", "Invoices", headers, rows);
+        }
+        catch { Toast.Show(L["commonExportFailed"], ToastLevel.Error); }
+        finally { exporting = false; }
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await LoadInvoices();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocaleChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Finance.OnChange -= HandleStoreChanged;
+        L.OnChange -= HandleLocaleChanged;
+    }
+}

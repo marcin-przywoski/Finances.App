@@ -1,0 +1,455 @@
+@page "/clients/{ClientId:int}"
+@implements IDisposable
+@inject IFinanceService Finance
+@inject ToastService Toast
+@inject NavigationManager Nav
+
+<div class="workspace-page">
+    @if (client is null)
+    {
+        <section class="workspace-hero workspace-hero--catalog">
+            <div class="workspace-hero-copy">
+                <p class="workspace-kicker">@L["clientDetailKicker"]</p>
+                <h1 class="workspace-title">@(loaded ? L["clientDetailNotFoundTitle"] : L["commonLoading"])</h1>
+                @if (loaded)
+                {
+                    <p class="workspace-description">@L["clientDetailNotFoundDescription"]</p>
+                }
+            </div>
+            <div class="workspace-hero-actions">
+                <a class="btn btn-outline-primary" href="/clients">@L["clientDetailBackToList"]</a>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="workspace-hero workspace-hero--catalog">
+            <div class="workspace-hero-copy">
+                <p class="workspace-kicker">@L["clientDetailKicker"]</p>
+                <h1 class="workspace-title">@client.Name</h1>
+                @if (!string.IsNullOrWhiteSpace(client.Notes))
+                {
+                    <p class="workspace-description">@client.Notes</p>
+                }
+            </div>
+            <div class="workspace-hero-actions">
+                <a class="btn btn-outline-primary" href="/clients">@L["clientDetailBackToList"]</a>
+            </div>
+        </section>
+
+        <div class="workspace-summary-grid">
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["clientDetailPhone"]</span>
+                <strong>@(string.IsNullOrWhiteSpace(client.Phone) ? "—" : client.Phone)</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["clientDetailEmail"]</span>
+                <strong>@(string.IsNullOrWhiteSpace(client.Email) ? "—" : client.Email)</strong>
+            </div>
+            <div class="workspace-summary-card">
+                <span class="workspace-summary-label">@L["clientsDetailSince"]</span>
+                <strong>@client.CreatedDate.ToString("yyyy-MM-dd")</strong>
+            </div>
+            @if (detail is not null)
+            {
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["clientsDetailVisits"]</span>
+                    <strong>@detail.TotalVisits</strong>
+                </div>
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["clientsDetailSpend"]</span>
+                    <strong>@detail.TotalSpend.ToString("N2") PLN</strong>
+                </div>
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["clientsDetailLastVisit"]</span>
+                    <strong>@(detail.LastVisit?.ToString("yyyy-MM-dd") ?? "—")</strong>
+                </div>
+            }
+        </div>
+
+        <section class="workspace-panel client-comments">
+            <div class="workspace-panel-header workspace-panel-header-split d-flex">
+                <div>
+                    <p class="workspace-panel-eyebrow">@L["clientCommentsEyebrow"]</p>
+                    <h2>@L["clientCommentsHeader"]</h2>
+                </div>
+                <div class="text-muted small" aria-live="polite">
+                    @L.T("clientCommentsCount", comments.Count)
+                </div>
+            </div>
+
+            <EditForm Model="commentForm" OnValidSubmit="HandleCommentSubmit" class="client-comment-form">
+                <DataAnnotationsValidator />
+                <div class="mb-2">
+                    <label class="form-label">@L["clientCommentBodyLabel"]</label>
+                    <InputTextArea class="form-control" @bind-Value="commentForm.Body"
+                                    rows="3" maxlength="2000"
+                                    placeholder="@L["clientCommentBodyPlaceholder"]" />
+                    <ValidationMessage For="() => commentForm.Body" />
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">@L["clientCommentReminderLabel"]</label>
+                        <input type="datetime-local" class="form-control"
+                                value="@reminderLocalInput"
+                                @onchange="OnReminderChanged" />
+                        <div class="form-text">@L["clientCommentReminderHint"]</div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        @if (editingCommentId.HasValue)
+                        {
+                            <button type="button" class="btn btn-outline-secondary me-2" @onclick="CancelEdit">
+                                @L["clientCommentCancel"]
+                            </button>
+                            <button type="submit" class="btn btn-primary">@L["clientCommentSave"]</button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-primary">@L["clientCommentAdd"]</button>
+                        }
+                    </div>
+                </div>
+            </EditForm>
+
+            @if (comments.Count == 0)
+            {
+                <div class="workspace-empty-state" style="min-height: 120px;">
+                    <p>@L["clientCommentEmptyState"]</p>
+                </div>
+            }
+            else
+            {
+                <ol class="client-comment-list">
+                    @foreach (var comment in comments)
+                    {
+                        <li class="client-comment-item @(IsEditing(comment) ? "is-editing" : string.Empty)">
+                            <div class="client-comment-meta">
+                                <time datetime="@comment.CreatedUtc.ToString("O")">
+                                    @comment.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </time>
+                                @if (comment.ReminderUtc is { } reminder)
+                                {
+                                    var isDue = !comment.ReminderHandled && reminder <= DateTime.UtcNow;
+                                    var cls = comment.ReminderHandled
+                                        ? "badge text-bg-secondary"
+                                        : (isDue ? "badge text-bg-warning" : "badge text-bg-info");
+                                    var text = comment.ReminderHandled
+                                        ? L["clientCommentReminderHandled"]
+                                        : (isDue ? L["clientCommentReminderDue"] : L["clientCommentReminderPending"]);
+                                    <span class="@cls ms-2">
+                                        @text · @reminder.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                    </span>
+                                }
+                            </div>
+                            <div class="client-comment-body">@comment.Body</div>
+                            <div class="client-comment-actions">
+                                @if (comment.ReminderUtc is not null && !comment.ReminderHandled)
+                                {
+                                    <button class="btn btn-sm btn-outline-success me-1"
+                                            @onclick="() => HandleMarkHandled(comment.Id)">
+                                        @L["clientCommentMarkHandled"]
+                                    </button>
+                                }
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        @onclick="() => BeginEdit(comment)">
+                                    @L["clientCommentEdit"]
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => ConfirmDelete(comment)">
+                                    @L["clientCommentDelete"]
+                                </button>
+                            </div>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+
+        @if (detail is not null && (detail.RecentServices.Count > 0 || detail.RecentProductSales.Count > 0))
+        {
+            <section class="workspace-panel">
+                <div class="workspace-panel-header">
+                    <p class="workspace-panel-eyebrow">@L["clientsDetailEyebrow"]</p>
+                    <h2>@L["clientDetailSectionHistory"]</h2>
+                </div>
+
+                @if (detail.RecentServices.Count > 0)
+                {
+                    <h6 class="mt-3 mb-2">@L["clientsDetailRecentServices"]</h6>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L["clientsDetailThDate"]</th>
+                                    <th>@L["clientsDetailThService"]</th>
+                                    <th>@L["clientsDetailThWorker"]</th>
+                                    <th class="text-end">@L["clientsDetailThAmount"]</th>
+                                    <th class="text-end">@L["clientsDetailThTips"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in detail.RecentServices)
+                                {
+                                    <tr>
+                                        <td>@r.Date</td>
+                                        <td>@r.Service</td>
+                                        <td>@r.Worker</td>
+                                        <td class="text-end">@r.AmountPaid.ToString("N2")</td>
+                                        <td class="text-end">@r.Tips.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (detail.RecentProductSales.Count > 0)
+                {
+                    <h6 class="mt-3 mb-2">@L["clientsDetailRecentPurchases"]</h6>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>@L["clientsDetailThDate"]</th>
+                                    <th>@L["clientsDetailThProduct"]</th>
+                                    <th>@L["clientsDetailThQty"]</th>
+                                    <th class="text-end">@L["clientsDetailThTotal"]</th>
+                                    <th>@L["clientsDetailThSoldBy"]</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in detail.RecentProductSales)
+                                {
+                                    <tr>
+                                        <td>@s.Date</td>
+                                        <td>@s.Product</td>
+                                        <td>@s.Quantity</td>
+                                        <td class="text-end">@s.Total.ToString("N2")</td>
+                                        <td>@(s.Worker ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    }
+</div>
+
+@if (commentToDelete is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@L["clientCommentDeleteTitle"]</h5>
+                    <button type="button" class="btn-close" @onclick="() => commentToDelete = null"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@L["clientCommentDeleteConfirm"]</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="() => commentToDelete = null">
+                        @L["clientCommentCancel"]
+                    </button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleDeleteConfirmed">
+                        @L["clientCommentDelete"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ClientId { get; set; }
+
+    private SalonClient? client;
+    private ClientDetailResult? detail;
+    private List<ClientComment> comments = new();
+    private bool loaded;
+
+    private CommentForm commentForm = new();
+    private int? editingCommentId;
+    private string reminderLocalInput = string.Empty;
+    private ClientComment? commentToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Finance.OnChange += HandleStoreChanged;
+        L.OnChange += HandleLocaleChanged;
+        await LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loaded && client?.Id != ClientId)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var all = await Finance.GetClientsAsync();
+            client = all.FirstOrDefault(c => c.Id == ClientId);
+            if (client is null)
+            {
+                detail = null;
+                comments = new();
+                loaded = true;
+                return;
+            }
+
+            try { detail = await Finance.GetClientDetailAsync(ClientId); }
+            catch { detail = null; }
+
+            comments = (await Finance.GetClientCommentsAsync(ClientId)).ToList();
+            loaded = true;
+        }
+        catch
+        {
+            Toast.Show(L["clientsToastDetailFailed"], ToastLevel.Error);
+            loaded = true;
+        }
+    }
+
+    private bool IsEditing(ClientComment comment) => editingCommentId == comment.Id;
+
+    private void OnReminderChanged(ChangeEventArgs args)
+    {
+        reminderLocalInput = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void BeginEdit(ClientComment comment)
+    {
+        editingCommentId = comment.Id;
+        commentForm = new CommentForm { Body = comment.Body };
+        reminderLocalInput = comment.ReminderUtc is { } reminder
+            ? reminder.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")
+            : string.Empty;
+    }
+
+    private void CancelEdit()
+    {
+        editingCommentId = null;
+        commentForm = new CommentForm();
+        reminderLocalInput = string.Empty;
+    }
+
+    private DateTime? ParseReminderInput()
+    {
+        if (string.IsNullOrWhiteSpace(reminderLocalInput)) return null;
+        if (DateTime.TryParse(reminderLocalInput, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeLocal, out var local))
+        {
+            return local.ToUniversalTime();
+        }
+        return null;
+    }
+
+    private async Task HandleCommentSubmit()
+    {
+        if (client is null) return;
+        var reminderUtc = ParseReminderInput();
+
+        try
+        {
+            if (editingCommentId is { } id)
+            {
+                var updated = new ClientComment
+                {
+                    Id = id,
+                    ClientId = client.Id,
+                    Body = commentForm.Body,
+                    ReminderUtc = reminderUtc,
+                    ReminderHandled = false
+                };
+                await Finance.UpdateClientCommentAsync(id, updated);
+                Toast.Show(L["clientCommentToastUpdated"]);
+            }
+            else
+            {
+                var created = new ClientComment
+                {
+                    ClientId = client.Id,
+                    Body = commentForm.Body,
+                    CreatedUtc = DateTime.UtcNow,
+                    ReminderUtc = reminderUtc,
+                    ReminderHandled = false
+                };
+                await Finance.AddClientCommentAsync(created);
+                Toast.Show(L["clientCommentToastAdded"]);
+            }
+
+            CancelEdit();
+            await RefreshCommentsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex is InvalidDataException ? ex.Message : L["clientCommentToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private void ConfirmDelete(ClientComment comment) => commentToDelete = comment;
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (commentToDelete is null) return;
+        try
+        {
+            await Finance.DeleteClientCommentAsync(commentToDelete.Id);
+            Toast.Show(L["clientCommentToastDeleted"]);
+            if (editingCommentId == commentToDelete.Id) CancelEdit();
+            commentToDelete = null;
+            await RefreshCommentsAsync();
+        }
+        catch
+        {
+            Toast.Show(L["clientCommentToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private async Task HandleMarkHandled(int commentId)
+    {
+        try
+        {
+            await Finance.MarkCommentReminderHandledAsync(commentId);
+            await RefreshCommentsAsync();
+        }
+        catch
+        {
+            Toast.Show(L["clientCommentToastFailed"], ToastLevel.Error);
+        }
+    }
+
+    private async Task RefreshCommentsAsync()
+    {
+        comments = (await Finance.GetClientCommentsAsync(ClientId)).ToList();
+        StateHasChanged();
+    }
+
+    private async void HandleStoreChanged()
+    {
+        await LoadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocaleChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Finance.OnChange -= HandleStoreChanged;
+        L.OnChange -= HandleLocaleChanged;
+    }
+
+    public class CommentForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(2000)]
+        public string Body { get; set; } = string.Empty;
+    }
+}

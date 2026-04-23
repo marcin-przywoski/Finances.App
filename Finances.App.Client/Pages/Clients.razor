@@ -3,6 +3,7 @@
 @inject IFinanceService Finance
 @inject ToastService Toast
 @inject ExportService Export
+@inject NavigationManager Nav
 
 <div class="workspace-page">
     <section class="workspace-hero workspace-hero--catalog">
@@ -83,9 +84,9 @@
                         {
                             <tr>
                                 <td>
-                                    <button class="btn btn-link p-0 text-decoration-none fw-bold" @onclick="() => OpenDetail(c)">
+                                    <a class="btn btn-link p-0 text-decoration-none fw-bold" href="/clients/@c.Id">
                                         @c.Name
-                                    </button>
+                                    </a>
                                 </td>
                                 <td class="text-muted">@(c.Phone ?? "—")</td>
                                 <td class="text-muted">@(c.Email ?? "—")</td>

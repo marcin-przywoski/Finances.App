@@ -74,8 +74,42 @@ public interface IFinanceService
     Task<IReadOnlyList<ClientRetentionResult>> GetClientRetentionAsync(int? workerId, DateTime? from, DateTime? to);
     Task<DataStateSummary> GetDataStateSummaryAsync();
 
+    // Client Comments
+    Task<IReadOnlyList<ClientComment>> GetClientCommentsAsync(int clientId);
+    Task<ClientComment> AddClientCommentAsync(ClientComment comment);
+    Task UpdateClientCommentAsync(int id, ClientComment comment);
+    Task DeleteClientCommentAsync(int id);
+    Task<IReadOnlyList<ClientComment>> GetDueClientCommentRemindersAsync();
+    Task MarkCommentReminderHandledAsync(int id);
+
+    // Expenses
+    Task<IReadOnlyList<Expense>> GetExpensesAsync(DateTime? from = null, DateTime? to = null, ExpenseCategory? category = null);
+    Task<Expense> AddExpenseAsync(Expense expense);
+    Task UpdateExpenseAsync(int id, Expense expense);
+    Task DeleteExpenseAsync(int id);
+    Task<NetProfitResult> GetNetProfitAsync(int? workerId, DateTime? from, DateTime? to);
+    Task<IReadOnlyList<MonthlyProfitPoint>> GetMonthlyProfitSeriesAsync(DateTime? from, DateTime? to);
+
+    // Invoices
+    Task<IReadOnlyList<Invoice>> GetInvoicesAsync(DateTime? from = null, DateTime? to = null, bool? paid = null, string? vendorSearch = null);
+    Task<Invoice?> GetInvoiceAsync(int id);
+    Task<Invoice> AddInvoiceAsync(Invoice invoice, IEnumerable<InvoiceLineItem>? lineItems = null, bool trackAsExpense = false);
+    Task UpdateInvoiceAsync(int id, Invoice invoice, IEnumerable<InvoiceLineItem>? lineItems = null);
+    Task DeleteInvoiceAsync(int id);
+    Task<IReadOnlyList<InvoiceLineItem>> GetInvoiceLineItemsAsync(int invoiceId);
+
+    // Attachments (metadata only; blob lives in IndexedDB)
+    Task<Attachment> RegisterAttachmentAsync(Attachment attachment);
+    Task UnregisterAttachmentAsync(string id);
+    Task<IReadOnlyList<Attachment>> GetAttachmentsAsync(string? entityType = null, int? entityId = null);
+    Task<Attachment?> GetAttachmentMetadataAsync(string id);
+
     // Data management
     Task<string> ExportAsync();
     Task ImportAsync(string json);
     Task ResetAsync();
 }
+
+public sealed record NetProfitResult(decimal Revenue, decimal Expenses, decimal Net);
+
+public sealed record MonthlyProfitPoint(string Month, decimal Revenue, decimal Expenses);

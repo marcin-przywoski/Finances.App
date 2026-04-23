@@ -1,4 +1,6 @@
 @inject NotificationService Notifications
+@inject NavigationManager Nav
+@implements IDisposable
 
 <div class="notification-bell-wrapper">
     <button class="notification-bell-btn" @onclick="ToggleDropdown" title="@L["notificationBellTitle"]">
@@ -50,6 +52,25 @@
                             <div class="notification-item-content">
                                 <div class="notification-item-title">@n.Title</div>
                                 <div class="notification-item-message">@n.Message</div>
+                                @if (!string.IsNullOrEmpty(n.ActionUrl) || n.HandleAction is not null)
+                                {
+                                    <div class="notification-item-actions">
+                                        @if (!string.IsNullOrEmpty(n.ActionUrl))
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => OpenAction(n)">
+                                                @(string.IsNullOrEmpty(n.ActionLabel) ? L["notificationOpen"] : n.ActionLabel)
+                                            </button>
+                                        }
+                                        @if (n.HandleAction is not null)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-success"
+                                                    @onclick="() => HandleAction(n)">
+                                                @(string.IsNullOrEmpty(n.HandleLabel) ? L["notificationMarkHandled"] : n.HandleLabel)
+                                            </button>
+                                        }
+                                    </div>
+                                }
                             </div>
                             <button class="notification-item-dismiss" @onclick="() => Dismiss(n.Id)" title="@L["notificationDismiss"]">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -84,6 +105,27 @@
     {
         Notifications.DismissAll();
         isOpen = false;
+    }
+
+    private void OpenAction(AppNotification n)
+    {
+        if (string.IsNullOrEmpty(n.ActionUrl)) return;
+        isOpen = false;
+        Nav.NavigateTo(n.ActionUrl);
+    }
+
+    private async Task HandleAction(AppNotification n)
+    {
+        if (n.HandleAction is null) return;
+        try
+        {
+            await n.HandleAction();
+        }
+        catch
+        {
+            // Swallow failures; the owner component surfaces toast errors.
+        }
+        Notifications.Dismiss(n.Id);
     }
 
     private void HandleChange()
