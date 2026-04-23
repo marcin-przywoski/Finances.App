@@ -21,6 +21,7 @@ static class Program
         builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddScoped<ExportService>();
         builder.Services.AddScoped<LocalizationService>();
+        builder.Services.AddScoped<AttachmentStore>();
 
         await builder.Build().RunAsync();
     }
