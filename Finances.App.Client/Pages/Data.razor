@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject PwaUpdateService PwaUpdate
 @inject ToastService Toast
+@inject AttachmentStore Attachments
 
 <PageTitle>@L["dataPageTitle"]</PageTitle>
 
@@ -98,6 +99,66 @@
                 </StatCard>
             </div>
         </div>
+
+        <section class="workspace-panel mb-3">
+            <div class="workspace-panel-header">
+                <p class="workspace-panel-eyebrow">@L["dataStorageEyebrow"]</p>
+                <h2>@L["dataStorageTitle"]</h2>
+                <p>@L["dataStorageDescription"]</p>
+            </div>
+
+            <div class="workspace-summary-grid">
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["dataStorageQuotaLabel"]</span>
+                    <strong>@FormatQuotaHeadline()</strong>
+                    @if (storageEstimate?.Quota is long quotaBytes && quotaBytes > 0)
+                    {
+                        <p>@L.T("dataStorageQuotaDetail", FormatBytes(storageEstimate?.Usage ?? 0), FormatBytes(quotaBytes))</p>
+                    }
+                    else
+                    {
+                        <p>@L["dataStorageQuotaUnsupported"]</p>
+                    }
+                </div>
+
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["dataStorageAttachmentsLabel"]</span>
+                    <strong>@(attachmentSummaries?.Count.ToString() ?? "…")</strong>
+                    @if (attachmentSummaries is not null && attachmentSummaries.Count > 0)
+                    {
+                        <p>@L.T("dataStorageAttachmentsDetail", FormatBytes(attachmentTotalBytes))</p>
+                    }
+                    else
+                    {
+                        <p>@L["dataStorageAttachmentsEmpty"]</p>
+                    }
+                </div>
+
+                <div class="workspace-summary-card">
+                    <span class="workspace-summary-label">@L["dataStorageTopTypeLabel"]</span>
+                    <strong>@(TopMimeLabel ?? "—")</strong>
+                    @if (attachmentSummaries is not null && attachmentSummaries.Count > 0)
+                    {
+                        <p>@L.T("dataStorageTopTypeDetail", TopMimeCount, FormatBytes(TopMimeBytes))</p>
+                    }
+                    else
+                    {
+                        <p>@L["dataStorageTopTypeEmpty"]</p>
+                    }
+                </div>
+            </div>
+
+            @if (storageEstimate?.Quota is long q && q > 0)
+            {
+                var pct = Math.Clamp((storageEstimate.Usage ?? 0) * 100.0 / q, 0, 100);
+                <div class="mt-3">
+                    <div class="progress" role="progressbar" aria-valuenow="@((int)pct)" aria-valuemin="0" aria-valuemax="100" style="height: 6px;">
+                        <div class="progress-bar" style="width: @pct.ToString("0.#")%;"></div>
+                    </div>
+                    <p class="text-muted small mt-1 mb-0">@L.T("dataStorageUsagePercent", pct.ToString("0.#"))</p>
+                </div>
+            }
+        </section>
 
         <div class="row g-3">
             <div class="col-lg-7">
@@ -224,11 +285,18 @@
     private bool busy;
     private bool pwaBusy;
     private bool showResetConfirm;
+    private StorageEstimate? storageEstimate;
+    private IReadOnlyList<AttachmentSummary>? attachmentSummaries;
+    private long attachmentTotalBytes;
+    private string? TopMimeLabel;
+    private int TopMimeCount;
+    private long TopMimeBytes;
 
     protected override async Task OnInitializedAsync()
     {
         PwaUpdate.OnChange += HandlePwaStateChanged;
         await RefreshSummaryAsync();
+        await RefreshStorageAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -244,6 +312,76 @@
     private async Task RefreshSummaryAsync()
     {
         summary = await Finance.GetDataStateSummaryAsync();
+    }
+
+    private async Task RefreshStorageAsync()
+    {
+        try
+        {
+            storageEstimate = await Attachments.EstimateUsageAsync();
+        }
+        catch
+        {
+            storageEstimate = null;
+        }
+
+        try
+        {
+            attachmentSummaries = await Attachments.ListSummariesAsync();
+        }
+        catch
+        {
+            attachmentSummaries = Array.Empty<AttachmentSummary>();
+        }
+
+        attachmentTotalBytes = attachmentSummaries?.Sum(a => a.SizeBytes) ?? 0L;
+
+        if (attachmentSummaries is not null && attachmentSummaries.Count > 0)
+        {
+            var top = attachmentSummaries
+                .GroupBy(a => string.IsNullOrWhiteSpace(a.Mime) ? "unknown" : a.Mime)
+                .Select(g => new { Mime = g.Key, Count = g.Count(), Bytes = g.Sum(x => x.SizeBytes) })
+                .OrderByDescending(g => g.Bytes)
+                .First();
+
+            TopMimeLabel = top.Mime;
+            TopMimeCount = top.Count;
+            TopMimeBytes = top.Bytes;
+        }
+        else
+        {
+            TopMimeLabel = null;
+            TopMimeCount = 0;
+            TopMimeBytes = 0;
+        }
+    }
+
+    private string FormatQuotaHeadline()
+    {
+        if (storageEstimate is null) return L["dataStorageQuotaUnsupported"];
+        if (storageEstimate.Quota is long q && q > 0 && storageEstimate.Usage is long u)
+        {
+            return $"{FormatBytes(u)} / {FormatBytes(q)}";
+        }
+        if (storageEstimate.Usage is long onlyUsage)
+        {
+            return FormatBytes(onlyUsage);
+        }
+        return L["dataStorageQuotaUnsupported"];
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        double size = bytes;
+        int unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:0.##} {units[unit]}";
     }
 
     private async Task ExportAsync()

@@ -1,9 +1,14 @@
 {
-  "releaseId": "2026-04-09-modernization",
-  "publishedUtc": "2026-04-09T18:00:00Z",
-  "title": "Major modernization — Localization, export, dark mode, client management, recurring services, notifications, analytics improvements",
-  "summary": "A large modernization release introducing localization",
+  "releaseId": "v1.0.0-2026-04-24",
+  "publishedUtc": "2026-04-24T00:00:00Z",
+  "title": "v1.0 — Salon finances, clients, expenses & invoices",
+  "summary": "First tagged release. Adds client profiles with comment reminders, business expenses with net profit, invoices with PDF/photo attachments, and browser notifications.",
   "changes": [
-    "Added localization support with English and Polish translations"
+    "Client profile page with comment timeline and optional reminders",
+    "Business expenses with category filters, Excel/PDF export, and net profit in Analytics + Dashboard",
+    "Invoices with line items, paid/unpaid status, and PDF/photo attachments stored in IndexedDB",
+    "Optional browser notifications for due client reminders",
+    "Device storage diagnostics and versioned backups during schema migrations",
+    "CI pipeline with i18n parity check and regression tests"
   ]
 }

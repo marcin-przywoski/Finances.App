@@ -1680,6 +1680,20 @@ public sealed class LocalFinanceStore : IFinanceService
     {
         _snapshot = CreateDefaultSnapshot();
         await SaveAsync();
+
+        // Also clear IndexedDB-backed attachments and embeddings so a reset is
+        // a true factory wipe for this browser. The JS helper is a no-op when
+        // the database has not been opened yet (e.g. tests) or when the API is
+        // unavailable, so failures are swallowed.
+        try
+        {
+            await _js.InvokeVoidAsync("financeStore.clearAll");
+        }
+        catch
+        {
+            // best-effort; localStorage is the primary source of truth.
+        }
+
         NotifyChanged();
     }
 

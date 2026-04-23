@@ -1,14 +1,38 @@
 # Finances.App
 
-This branch is a standalone Blazor WebAssembly and PWA build of the app.
+Standalone Blazor WebAssembly PWA for tracking a small salon's finances —
+services, product sales, recurring visits, expenses, invoices, and clients with
+reminders. Runs entirely in the browser with localStorage and IndexedDB; no
+backend, no account, no tracking.
+
+## v1 feature set
+
+- **Services & products** — CRUD for workers, services, products, sales, and
+  recurring visits.
+- **Clients** — dedicated client profile page with recent services, product
+  sales, and a comment timeline with optional reminders.
+- **Expenses** — categorized business costs with filters, Excel/PDF export, and
+  net profit calculation across `Analytics` and `Dashboard`.
+- **Invoices** — manual invoice entry with line items, PLN/foreign currency,
+  paid/unpaid status, PDF/photo attachments, and an optional expense link.
+- **Reminders & notifications** — in-app notification bell + optional browser
+  notifications for due recurring visits, low stock, and comment reminders.
+- **Data control** — full JSON export/import, reset, device storage
+  diagnostics, and versioned backups during schema migrations.
+- **Localization** — English (`en-US`) and Polish (`pl-PL`) kept in parity by CI.
 
 ## What changed
 
-- The solution is trimmed to `Finances.App.Client` plus `Finances.App.Shared`.
-- All CRUD and analytics behavior runs in the browser through a local data store.
-- Data is persisted in browser `localStorage` instead of SQLite or ASP.NET controllers.
-- The `Data` page lets the user export, import, or reset a local JSON backup.
-- The client now includes a manifest, service worker, offline cache, and installable PWA assets.
+- The solution is trimmed to `Finances.App.Client`, `Finances.App.Shared`, and
+  `Finances.App.Tests`.
+- All CRUD and analytics behavior runs in the browser through a local data
+  store.
+- Data is persisted in browser `localStorage` (primary snapshot) and
+  `IndexedDB` (binary attachments and embedding slots).
+- The `Data` page lets the user export, import, or reset a local JSON backup
+  and inspect browser storage usage.
+- The client now includes a manifest, service worker, offline cache, and
+  installable PWA assets.
 
 ## Privacy model
 
@@ -63,3 +87,25 @@ Deploy the contents of that `wwwroot` folder to any static host.
 
 - Open the `Data` page to export a backup before switching browsers or devices.
 - Import that JSON file in another browser to restore the same records locally.
+- Enable browser notifications when prompted to receive desktop alerts for due
+  client reminders.
+- Upload PDFs or photos on the `Invoices` page — they live in IndexedDB on the
+  same device.
+
+## Tests & CI
+
+Regression coverage lives in `Finances.App.Tests` (xUnit). It exercises
+`LocalFinanceStore` against an in-memory `IJSRuntime` stand-in to lock in:
+
+- Expense round-trip (add → list → update → reload → delete)
+- Client comment reminders (surfacing when due and clearing once handled)
+- Schema migration from v4 → v5 (backup written, new collections initialized)
+- Net profit math (revenue minus expenses, tips excluded)
+
+```powershell
+dotnet test Finances.App.sln
+```
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` runs the test suite
+plus an i18n parity check (`scripts/check-i18n-parity.py`) on every push and
+pull request.

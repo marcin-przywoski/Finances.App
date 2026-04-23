@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - wasm-standalone
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Finances.App.sln
+
+      - name: Verify i18n parity
+        run: python3 scripts/check-i18n-parity.py
+
+      - name: Build solution (Release)
+        run: dotnet build Finances.App.sln -c Release --no-restore -warnaserror
+
+      - name: Run tests
+        run: dotnet test Finances.App.Tests/Finances.App.Tests.csproj -c Release --no-build --verbosity normal
