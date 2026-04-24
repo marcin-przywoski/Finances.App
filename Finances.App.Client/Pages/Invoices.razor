@@ -1,4 +1,5 @@
 @page "/invoices"
+@page "/invoices/{InvoiceId:int}"
 @implements IDisposable
 @inject IFinanceService Finance
 @inject ToastService Toast
@@ -328,6 +329,8 @@
 }
 
 @code {
+    [Parameter] public int? InvoiceId { get; set; }
+
     private List<Invoice> invoices = new();
     private Invoice formModel = new();
     private List<InvoiceLineItem> formLines = new();
@@ -342,6 +345,7 @@
     private DateTime? toFilter;
     private string paidFilter = string.Empty;
     private string vendorSearch = string.Empty;
+    private int? lastOpenedId;
 
     private List<Invoice> filtered => invoices
         .Where(i =>
@@ -361,6 +365,22 @@
         Finance.OnChange += HandleStoreChanged;
         L.OnChange += HandleLocaleChanged;
         await LoadInvoices();
+        await TryOpenDeepLinkedInvoiceAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await TryOpenDeepLinkedInvoiceAsync();
+    }
+
+    private async Task TryOpenDeepLinkedInvoiceAsync()
+    {
+        if (InvoiceId is null || invoices.Count == 0) return;
+        if (lastOpenedId == InvoiceId) return;
+        var target = invoices.FirstOrDefault(i => i.Id == InvoiceId);
+        if (target is null) return;
+        lastOpenedId = InvoiceId;
+        await OpenEditModalAsync(target);
     }
 
     private async Task LoadInvoices()

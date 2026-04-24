@@ -24,6 +24,7 @@ static class Program
         builder.Services.AddScoped<AttachmentStore>();
         builder.Services.AddScoped<BrowserNotificationService>();
         builder.Services.AddScoped<InvoiceParserService>();
+        builder.Services.AddScoped<SemanticSearchService>();
 
         await builder.Build().RunAsync();
     }

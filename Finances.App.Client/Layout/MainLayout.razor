@@ -15,6 +15,7 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <div class="top-bar-right">
+                <SemanticSearchBar />
                 <NotificationBell />
                 <button class="theme-toggle" @onclick="ToggleTheme" title="@(Theme.IsDark ? L["themeSwitchToLight"] : L["themeSwitchToDark"])">
                     @if (Theme.IsDark)
@@ -95,14 +96,18 @@
         var due = await Finance.GetDueRecurringServicesAsync();
         foreach (var r in due)
         {
-            var workerName = r.Worker?.Name ?? "Unknown";
-            var serviceName = r.Service?.Name ?? "Unknown";
+            var workerName = r.Worker?.Name ?? L["commonUnknown"];
+            var serviceName = r.Service?.Name ?? L["commonUnknown"];
             var isOverdue = r.NextOccurrence.Date < DateTime.Today;
+
+            var message = r.Client is not null
+                ? L.T("notificationRecurringWithClient", serviceName, workerName, r.Client.Name)
+                : L.T("notificationRecurringNoClient", serviceName, workerName);
 
             drafts.Add(new NotificationDraft(
                 isOverdue ? NotificationType.Warning : NotificationType.Action,
                 isOverdue ? L["notificationOverdue"] : L["notificationDueToday"],
-                $"{serviceName} with {workerName}" + (r.Client is not null ? $" for {r.Client.Name}" : ""),
+                message,
                 ActionUrl: "/recurring",
                 Key: $"recurring:{r.Id}"
             ));

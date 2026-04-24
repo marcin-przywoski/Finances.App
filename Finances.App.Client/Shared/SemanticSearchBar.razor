@@ -1,0 +1,374 @@
+@implements IDisposable
+@inject SemanticSearchService Search
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<div class="semantic-search-wrapper" @onclick:stopPropagation="true">
+    <div class="semantic-search-input-group">
+        <svg class="semantic-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input type="search"
+               class="semantic-search-input"
+               placeholder="@L["searchPlaceholder"]"
+               aria-label="@L["searchPlaceholder"]"
+               value="@query"
+               @oninput="OnInput"
+               @onfocus="OnFocus"
+               @onkeydown="OnKeyDown" />
+        <button type="button" class="semantic-search-settings-btn"
+                @onclick="ToggleSettings"
+                title="@L["searchSettingsTitle"]" aria-label="@L["searchSettingsTitle"]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.38.14.7.42.94.76.23.33.37.72.38 1.13v.22c0 .21-.04.41-.11.6.14.38.42.7.76.94.33.23.72.37 1.13.38H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+        </button>
+    </div>
+
+    @if (isOpen)
+    {
+        <div class="semantic-search-dropdown" role="dialog" aria-label="@L["searchPlaceholder"]">
+            @if (showSettings)
+            {
+                <div class="semantic-search-settings">
+                    <div class="semantic-search-settings-header">
+                        <strong>@L["searchSettingsTitle"]</strong>
+                        <button class="semantic-search-close" @onclick="() => showSettings = false" aria-label="@L["commonClose"]">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                    </div>
+                    <p class="semantic-search-settings-copy">@L["searchSettingsDescription"]</p>
+
+                    <div class="semantic-search-mode-options">
+                        <label class="semantic-search-mode-option">
+                            <input type="radio" name="searchMode"
+                                   checked="@(Search.Mode == SemanticSearchMode.Disabled)"
+                                   @onchange="() => ChangeModeAsync(SemanticSearchMode.Disabled)" />
+                            <div>
+                                <strong>@L["searchModeDisabled"]</strong>
+                                <span>@L["searchModeDisabledHint"]</span>
+                            </div>
+                        </label>
+                        <label class="semantic-search-mode-option">
+                            <input type="radio" name="searchMode"
+                                   checked="@(Search.Mode == SemanticSearchMode.Keyword)"
+                                   @onchange="() => ChangeModeAsync(SemanticSearchMode.Keyword)" />
+                            <div>
+                                <strong>@L["searchModeKeyword"]</strong>
+                                <span>@L["searchModeKeywordHint"]</span>
+                            </div>
+                        </label>
+                        <label class="semantic-search-mode-option">
+                            <input type="radio" name="searchMode"
+                                   checked="@(Search.Mode == SemanticSearchMode.Semantic)"
+                                   @onchange="() => ChangeModeAsync(SemanticSearchMode.Semantic)" />
+                            <div>
+                                <strong>@L["searchModeSemantic"]</strong>
+                                <span>@L["searchModeSemanticHint"]</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    @if (Search.ModelLoading)
+                    {
+                        <div class="semantic-search-progress">
+                            <div class="semantic-search-progress-label">
+                                <span>@L["searchModelDownloading"]</span>
+                                <span>@($"{modelPercent:0}%")</span>
+                            </div>
+                            <div class="semantic-search-progress-track">
+                                <div class="semantic-search-progress-fill" style="width: @($"{modelPercent:0}%")"></div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(modelFile))
+                            {
+                                <div class="semantic-search-progress-file">@modelFile</div>
+                            }
+                        </div>
+                    }
+                    else if (Search.Mode == SemanticSearchMode.Semantic && Search.ModelReady && Search.IsIndexing)
+                    {
+                        <div class="semantic-search-progress">
+                            <div class="semantic-search-progress-label">
+                                <span>@L["searchIndexing"]</span>
+                                <span>@Search.IndexedCount / @Search.IndexingTotal</span>
+                            </div>
+                            <div class="semantic-search-progress-track">
+                                <div class="semantic-search-progress-fill"
+                                     style="width: @($"{(Search.IndexingTotal == 0 ? 0 : Search.IndexedCount * 100.0 / Search.IndexingTotal):0}%")"></div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (Search.Mode == SemanticSearchMode.Semantic && Search.ModelReady && !Search.IsIndexing)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @onclick="ReindexAsync">
+                            @L["searchReindexButton"]
+                        </button>
+                    }
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(query))
+            {
+                @if (results.Count == 0 && !busy)
+                {
+                    <div class="semantic-search-empty">@L["searchNoResults"]</div>
+                }
+                else if (busy)
+                {
+                    <div class="semantic-search-empty">@L["commonLoading"]</div>
+                }
+                else
+                {
+                    <div class="semantic-search-results" role="listbox">
+                        @foreach (var group in GroupResults(results))
+                        {
+                            <div class="semantic-search-group">
+                                <div class="semantic-search-group-label">@LocalizeGroup(group.Key) · @group.Count()</div>
+                                @foreach (var hit in group.Take(5))
+                                {
+                                    <button type="button" class="semantic-search-result" role="option"
+                                            @onclick="() => OpenHit(hit)">
+                                        <span class="semantic-search-result-title">@hit.Title</span>
+                                        <span class="semantic-search-result-snippet">@hit.Snippet</span>
+                                        <span class="semantic-search-result-meta">
+                                            @LocalizeField(hit.FieldName)
+                                            @if (hit.FallbackKeyword)
+                                            {
+                                                <span class="semantic-search-chip">@L["searchChipKeyword"]</span>
+                                            }
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (Search.Mode != SemanticSearchMode.Semantic && !promptDismissed)
+                {
+                    <div class="semantic-search-opt-in" role="note">
+                        <strong>@L["searchOptInTitle"]</strong>
+                        <p>@L["searchOptInDescription"]</p>
+                        <div class="semantic-search-opt-in-actions">
+                            <button class="btn btn-sm btn-primary" @onclick="EnableSemanticAsync">@L["searchOptInEnable"]</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="DismissPromptAsync">@L["searchOptInDismiss"]</button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="semantic-search-hint">@L["searchFallbackKeywordHint"]</div>
+            }
+        </div>
+    }
+</div>
+
+@if (isOpen)
+{
+    <div class="semantic-search-backdrop" @onclick="CloseDropdown"></div>
+}
+
+@code {
+    private string query = string.Empty;
+    private bool isOpen;
+    private bool showSettings;
+    private bool busy;
+    private bool promptDismissed = true;
+    private CancellationTokenSource? queryCts;
+    private IReadOnlyList<SemanticSearchHit> results = Array.Empty<SemanticSearchHit>();
+    private double modelPercent;
+    private string? modelFile;
+    private IProgress<EmbeddingProgress>? modelProgress;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Search.OnChange += HandleChange;
+        await Search.InitializeAsync();
+        promptDismissed = await Search.IsPromptDismissedAsync();
+        modelProgress = new Progress<EmbeddingProgress>(p =>
+        {
+            modelPercent = p.Percent;
+            modelFile = p.File;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        query = e.Value?.ToString() ?? string.Empty;
+        isOpen = true;
+        showSettings = false;
+        _ = RunQueryAsync();
+    }
+
+    private void OnFocus()
+    {
+        isOpen = true;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CloseDropdown();
+        }
+        else if (e.Key == "Enter" && results.Count > 0)
+        {
+            OpenHit(results[0]);
+        }
+        else if (e.Key == "ArrowDown")
+        {
+            // TODO: focus first result for keyboard users; for now just keep the dropdown open.
+            isOpen = true;
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task RunQueryAsync()
+    {
+        queryCts?.Cancel();
+        queryCts = new CancellationTokenSource();
+        var token = queryCts.Token;
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            results = Array.Empty<SemanticSearchHit>();
+            busy = false;
+            StateHasChanged();
+            return;
+        }
+
+        busy = true;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(150, token);
+            if (token.IsCancellationRequested) return;
+            var hits = await Search.QueryAsync(query);
+            if (token.IsCancellationRequested) return;
+            results = hits;
+        }
+        catch (TaskCanceledException) { /* ignore */ }
+        catch
+        {
+            results = Array.Empty<SemanticSearchHit>();
+        }
+        finally
+        {
+            busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSettings()
+    {
+        showSettings = !showSettings;
+        isOpen = true;
+    }
+
+    private async Task ChangeModeAsync(SemanticSearchMode mode)
+    {
+        try
+        {
+            if (mode == SemanticSearchMode.Semantic)
+            {
+                Toast.Show(L["searchModelDownloadStarted"]);
+            }
+            await Search.SetModeAsync(mode, modelProgress);
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                _ = RunQueryAsync();
+            }
+        }
+        catch
+        {
+            Toast.Show(L["searchModelDownloadFailed"], ToastLevel.Error);
+        }
+    }
+
+    private async Task EnableSemanticAsync()
+    {
+        await ChangeModeAsync(SemanticSearchMode.Semantic);
+    }
+
+    private async Task DismissPromptAsync()
+    {
+        await Search.MarkPromptDismissedAsync();
+        promptDismissed = true;
+    }
+
+    private async Task ReindexAsync()
+    {
+        try
+        {
+            Toast.Show(L["searchReindexStarted"]);
+            await Search.ReindexAllAsync();
+            Toast.Show(L["searchReindexCompleted"]);
+        }
+        catch
+        {
+            Toast.Show(L["searchReindexFailed"], ToastLevel.Error);
+        }
+    }
+
+    private void OpenHit(SemanticSearchHit hit)
+    {
+        CloseDropdown();
+        if (!string.IsNullOrWhiteSpace(hit.RouteUrl))
+        {
+            Nav.NavigateTo(hit.RouteUrl);
+        }
+    }
+
+    private void CloseDropdown()
+    {
+        isOpen = false;
+        showSettings = false;
+        StateHasChanged();
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static IEnumerable<IGrouping<string, SemanticSearchHit>> GroupResults(IEnumerable<SemanticSearchHit> hits)
+    {
+        return hits
+            .GroupBy(h => h.EntityType)
+            .OrderByDescending(g => g.Max(h => h.Score));
+    }
+
+    private string LocalizeGroup(string entityType) => entityType switch
+    {
+        "client" => L["searchGroupClients"],
+        "comment" => L["searchGroupComments"],
+        "worker" => L["searchGroupWorkers"],
+        "service" => L["searchGroupServices"],
+        "product" => L["searchGroupProducts"],
+        "record" => L["searchGroupServiceRecords"],
+        "sale" => L["searchGroupProductSales"],
+        "recurring" => L["searchGroupRecurring"],
+        "goal" => L["searchGroupGoals"],
+        "expense" => L["searchGroupExpenses"],
+        "invoice" => L["searchGroupInvoices"],
+        _ => entityType
+    };
+
+    private string LocalizeField(string fieldName)
+    {
+        var key = $"searchField{fieldName}";
+        var value = L[key];
+        return string.Equals(value, key, StringComparison.Ordinal) ? fieldName : value;
+    }
+
+    public void Dispose()
+    {
+        Search.OnChange -= HandleChange;
+        queryCts?.Cancel();
+    }
+}

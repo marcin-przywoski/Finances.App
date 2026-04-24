@@ -1,4 +1,5 @@
 @page "/history"
+@page "/records/{RecordId:int}"
 @implements IDisposable
 @inject IFinanceService Finance
 @inject WorkerContextService WorkerContext
@@ -234,6 +235,8 @@
                OnCancel="() => { showDeleteConfirm = false; }" />
 
 @code {
+    [Parameter] public int? RecordId { get; set; }
+
     private List<ServiceRecord>? allRecords;
     private List<Worker>? workers;
     private List<Service>? services;
@@ -249,6 +252,7 @@
     private ServiceRecord? deleteTarget;
     private bool showDeleteConfirm;
     private bool exporting;
+    private int? lastOpenedId;
 
     private async Task ExportExcel(List<ServiceRecord> records)
     {
@@ -305,6 +309,22 @@
         Finance.OnChange += HandleStoreChanged;
         WorkerContext.OnChange += HandleWorkerContextChanged;
         await LoadDataAsync();
+        TryOpenDeepLinkedRecord();
+    }
+
+    protected override void OnParametersSet()
+    {
+        TryOpenDeepLinkedRecord();
+    }
+
+    private void TryOpenDeepLinkedRecord()
+    {
+        if (RecordId is null || allRecords is null || allRecords.Count == 0) return;
+        if (lastOpenedId == RecordId) return;
+        var target = allRecords.FirstOrDefault(r => r.Id == RecordId);
+        if (target is null) return;
+        lastOpenedId = RecordId;
+        OpenEditModal(target);
     }
 
     private async Task LoadDataAsync()
