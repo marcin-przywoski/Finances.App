@@ -2,8 +2,8 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches:
-      - wasm-standalone
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -29,10 +29,19 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Finances.App.Client/Finances.App.Client.csproj
+        run: dotnet restore Finances.App.sln
+
+      - name: Verify i18n parity
+        run: python3 scripts/check-i18n-parity.py
+
+      - name: Build solution (Release, -warnaserror)
+        run: dotnet build Finances.App.sln -c Release --no-restore -warnaserror
+
+      - name: Run tests
+        run: dotnet test Finances.App.Tests/Finances.App.Tests.csproj -c Release --no-build --verbosity normal
 
       - name: Publish standalone client
-        run: dotnet publish Finances.App.Client/Finances.App.Client.csproj -c Release -o artifacts/publish
+        run: dotnet publish Finances.App.Client/Finances.App.Client.csproj -c Release --no-build -o artifacts/publish
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -41,3 +50,14 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifacts/publish/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

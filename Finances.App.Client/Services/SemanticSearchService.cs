@@ -196,6 +196,7 @@ public sealed class SemanticSearchService : IAsyncDisposable
 
     public async Task<IReadOnlyList<SemanticSearchHit>> QueryAsync(string query, int topK = 25)
     {
+        if (Mode == SemanticSearchMode.Disabled) return Array.Empty<SemanticSearchHit>();
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<SemanticSearchHit>();
         query = query.Trim();
         if (query.Length < 2) return Array.Empty<SemanticSearchHit>();

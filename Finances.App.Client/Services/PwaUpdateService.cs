@@ -78,6 +78,12 @@ public sealed class PwaUpdateService : IAsyncDisposable
         return await _js.InvokeAsync<bool>("financePwa.promptInstall");
     }
 
+    public async Task<bool> ClearRuntimeCachesAsync()
+    {
+        await EnsureInitializedAsync();
+        return await _js.InvokeAsync<bool>("financePwa.clearRuntimeCaches");
+    }
+
     [JSInvokable]
     public Task UpdateState(string json)
     {

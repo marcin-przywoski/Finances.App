@@ -158,6 +158,15 @@
                     <p class="text-muted small mt-1 mb-0">@L.T("dataStorageUsagePercent", pct.ToString("0.#"))</p>
                 </div>
             }
+
+            <div class="mt-4">
+                <p class="workspace-panel-eyebrow">@L["dataClearRuntimeCachesEyebrow"]</p>
+                <h3 class="h5 mb-1">@L["dataClearRuntimeCachesTitle"]</h3>
+                <p class="text-muted small">@L["dataClearRuntimeCachesDescription"]</p>
+                <button class="btn btn-outline-warning btn-sm" @onclick="ClearRuntimeCachesAsync" disabled="@clearingRuntimeCaches">
+                    @L["dataClearRuntimeCachesButton"]
+                </button>
+            </div>
         </section>
 
         <div class="row g-3">
@@ -285,6 +294,7 @@
     private bool busy;
     private bool pwaBusy;
     private bool showResetConfirm;
+    private bool clearingRuntimeCaches;
     private StorageEstimate? storageEstimate;
     private IReadOnlyList<AttachmentSummary>? attachmentSummaries;
     private long attachmentTotalBytes;
@@ -297,6 +307,29 @@
         PwaUpdate.OnChange += HandlePwaStateChanged;
         await RefreshSummaryAsync();
         await RefreshStorageAsync();
+    }
+
+    private async Task ClearRuntimeCachesAsync()
+    {
+        if (clearingRuntimeCaches) return;
+        clearingRuntimeCaches = true;
+        try
+        {
+            var success = await PwaUpdate.ClearRuntimeCachesAsync();
+            Toast.Show(success
+                ? L["dataClearRuntimeCachesSuccess"]
+                : L["dataClearRuntimeCachesFailed"],
+                success ? ToastLevel.Success : ToastLevel.Error);
+        }
+        catch
+        {
+            Toast.Show(L["dataClearRuntimeCachesFailed"], ToastLevel.Error);
+        }
+        finally
+        {
+            clearingRuntimeCaches = false;
+            StateHasChanged();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

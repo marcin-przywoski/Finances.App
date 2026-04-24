@@ -15,11 +15,18 @@ backend, no account, no tracking.
   net profit calculation across `Analytics` and `Dashboard`.
 - **Invoices** — manual invoice entry with line items, PLN/foreign currency,
   paid/unpaid status, PDF/photo attachments, and an optional expense link.
+- **Universal search** — always-on keyword match plus opt-in multilingual
+  semantic search powered by a fully on-device embedding model (MiniLM-L12,
+  cached in IndexedDB).
 - **Reminders & notifications** — in-app notification bell + optional browser
   notifications for due recurring visits, low stock, and comment reminders.
 - **Data control** — full JSON export/import, reset, device storage
-  diagnostics, and versioned backups during schema migrations.
+  diagnostics, runtime-cache controls, and versioned backups during schema
+  migrations.
 - **Localization** — English (`en-US`) and Polish (`pl-PL`) kept in parity by CI.
+
+See [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) for an end-user walkthrough
+and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the internal design.
 
 ## What changed
 

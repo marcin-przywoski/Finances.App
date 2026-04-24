@@ -1,15 +1,17 @@
 {
-  "releaseId": "v1.0.0-2026-04-24",
+  "releaseId": "v1.0.0",
   "publishedUtc": "2026-04-24T00:00:00Z",
-  "title": "v1.0 — Salon finances, clients, expenses & invoices",
-  "summary": "First tagged release. Adds client profiles with comment reminders, business expenses with net profit, invoices with PDF/photo attachments, and browser notifications.",
+  "title": "v1.0 — Salon finances, clients, expenses, invoices & universal search",
+  "summary": "First tagged release. Adds client profiles with comment reminders, business expenses with net profit, invoices with PDF attachments, optional browser notifications, and universal on-device search across every record.",
   "changes": [
     "Client profile page with comment timeline and optional reminders",
     "Business expenses with category filters, Excel/PDF export, and net profit in Analytics + Dashboard",
     "Invoices with line items, paid/unpaid status, and PDF/photo attachments stored in IndexedDB",
     "PDF invoices are parsed on upload to pre-fill vendor, date, total, and currency",
+    "Universal search bar with instant keyword match and opt-in multilingual semantic search (on-device model)",
     "Optional browser notifications for due client reminders",
-    "Device storage diagnostics and versioned backups during schema migrations",
+    "Device storage diagnostics, runtime-cache controls, and versioned backups during schema migrations",
+    "Service worker preserves CDN caches (PDF.js, Tesseract, transformers) across build updates",
     "CI pipeline with i18n parity check and regression tests"
   ]
 }

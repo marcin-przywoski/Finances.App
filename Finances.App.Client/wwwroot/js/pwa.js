@@ -450,6 +450,43 @@ globalThis.financePwa = (() => {
             return true;
         },
 
+        clearRuntimeCaches: async () => {
+            // Runtime caches (pdfjs-v1, tesseract-v1, transformers-v1) are
+            // preserved across SW activations. We clear them via the SW so the
+            // next time those libraries are needed they're re-downloaded.
+            try {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    await new Promise(resolve => {
+                        const channel = new MessageChannel();
+                        const timeout = globalThis.setTimeout(() => resolve(), 3000);
+                        channel.port1.onmessage = event => {
+                            if (event?.data?.type === 'RUNTIME_CACHES_CLEARED') {
+                                globalThis.clearTimeout(timeout);
+                                resolve();
+                            }
+                        };
+                        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_RUNTIME_CACHES' }, [channel.port2]);
+                    });
+                } else if ('caches' in globalThis) {
+                    // SW not active — delete the known runtime cache names directly.
+                    const keys = await caches.keys();
+                    const runtime = ['pdfjs-v1', 'tesseract-v1', 'transformers-v1'];
+                    await Promise.all(keys.filter(k => runtime.includes(k)).map(k => caches.delete(k)));
+                }
+                // Also wipe the transformers.js IDB weight cache so freshly
+                // downloaded files repopulate it.
+                if ('indexedDB' in globalThis && typeof indexedDB.deleteDatabase === 'function') {
+                    try { indexedDB.deleteDatabase('transformers-cache'); } catch { /* best-effort */ }
+                }
+                if (globalThis.financeEmbeddings?.reset) {
+                    try { globalThis.financeEmbeddings.reset(); } catch { /* best-effort */ }
+                }
+                return true;
+            } catch {
+                return false;
+            }
+        },
+
         dispose: () => {
             removeBrowserEventListeners();
 
