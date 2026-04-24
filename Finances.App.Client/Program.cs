@@ -28,6 +28,8 @@ static class Program
         builder.Services.AddScoped<InvoiceParserService>();
         builder.Services.AddScoped<SemanticSearchService>();
 
-        await builder.Build().RunAsync();
+        var host = builder.Build();
+        await host.Services.GetRequiredService<LocalizationService>().InitializeAsync();
+        await host.RunAsync();
     }
 }
