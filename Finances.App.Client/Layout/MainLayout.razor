@@ -4,7 +4,7 @@
 @inject NotificationService Notifications
 @inject BrowserNotificationService BrowserNotifications
 
-<div class="page @(sidebarOpen ? "sidebar-open" : "")" @key="@L.CurrentLocale">
+<div class="page @(sidebarOpen ? "sidebar-open" : "")">
     <div class="sidebar">
         <NavMenu />
     </div>
@@ -75,8 +75,6 @@
     {
         if (firstRender)
         {
-            L.OnChange += HandleLocaleChanged;
-
             await Theme.InitializeAsync();
             Theme.OnChange += StateHasChanged;
 
@@ -175,11 +173,6 @@
         var locale = e.Value?.ToString();
         if (!string.IsNullOrEmpty(locale))
             await L.SetLocaleAsync(locale);
-    }
-
-    private async void HandleLocaleChanged()
-    {
-        await InvokeAsync(StateHasChanged);
     }
 
     private void ResetError()
