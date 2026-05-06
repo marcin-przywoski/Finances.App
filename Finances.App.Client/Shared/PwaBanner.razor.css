@@ -16,13 +16,13 @@
 }
 
 .pwa-banner-install {
-    background: linear-gradient(135deg, #ccfbf1 0%, #ffffff 100%);
-    border-color: rgba(13, 148, 136, 0.2);
+    background: linear-gradient(135deg, var(--color-primary-soft) 0%, var(--surface-panel) 100%);
+    border-color: oklch(56% 0.12 184 / 0.22);
 }
 
 .pwa-banner-update {
-    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-    border-color: rgba(59, 130, 246, 0.2);
+    background: linear-gradient(135deg, var(--color-info-soft) 0%, var(--surface-panel) 100%);
+    border-color: oklch(58% 0.15 252 / 0.22);
 }
 
 .pwa-banner-copy {

@@ -13,6 +13,9 @@
                class="semantic-search-input"
                placeholder="@L["searchPlaceholder"]"
                aria-label="@L["searchPlaceholder"]"
+               aria-expanded="@isOpen"
+               aria-controls="semantic-search-dropdown"
+               aria-activedescendant="@ActiveResultId"
                value="@query"
                @oninput="OnInput"
                @onfocus="OnFocus"
@@ -29,7 +32,7 @@
 
     @if (isOpen)
     {
-        <div class="semantic-search-dropdown" role="dialog" aria-label="@L["searchPlaceholder"]">
+        <div id="semantic-search-dropdown" class="semantic-search-dropdown" role="dialog" aria-label="@L["searchPlaceholder"]">
             @if (showSettings)
             {
                 <div class="semantic-search-settings">
@@ -121,6 +124,7 @@
                 }
                 else
                 {
+                    var resultIndex = 0;
                     <div class="semantic-search-results" role="listbox">
                         @foreach (var group in GroupResults(results))
                         {
@@ -128,7 +132,12 @@
                                 <div class="semantic-search-group-label">@LocalizeGroup(group.Key) · @group.Count()</div>
                                 @foreach (var hit in group.Take(5))
                                 {
-                                    <button type="button" class="semantic-search-result" role="option"
+                                    var optionIndex = resultIndex++;
+                                    <button type="button"
+                                            id="semantic-search-result-@optionIndex"
+                                            class="semantic-search-result @(optionIndex == activeResultIndex ? "active" : null)"
+                                            role="option"
+                                            aria-selected="@(optionIndex == activeResultIndex)"
                                             @onclick="() => OpenHit(hit)">
                                         <span class="semantic-search-result-title">@hit.Title</span>
                                         <span class="semantic-search-result-snippet">@hit.Snippet</span>
@@ -177,6 +186,7 @@
     private bool showSettings;
     private bool busy;
     private bool promptDismissed = true;
+    private int activeResultIndex = -1;
     private CancellationTokenSource? queryCts;
     private IReadOnlyList<SemanticSearchHit> results = Array.Empty<SemanticSearchHit>();
     private double modelPercent;
@@ -201,6 +211,7 @@
         query = e.Value?.ToString() ?? string.Empty;
         isOpen = true;
         showSettings = false;
+        activeResultIndex = -1;
         _ = RunQueryAsync();
     }
 
@@ -215,14 +226,32 @@
         {
             CloseDropdown();
         }
-        else if (e.Key == "Enter" && results.Count > 0)
+        else if (e.Key == "Enter")
         {
-            OpenHit(results[0]);
+            var visibleHits = VisibleHits;
+            if (visibleHits.Count > 0)
+            {
+                var index = activeResultIndex >= 0 ? activeResultIndex : 0;
+                OpenHit(visibleHits[Math.Min(index, visibleHits.Count - 1)]);
+            }
         }
         else if (e.Key == "ArrowDown")
         {
-            // TODO: focus first result for keyboard users; for now just keep the dropdown open.
             isOpen = true;
+            var visibleHits = VisibleHits;
+            if (visibleHits.Count > 0)
+            {
+                activeResultIndex = (activeResultIndex + 1) % visibleHits.Count;
+            }
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            isOpen = true;
+            var visibleHits = VisibleHits;
+            if (visibleHits.Count > 0)
+            {
+                activeResultIndex = activeResultIndex <= 0 ? visibleHits.Count - 1 : activeResultIndex - 1;
+            }
         }
         await Task.CompletedTask;
     }
@@ -236,6 +265,7 @@
         if (string.IsNullOrWhiteSpace(query))
         {
             results = Array.Empty<SemanticSearchHit>();
+            activeResultIndex = -1;
             busy = false;
             StateHasChanged();
             return;
@@ -251,11 +281,13 @@
             var hits = await Search.QueryAsync(query);
             if (token.IsCancellationRequested) return;
             results = hits;
+            activeResultIndex = VisibleHits.Count > 0 ? 0 : -1;
         }
         catch (TaskCanceledException) { /* ignore */ }
         catch
         {
             results = Array.Empty<SemanticSearchHit>();
+            activeResultIndex = -1;
         }
         finally
         {
@@ -267,6 +299,7 @@
     private void ToggleSettings()
     {
         showSettings = !showSettings;
+        activeResultIndex = -1;
         isOpen = true;
     }
 
@@ -328,6 +361,7 @@
     {
         isOpen = false;
         showSettings = false;
+        activeResultIndex = -1;
         StateHasChanged();
     }
 
@@ -335,6 +369,12 @@
     {
         InvokeAsync(StateHasChanged);
     }
+
+    private IReadOnlyList<SemanticSearchHit> VisibleHits => GroupResults(results)
+        .SelectMany(group => group.Take(5))
+        .ToList();
+
+    private string? ActiveResultId => activeResultIndex >= 0 ? $"semantic-search-result-{activeResultIndex}" : null;
 
     private static IEnumerable<IGrouping<string, SemanticSearchHit>> GroupResults(IEnumerable<SemanticSearchHit> hits)
     {

@@ -11,24 +11,14 @@
     gap: 1.25rem 1.5rem;
     padding: 1.5rem;
     overflow: hidden;
-    border: 1px solid rgba(13, 148, 136, 0.18);
+    border: 1px solid oklch(56% 0.12 184 / 0.2);
     border-radius: 1.25rem;
-    background:
-        radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 34%),
-        linear-gradient(135deg, #ffffff 0%, #f7fffc 48%, #eef7ff 100%);
-    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    background: linear-gradient(135deg, var(--surface-panel) 0%, var(--color-primary-wash) 52%, var(--color-info-soft) 100%);
+    box-shadow: var(--shadow-lg);
 }
 
 .analytics-hero::before {
-    content: "";
-    position: absolute;
-    right: -6rem;
-    bottom: -7rem;
-    width: 20rem;
-    height: 20rem;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(13, 148, 136, 0.22), rgba(13, 148, 136, 0));
-    animation: analyticsFloat 16s linear infinite;
+    content: none;
 }
 
 .analytics-hero-copy,
@@ -62,9 +52,9 @@
 
 .analytics-hero-title {
     margin: 0;
-    font-size: clamp(2rem, 4vw, 2.85rem);
+    font-size: 2.65rem;
     line-height: 1.05;
-    letter-spacing: -0.04em;
+    letter-spacing: 0;
 }
 
 .analytics-hero-description {
@@ -80,10 +70,9 @@
     gap: 0.2rem;
     align-self: flex-start;
     padding: 0.8rem 1rem;
-    border: 1px solid rgba(13, 148, 136, 0.12);
+    border: 1px solid var(--border-color);
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(12px);
+    background: var(--surface-panel);
 }
 
 .analytics-hero-pill-label {
@@ -102,10 +91,9 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1.2rem;
-    border: 1px solid rgba(17, 24, 39, 0.08);
+    border: 1px solid var(--border-color);
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(16px);
+    background: var(--surface-panel);
 }
 
 .analytics-toolbar-group {
@@ -135,19 +123,17 @@
     padding: 1.25rem;
     overflow: hidden;
     border-radius: 1.15rem;
-    border-color: rgba(17, 24, 39, 0.08);
+    border-color: var(--border-color);
 }
 
 .analytics-panel-spotlight {
-    background: linear-gradient(180deg, #ffffff 0%, #fbfffe 100%);
+    background: linear-gradient(180deg, var(--surface-panel) 0%, var(--surface-raised) 100%);
 }
 
 .analytics-panel-highlights {
-    background:
-        radial-gradient(circle at top right, rgba(45, 212, 191, 0.2), transparent 32%),
-        linear-gradient(160deg, #0f172a 0%, #123935 100%);
-    border-color: rgba(94, 234, 212, 0.2);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+    background: linear-gradient(160deg, oklch(23% 0.03 215) 0%, oklch(30% 0.07 184) 100%);
+    border-color: oklch(92% 0.045 184 / 0.2);
+    box-shadow: var(--shadow-lg);
 }
 
 .analytics-panel-header {
@@ -171,7 +157,7 @@
 .analytics-panel-header h2 {
     margin: 0;
     font-size: 1.15rem;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 .analytics-panel-header p {
@@ -185,7 +171,7 @@
 }
 
 .analytics-panel-highlights .analytics-panel-header h2 {
-    color: #ffffff;
+    color: var(--text-on-accent);
 }
 
 .analytics-panel-highlights .analytics-panel-header p {
@@ -204,7 +190,7 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.5rem 0.8rem;
-    border: 1px solid rgba(17, 24, 39, 0.08);
+    border: 1px solid var(--border-color);
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 600;
@@ -215,26 +201,26 @@
 }
 
 .analytics-chip-surface {
-    background: #f8fafc;
+    background: var(--surface-muted);
     color: var(--text-primary);
 }
 
 .analytics-chip-positive {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.2);
-    color: #047857;
+    background: var(--color-success-soft);
+    border-color: oklch(59% 0.13 158 / 0.24);
+    color: var(--color-success-strong);
 }
 
 .analytics-chip-negative {
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.2);
-    color: #b91c1c;
+    background: var(--color-danger-soft);
+    border-color: oklch(61% 0.19 25 / 0.24);
+    color: var(--color-danger-strong);
 }
 
 .analytics-chip-neutral {
-    background: rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.2);
-    color: #1d4ed8;
+    background: var(--color-info-soft);
+    border-color: oklch(58% 0.15 252 / 0.24);
+    color: var(--color-info-strong);
 }
 
 .analytics-inline-summary {
@@ -293,10 +279,9 @@
 
 .analytics-highlight-item {
     padding: 0.9rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid oklch(92% 0.045 184 / 0.16);
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(10px);
+    background: oklch(98% 0.008 184 / 0.08);
 }
 
 .analytics-highlight-label {
@@ -310,7 +295,7 @@
     margin-bottom: 0.2rem;
     font-size: 1.05rem;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-on-accent);
 }
 
 .analytics-highlight-meta {
@@ -327,7 +312,7 @@
 
 .analytics-ranked-item {
     padding: 0.85rem 0;
-    border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .analytics-ranked-item:last-child {
@@ -397,9 +382,9 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    border: 1px dashed rgba(17, 24, 39, 0.12);
+    border: 1px dashed var(--border-strong);
     border-radius: 1rem;
-    background: linear-gradient(180deg, rgba(243, 244, 246, 0.7), rgba(255, 255, 255, 0.75));
+    background: linear-gradient(180deg, var(--surface-muted), var(--surface-panel));
     text-align: center;
 }
 
@@ -414,8 +399,8 @@
 }
 
 .analytics-panel-highlights .analytics-empty-state {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: oklch(98% 0.008 184 / 0.06);
+    border-color: oklch(92% 0.045 184 / 0.16);
 }
 
 .analytics-panel-highlights .analytics-empty-state p {
@@ -423,7 +408,7 @@
 }
 
 .analytics-commission-table tfoot td {
-    background: #f8fafc;
+    background: var(--surface-muted);
     font-weight: 700;
 }
 
@@ -444,18 +429,6 @@
 .analytics-share-label {
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
-
-@keyframes analyticsFloat {
-    0% {
-        transform: translate3d(0, 0, 0);
-    }
-    50% {
-        transform: translate3d(-12px, -16px, 0);
-    }
-    100% {
-        transform: translate3d(0, 0, 0);
-    }
 }
 
 @media (max-width: 991.98px) {

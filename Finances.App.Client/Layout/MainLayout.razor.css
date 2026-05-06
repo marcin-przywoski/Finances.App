@@ -17,10 +17,11 @@ main {
 .top-bar {
     background-color: var(--topbar-bg);
     border-bottom: 1px solid var(--topbar-border);
-    height: 3.5rem;
+    min-height: 3.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
     padding: 0 1.5rem;
     position: sticky;
     top: 0;
@@ -36,7 +37,7 @@ main {
     cursor: pointer;
     display: flex;
     align-items: center;
-    transition: all 150ms ease;
+    transition: color var(--transition), background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
 .sidebar-toggle:hover {
@@ -68,7 +69,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 150ms ease;
+    transition: color var(--transition), background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
     width: 2.25rem;
     height: 2.25rem;
 }
@@ -110,6 +111,39 @@ main {
 }
 
 @media (max-width: 767.98px) {
+    .top-bar {
+        align-items: flex-start;
+        height: auto;
+        min-height: 3.5rem;
+        padding: 0.65rem 1rem;
+    }
+
+    .sidebar-toggle {
+        flex: 0 0 auto;
+        min-width: 2.25rem;
+        min-height: 2.25rem;
+    }
+
+    .top-bar-right {
+        flex: 1 1 calc(100% - 3rem);
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .top-bar-user {
+        display: none;
+    }
+
+    .locale-select {
+        min-width: 4.75rem;
+    }
+
+    .top-bar-right ::deep .semantic-search-wrapper {
+        order: 10;
+        flex: 1 0 100%;
+        min-width: 0;
+    }
+
     .sidebar {
         position: fixed;
         top: 0;
@@ -118,7 +152,7 @@ main {
         width: 260px;
         z-index: 1000;
         transform: translateX(-100%);
-        transition: transform 200ms ease;
+        transition: transform var(--motion-base) var(--ease-out-quart);
     }
 
     .sidebar-open > .sidebar {

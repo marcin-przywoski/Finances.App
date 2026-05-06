@@ -4,10 +4,10 @@
     gap: 0.85rem;
     padding: 0.75rem 1rem;
     margin: 0.75rem 1rem 0 1rem;
-    border: 1px solid var(--bs-border-color);
+    border: 1px solid var(--border-color);
     border-radius: 0.75rem;
-    background-color: var(--bs-tertiary-bg);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    background-color: var(--surface-raised);
+    box-shadow: var(--card-shadow);
 }
 
 .notification-permission-icon {
@@ -17,8 +17,8 @@
     width: 2rem;
     height: 2rem;
     border-radius: 999px;
-    background-color: rgba(13, 148, 136, 0.12);
-    color: #0d9488;
+    background-color: var(--color-primary-soft);
+    color: var(--primary);
     flex-shrink: 0;
 }
 
@@ -32,12 +32,12 @@
 
 .notification-permission-copy strong {
     font-size: 0.95rem;
-    color: var(--bs-body-color);
+    color: var(--text-primary);
 }
 
 .notification-permission-copy span {
     font-size: 0.85rem;
-    color: var(--bs-secondary-color);
+    color: var(--text-secondary);
     line-height: 1.35;
 }
 

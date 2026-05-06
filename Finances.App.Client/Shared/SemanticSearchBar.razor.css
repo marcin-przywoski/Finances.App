@@ -56,9 +56,16 @@
 }
 
 .semantic-search-settings-btn:hover,
-.semantic-search-settings-btn:focus {
+.semantic-search-settings-btn:focus-visible {
     color: var(--primary);
     background-color: rgba(13, 148, 136, 0.08);
+}
+
+.semantic-search-settings-btn:focus-visible,
+.semantic-search-close:focus-visible,
+.semantic-search-result:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-shadow);
 }
 
 .semantic-search-backdrop {
@@ -121,9 +128,10 @@
 }
 
 .semantic-search-result:hover,
-.semantic-search-result:focus-visible {
-    background-color: rgba(13, 148, 136, 0.08);
-    border-color: rgba(13, 148, 136, 0.18);
+.semantic-search-result:focus-visible,
+.semantic-search-result.active {
+    background-color: var(--color-primary-wash);
+    border-color: oklch(56% 0.12 184 / 0.24);
     outline: none;
 }
 
@@ -153,8 +161,8 @@
 }
 
 .semantic-search-chip {
-    background: rgba(234, 179, 8, 0.18);
-    color: #92400e;
+    background: var(--color-warning-soft);
+    color: var(--color-warning-strong);
     padding: 0.1rem 0.45rem;
     border-radius: 999px;
     font-weight: 600;
@@ -163,8 +171,8 @@
 }
 
 [data-theme="dark"] .semantic-search-chip {
-    background: rgba(250, 204, 21, 0.2);
-    color: #fde68a;
+    background: oklch(71% 0.145 76 / 0.18);
+    color: oklch(86% 0.09 82);
 }
 
 .semantic-search-opt-in {
@@ -211,7 +219,7 @@
 
 .semantic-search-close:hover {
     color: var(--text-primary);
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--surface-muted);
 }
 
 .semantic-search-settings-copy {
@@ -237,9 +245,14 @@
     transition: border-color var(--transition), background-color var(--transition);
 }
 
-.semantic-search-mode-option:hover {
+.semantic-search-mode-option:hover,
+.semantic-search-mode-option:focus-within {
     border-color: rgba(13, 148, 136, 0.4);
     background-color: rgba(13, 148, 136, 0.04);
+}
+
+.semantic-search-mode-option:focus-within {
+    box-shadow: var(--focus-shadow);
 }
 
 .semantic-search-mode-option input {
@@ -290,7 +303,7 @@
 .semantic-search-progress-fill {
     height: 100%;
     background: var(--primary);
-    transition: width 200ms ease;
+    transition: none;
 }
 
 .semantic-search-progress-file {
