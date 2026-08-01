@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Finances.App.Client.Models;
+using Finances.App.Client.Services.Storage;
 using Finances.App.Shared;
-using Microsoft.JSInterop;
 
 namespace Finances.App.Client.Services;
 
@@ -43,7 +43,7 @@ public sealed class LocalFinanceStore
 {
     private const int CurrentSchemaVersion = 1;
     private const string StorageKey = "Finances.App.snapshot";
-    private readonly IJSRuntime _js;
+    private readonly IKeyValueStorage _storage;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -53,9 +53,9 @@ public sealed class LocalFinanceStore
 
     public event Action? OnChange;
 
-    public LocalFinanceStore(IJSRuntime js)
+    public LocalFinanceStore(IKeyValueStorage storage)
     {
-        _js = js;
+        _storage = storage;
     }
 
     public async Task<IReadOnlyList<Worker>> GetWorkersAsync()
@@ -713,7 +713,7 @@ public sealed class LocalFinanceStore
             return;
         }
 
-        var json = await _js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+        var json = await _storage.GetItemAsync(StorageKey);
         if (string.IsNullOrWhiteSpace(json))
         {
             _snapshot = CreateDefaultSnapshot();
@@ -752,7 +752,7 @@ public sealed class LocalFinanceStore
     {
         _snapshot!.SchemaVersion = CurrentSchemaVersion;
         var json = JsonSerializer.Serialize(_snapshot, _jsonOptions);
-        await _js.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
+        await _storage.SetItemAsync(StorageKey, json);
     }
 
     private void NotifyChanged()

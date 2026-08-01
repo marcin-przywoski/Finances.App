@@ -1,0 +1,7 @@
+# Normalize line endings across Windows and Linux checkouts.
+* text=auto
+
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary

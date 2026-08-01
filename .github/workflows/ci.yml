@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - wasm-standalone
+      - main
+      - "claude/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore Finances.App.sln
+
+      - name: Build
+        run: dotnet build Finances.App.sln -c Release --no-restore
+
+      - name: Unit tests
+        run: dotnet test Finances.App.sln -c Release --no-build --filter "Category!=E2E"

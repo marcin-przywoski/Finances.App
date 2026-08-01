@@ -1,17 +1,19 @@
-using Microsoft.JSInterop;
+using Finances.App.Client.Services.Storage;
 
 namespace Finances.App.Client.Services;
 
 public class WorkerContextService
 {
-    private readonly IJSRuntime _js;
+    private const string StorageKey = "selectedWorkerId";
+
+    private readonly IKeyValueStorage _storage;
     private int? _selectedWorkerId;
 
     public event Action? OnChange;
 
-    public WorkerContextService(IJSRuntime js)
+    public WorkerContextService(IKeyValueStorage storage)
     {
-        _js = js;
+        _storage = storage;
     }
 
     public int? SelectedWorkerId => _selectedWorkerId;
@@ -20,7 +22,7 @@ public class WorkerContextService
     {
         try
         {
-            var stored = await _js.InvokeAsync<string?>("localStorage.getItem", "selectedWorkerId");
+            var stored = await _storage.GetItemAsync(StorageKey);
             if (int.TryParse(stored, out var id))
             {
                 _selectedWorkerId = id;
@@ -28,7 +30,7 @@ public class WorkerContextService
         }
         catch
         {
-            // SSR or prerender — ignore
+            // Storage unavailable (e.g. prerender) — start with no selection.
         }
     }
 
@@ -38,13 +40,13 @@ public class WorkerContextService
         try
         {
             if (workerId.HasValue)
-                await _js.InvokeVoidAsync("localStorage.setItem", "selectedWorkerId", workerId.Value.ToString());
+                await _storage.SetItemAsync(StorageKey, workerId.Value.ToString());
             else
-                await _js.InvokeVoidAsync("localStorage.removeItem", "selectedWorkerId");
+                await _storage.RemoveItemAsync(StorageKey);
         }
         catch
         {
-            // SSR or prerender — ignore
+            // Storage unavailable — keep the in-memory selection for this session.
         }
         OnChange?.Invoke();
     }

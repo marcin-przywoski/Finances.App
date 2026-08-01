@@ -13,6 +13,7 @@ public sealed class PwaUpdateFlowTests
     private const string UpdatedReleaseSummary = "Confirms that pending PWA updates expose human-readable release notes before reload.";
 
     [Fact]
+    [Trait("Category", "E2E")]
     public async Task Update_check_keeps_installed_build_until_reload_and_switches_after_apply()
     {
         var repositoryRoot = FindRepositoryRoot();

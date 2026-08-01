@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Finances.App.Client.Services;
+using Finances.App.Client.Services.Storage;
 
 namespace Finances.App.Client;
 
@@ -12,6 +13,7 @@ static class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
+        builder.Services.AddScoped<IKeyValueStorage, LocalStorageKeyValueStorage>();
         builder.Services.AddScoped<LocalFinanceStore>();
         builder.Services.AddScoped<LocalApiMessageHandler>();
         builder.Services.AddScoped(sp => new HttpClient(sp.GetRequiredService<LocalApiMessageHandler>())
