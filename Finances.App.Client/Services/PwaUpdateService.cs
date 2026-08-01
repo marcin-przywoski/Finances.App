@@ -23,9 +23,10 @@ public sealed record PwaUpdateState(
     PwaReleaseInfo? InstalledRelease,
     PwaReleaseInfo? AvailableRelease,
     DateTimeOffset? LastCheckedUtc,
-    DateTimeOffset? LastAppliedUpdateUtc)
+    DateTimeOffset? LastAppliedUpdateUtc,
+    string? InstallError)
 {
-    public static PwaUpdateState Empty { get; } = new(false, false, false, false, false, false, null, null, null, null, null, null);
+    public static PwaUpdateState Empty { get; } = new(false, false, false, false, false, false, null, null, null, null, null, null, null);
 }
 
 public sealed class PwaUpdateService : IAsyncDisposable
@@ -162,6 +163,7 @@ public sealed class PwaUpdateService : IAsyncDisposable
         public PwaReleaseInfoDto? AvailableRelease { get; set; }
         public string? LastCheckedUtc { get; set; }
         public string? LastAppliedUpdateUtc { get; set; }
+        public string? InstallError { get; set; }
 
         public PwaUpdateState ToState()
         {
@@ -177,7 +179,8 @@ public sealed class PwaUpdateService : IAsyncDisposable
                 InstalledRelease?.ToReleaseInfo(),
                 AvailableRelease?.ToReleaseInfo(),
                 PwaUpdateService.ParseDateTimeOffset(LastCheckedUtc),
-                PwaUpdateService.ParseDateTimeOffset(LastAppliedUpdateUtc));
+                PwaUpdateService.ParseDateTimeOffset(LastAppliedUpdateUtc),
+                string.IsNullOrWhiteSpace(InstallError) ? null : InstallError);
         }
     }
 

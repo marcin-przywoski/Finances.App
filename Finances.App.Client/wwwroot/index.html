@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Private salon finance tracker that stores data only in your browser. Works offline as an installable app." />
     <meta name="theme-color" content="#0d9488" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -34,8 +35,14 @@
 
 <body>
     <div id="app">
-        <div class="loading-container">
-            <div class="spinner"></div>
+        <div class="loading-container boot-loading">
+            <div class="loading-progress">
+                <svg viewBox="0 0 100 100">
+                    <circle r="40%" cx="50%" cy="50%" />
+                    <circle r="40%" cx="50%" cy="50%" />
+                </svg>
+            </div>
+            <div class="loading-progress-text"></div>
         </div>
     </div>
 
@@ -45,12 +52,12 @@
         <span class="dismiss">x</span>
     </div>
 
-    <script src="lib/chart.js/chart.umd.min.js"></script>
-    <script src="js/standalone-charts.js"></script>
-    <script src="js/browserFiles.js"></script>
-    <script src="js/storageSync.js"></script>
-    <script src="js/pwa.js"></script>
-    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="lib/chart.js/chart.umd.min.js" defer></script>
+    <script src="js/standalone-charts.js" defer></script>
+    <script src="js/browserFiles.js" defer></script>
+    <script src="js/storageSync.js" defer></script>
+    <script src="js/pwa.js" defer></script>
+    <script src="_framework/blazor.webassembly.js" defer></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });

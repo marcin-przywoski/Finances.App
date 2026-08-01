@@ -7,6 +7,9 @@
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <!-- GitHub Pages never serves the precompressed .br/.gz files (it applies
+         its own gzip), so publishing them only bloats the artifact. -->
+    <CompressionEnabled>false</CompressionEnabled>
   </PropertyGroup>
 
   <ItemGroup>

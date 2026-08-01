@@ -58,6 +58,17 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Finances.App.Client/Finances.App.Client.csproj
 
+      - name: Stamp release metadata
+        # Hand-written title/summary/changes stay authored in the repo; the id
+        # and timestamp come from the commit so they can never go stale.
+        run: |
+          release_file=Finances.App.Client/wwwroot/pwa-release.json
+          jq --arg id "${GITHUB_SHA::7}-$(date -u +%Y-%m-%d)" \
+             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '.releaseId = $id | .publishedUtc = $ts' \
+             "$release_file" > "$release_file.tmp"
+          mv "$release_file.tmp" "$release_file"
+
       - name: Publish standalone client
         run: dotnet publish Finances.App.Client/Finances.App.Client.csproj -c Release -o artifacts/publish
 

@@ -23,7 +23,8 @@ globalThis.financePwa = (() => {
         installedRelease: null,
         availableRelease: null,
         lastCheckedUtc: null,
-        lastAppliedUpdateUtc: globalThis.localStorage.getItem(lastAppliedUpdateStorageKey)
+        lastAppliedUpdateUtc: globalThis.localStorage.getItem(lastAppliedUpdateStorageKey),
+        installError: null
     };
 
     const normalizeString = value => typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -94,6 +95,13 @@ globalThis.financePwa = (() => {
         globalThis.localStorage.removeItem(pendingUpdateStorageKey);
     };
 
+    const onServiceWorkerMessage = async event => {
+        if (event.data?.type === 'INSTALL_FAILED') {
+            state.installError = typeof event.data.detail === 'string' ? event.data.detail : 'Update install failed.';
+            await invokeStateUpdate();
+        }
+    };
+
     const onBeforeInstallPrompt = event => {
         event.preventDefault();
         deferredInstallPrompt = event;
@@ -106,6 +114,8 @@ globalThis.financePwa = (() => {
     };
 
     const onControllerChange = async () => {
+        // A new worker took control, so any earlier install failure is stale.
+        state.installError = null;
         const latestMetadata = await loadLatestMetadata();
         const justUpdated = completePendingUpdate(latestMetadata);
         await syncState(latestMetadata, justUpdated);
@@ -133,6 +143,7 @@ globalThis.financePwa = (() => {
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+            navigator.serviceWorker.addEventListener('message', onServiceWorkerMessage);
         }
     };
 
@@ -148,6 +159,7 @@ globalThis.financePwa = (() => {
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+            navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage);
         }
     };
 
