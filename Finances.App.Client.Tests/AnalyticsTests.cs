@@ -180,7 +180,7 @@ public class AnalyticsTests
         var earnings = await store.GetDailyEarningsAsync(null, null, null);
 
         Assert.Equal(2, earnings.Count);
-        Assert.Equal(day1.ToString("yyyy-MM-dd"), earnings[0].Date);
+        Assert.Equal(day1.ToDateKey(), earnings[0].Date);
         Assert.Equal(30, earnings[0].Revenue);
         Assert.Equal(3, earnings[0].Tips);
         Assert.Equal(30, earnings[1].Revenue);
@@ -204,7 +204,7 @@ public class AnalyticsTests
         var timeline = await store.GetCombinedTimelineAsync(null, null, null);
 
         var point = Assert.Single(timeline.Points);
-        Assert.Equal(today.ToString("yyyy-MM-dd"), point.Date);
+        Assert.Equal(today.ToDateKey(), point.Date);
         Assert.Equal(100, point.ServiceRevenue);
         Assert.Equal(50, point.ProductRevenue);
     }

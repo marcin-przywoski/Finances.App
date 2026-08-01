@@ -73,7 +73,9 @@ public class MoneyAndDateTests
             var date = new DateTime(2026, 8, 1);
 
             Assert.Equal("2026-08-01", date.ToDateKey());
+#pragma warning disable CA1305 // Deliberately culture-sensitive: this is the bug being demonstrated.
             Assert.NotEqual("2026-08-01", date.ToString("yyyy-MM-dd"));
+#pragma warning restore CA1305
         }
         finally
         {
@@ -92,7 +94,7 @@ public class MoneyAndDateTests
         await store.AddServiceRecordAsync(new ServiceRecord { WorkerId = 1, ServiceId = 1, DatePerformed = today.AddDays(-1), AmountPaid = 100, CommissionPercentageApplied = 50 });
         await store.AddServiceRecordAsync(new ServiceRecord { WorkerId = 1, ServiceId = 1, DatePerformed = today, AmountPaid = 110, CommissionPercentageApplied = 50 });
 
-        var filtered = await store.GetForecastAsync(null, 1, from: today.AddDays(-2), to: today);
+        var filtered = await store.GetForecastAsync(null, 1, fromDate: today.AddDays(-2), toDate: today);
 
         Assert.Equal(2, filtered.Historical.Length);
         Assert.Equal(100, filtered.Historical[0].Actual);

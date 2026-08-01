@@ -16,7 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Build solution
+        run: dotnet build Finances.App.sln -c Release
+
+      - name: Unit tests
+        run: dotnet test Finances.App.sln -c Release --no-build --filter "Category!=E2E"
+
   build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:

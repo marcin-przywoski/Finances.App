@@ -9,11 +9,11 @@ namespace Finances.App.Client.Services;
 /// </summary>
 public sealed partial class LocalFinanceStore
 {
-    public async Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
-        var records = FilterStoredRecords(workerId, from, to).ToList();
+        var records = FilterStoredRecords(workerId, fromDate, toDate).ToList();
         var totalRevenue = records.Sum(record => record.AmountPaid);
         var totalTips = records.Sum(record => record.Tips);
         // Sum the rounded per-record shares so totals match the rows users see.
@@ -23,11 +23,11 @@ public sealed partial class LocalFinanceStore
         return new SummaryResult(totalRevenue, totalTips, totalWorkerShare, totalSalonShare, records.Count);
     }
 
-    public async Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
-        return FilterStoredRecords(workerId, from, to)
+        return FilterStoredRecords(workerId, fromDate, toDate)
             .GroupBy(record => record.DatePerformed.Date)
             .Select(group => new DailyEarningResult(
                 group.Key.ToDateKey(),
@@ -37,13 +37,13 @@ public sealed partial class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
         var workerNames = _snapshot!.Workers.ToDictionary(worker => worker.Id, worker => worker.Name);
 
-        return FilterStoredRecords(null, from, to)
+        return FilterStoredRecords(null, fromDate, toDate)
             .GroupBy(record => workerNames.GetValueOrDefault(record.WorkerId, "Unknown"))
             .Select(group => new WorkerRevenueResult(
                 group.Key,
@@ -53,13 +53,13 @@ public sealed partial class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
         var serviceNames = _snapshot!.Services.ToDictionary(service => service.Id, service => service.Name);
 
-        return FilterStoredRecords(workerId, from, to)
+        return FilterStoredRecords(workerId, fromDate, toDate)
             .GroupBy(record => serviceNames.GetValueOrDefault(record.ServiceId, "Unknown"))
             .Select(group => new ServicePopularityResult(
                 group.Key,
@@ -69,17 +69,17 @@ public sealed partial class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? from = null, DateTime? to = null)
+    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? fromDate = null, DateTime? toDate = null)
     {
         await EnsureLoadedAsync();
 
         // Honor the page's date filter when one is set; otherwise use the
         // default 90-day training window.
-        var cutoff = (from ?? DateTime.Today.AddDays(-90)).Date;
+        var cutoff = (fromDate ?? DateTime.Today.AddDays(-90)).Date;
         var dailyRevenue = _snapshot!.ServiceRecords
             .Where(record => (!workerId.HasValue || record.WorkerId == workerId.Value)
                 && record.DatePerformed.Date >= cutoff
-                && (!to.HasValue || record.DatePerformed.Date <= to.Value.Date))
+                && (!toDate.HasValue || record.DatePerformed.Date <= toDate.Value.Date))
             .GroupBy(record => record.DatePerformed.Date)
             .Select(group => new
             {
@@ -194,12 +194,12 @@ public sealed partial class LocalFinanceStore
             currentAvgTicket, previousAvgTicket);
     }
 
-    public async Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
         var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        var records = FilterStoredRecords(workerId, from, to).ToList();
+        var records = FilterStoredRecords(workerId, fromDate, toDate).ToList();
 
         return dayNames.Select((name, i) =>
         {
@@ -209,15 +209,15 @@ public sealed partial class LocalFinanceStore
         }).ToList();
     }
 
-    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? from, DateTime? to, int count = 5)
+    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? fromDate, DateTime? toDate, int count = 5)
     {
         await EnsureLoadedAsync();
 
         var productNames = _snapshot!.Products.ToDictionary(p => p.Id, p => p.Name);
         var query = _snapshot.ProductSales.AsEnumerable();
         if (workerId.HasValue) query = query.Where(s => s.WorkerId == workerId.Value);
-        if (from.HasValue) query = query.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) query = query.Where(s => s.DateSold.Date <= to.Value.Date);
+        if (fromDate.HasValue) query = query.Where(s => s.DateSold.Date >= fromDate.Value.Date);
+        if (toDate.HasValue) query = query.Where(s => s.DateSold.Date <= toDate.Value.Date);
 
         return query
             .GroupBy(s => productNames.GetValueOrDefault(s.ProductId, "Unknown"))
@@ -227,18 +227,18 @@ public sealed partial class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         await EnsureLoadedAsync();
 
-        var servicesByDay = FilterStoredRecords(workerId, from, to)
+        var servicesByDay = FilterStoredRecords(workerId, fromDate, toDate)
             .GroupBy(r => r.DatePerformed.Date)
             .ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
 
         var productQuery = _snapshot!.ProductSales.AsEnumerable();
         if (workerId.HasValue) productQuery = productQuery.Where(s => s.WorkerId == workerId.Value);
-        if (from.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date <= to.Value.Date);
+        if (fromDate.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date >= fromDate.Value.Date);
+        if (toDate.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date <= toDate.Value.Date);
         var productsByDay = productQuery
             .GroupBy(s => s.DateSold.Date)
             .ToDictionary(g => g.Key, g => g.Sum(s => s.UnitPrice * s.Quantity));
@@ -254,7 +254,7 @@ public sealed partial class LocalFinanceStore
         return new CombinedTimelineResult(points);
     }
 
-    private IEnumerable<ServiceRecord> FilterStoredRecords(int? workerId, DateTime? from, DateTime? to)
+    private IEnumerable<ServiceRecord> FilterStoredRecords(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         var query = _snapshot!.ServiceRecords.AsEnumerable();
 
@@ -263,14 +263,14 @@ public sealed partial class LocalFinanceStore
             query = query.Where(record => record.WorkerId == workerId.Value);
         }
 
-        if (from.HasValue)
+        if (fromDate.HasValue)
         {
-            query = query.Where(record => record.DatePerformed.Date >= from.Value.Date);
+            query = query.Where(record => record.DatePerformed.Date >= fromDate.Value.Date);
         }
 
-        if (to.HasValue)
+        if (toDate.HasValue)
         {
-            query = query.Where(record => record.DatePerformed.Date <= to.Value.Date);
+            query = query.Where(record => record.DatePerformed.Date <= toDate.Value.Date);
         }
 
         return query;

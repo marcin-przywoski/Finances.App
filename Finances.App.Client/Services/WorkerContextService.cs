@@ -1,3 +1,4 @@
+using System.Globalization;
 using Finances.App.Client.Services.Storage;
 
 namespace Finances.App.Client.Services;
@@ -40,7 +41,7 @@ public class WorkerContextService
         try
         {
             if (workerId.HasValue)
-                await _storage.SetItemAsync(StorageKey, workerId.Value.ToString());
+                await _storage.SetItemAsync(StorageKey, workerId.Value.ToString(CultureInfo.InvariantCulture));
             else
                 await _storage.RemoveItemAsync(StorageKey);
         }

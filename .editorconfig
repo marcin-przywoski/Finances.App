@@ -25,3 +25,8 @@ indent_size = 2
 
 [*.{js,css,html}]
 indent_size = 2
+
+# Blazor component bases conventionally expose protected fields to derived
+# .razor files; CA1051 conflicts with that idiom.
+[*.cs]
+dotnet_diagnostic.CA1051.severity = none

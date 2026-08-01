@@ -9,14 +9,14 @@ namespace Finances.App.Client.Services;
 /// </summary>
 public interface IAnalyticsService
 {
-    Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? from, DateTime? to);
-    Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? from, DateTime? to);
-    Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? from, DateTime? to);
-    Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? from, DateTime? to);
-    Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? from = null, DateTime? to = null);
+    Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
+    Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
+    Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? fromDate, DateTime? toDate);
+    Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
+    Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? fromDate = null, DateTime? toDate = null);
     Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count);
     Task<MonthComparisonResult> GetMonthComparisonAsync(int? workerId);
-    Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? from, DateTime? to);
-    Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? from, DateTime? to, int count = 5);
-    Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? from, DateTime? to);
+    Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
+    Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? fromDate, DateTime? toDate, int count = 5);
+    Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
 }

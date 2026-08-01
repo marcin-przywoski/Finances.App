@@ -111,10 +111,10 @@ else
 
                 <dl class="row mb-3 small">
                     <dt class="col-5 text-muted">Installed build</dt>
-                    <dd class="col-7 fw-semibold">@GetBuildLabel()</dd>
+                    <dd class="col-7 fw-semibold" data-testid="installed-build">@GetBuildLabel()</dd>
 
                     <dt class="col-5 text-muted">Available build</dt>
-                    <dd class="col-7">@GetAvailableBuildLabel()</dd>
+                    <dd class="col-7" data-testid="available-build">@GetAvailableBuildLabel()</dd>
 
                     <dt class="col-5 text-muted">Last checked</dt>
                     <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>

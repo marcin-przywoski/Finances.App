@@ -37,3 +37,40 @@ jobs:
 
       - name: Unit tests
         run: dotnet test Finances.App.sln -c Release --no-build --filter "Category!=E2E"
+
+  e2e:
+    # E2E publishes the app twice and drives a real browser; run it where it
+    # gates something (PRs and the deployed branches), not on every push.
+    if: github.event_name == 'pull_request' || contains(fromJSON('["wasm-standalone", "main"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Build test project
+        run: dotnet build Finances.App.PlaywrightTests/Finances.App.PlaywrightTests.csproj -c Release
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('Finances.App.PlaywrightTests/Finances.App.PlaywrightTests.csproj') }}
+
+      - name: Install Playwright Chromium
+        run: pwsh Finances.App.PlaywrightTests/bin/Release/net9.0/playwright.ps1 install chromium --with-deps
+
+      - name: E2E tests
+        run: dotnet test Finances.App.PlaywrightTests/Finances.App.PlaywrightTests.csproj -c Release --no-build

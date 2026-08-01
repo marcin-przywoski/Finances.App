@@ -4,6 +4,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- CA1716: the long-standing Finances.App.Shared namespace name;
+         renaming it is churn with no benefit for an app-internal project. -->
+    <NoWarn>$(NoWarn);CA1716</NoWarn>
   </PropertyGroup>
 
 </Project>
