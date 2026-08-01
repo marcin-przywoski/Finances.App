@@ -1,5 +1,5 @@
 @page "/workers"
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject ToastService Toast
 
 <PageTitle>Workers</PageTitle>
@@ -116,7 +116,7 @@ else
 
     private async Task LoadWorkers()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        workers = (await Store.GetWorkersAsync()).ToList();
     }
 
     private void OpenAddModal()
@@ -143,18 +143,20 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/workers/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker updated");
-                else Toast.Show("Failed to update worker", ToastLevel.Error);
+                await Store.UpdateWorkerAsync(editId, formModel);
+                Toast.Show("Worker updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/workers", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Worker added");
-                else Toast.Show("Failed to add worker", ToastLevel.Error);
+                await Store.AddWorkerAsync(formModel);
+                Toast.Show("Worker added");
             }
             await LoadWorkers();
             showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -168,9 +170,16 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/workers/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Worker deleted");
-        else Toast.Show("Failed to delete worker. It may have related records.", ToastLevel.Error);
+        try
+        {
+            var result = await Store.DeleteWorkerAsync(deleteTarget.Id);
+            if (result.Success) Toast.Show("Worker deleted");
+            else Toast.Show(result.ErrorMessage ?? "Cannot delete this worker.", ToastLevel.Error);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadWorkers();

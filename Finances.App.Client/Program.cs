@@ -15,11 +15,8 @@ static class Program
 
         builder.Services.AddScoped<IKeyValueStorage, LocalStorageKeyValueStorage>();
         builder.Services.AddScoped<LocalFinanceStore>();
-        builder.Services.AddScoped<LocalApiMessageHandler>();
-        builder.Services.AddScoped(sp => new HttpClient(sp.GetRequiredService<LocalApiMessageHandler>())
-        {
-            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-        });
+        builder.Services.AddScoped<IFinanceStore>(sp => sp.GetRequiredService<LocalFinanceStore>());
+        builder.Services.AddScoped<IAnalyticsService>(sp => sp.GetRequiredService<LocalFinanceStore>());
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
         builder.Services.AddScoped<PwaUpdateService>();

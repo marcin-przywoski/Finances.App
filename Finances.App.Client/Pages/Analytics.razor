@@ -1,6 +1,6 @@
 @page "/analytics"
 @implements IDisposable
-@inject HttpClient Http
+@inject IAnalyticsService AnalyticsService
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -241,13 +241,13 @@ else
     private DateTime? dateFrom;
     private DateTime? dateTo;
     private int forecastDays = 14;
-    private WorkerRevenue[]? workerData;
-    private ServicePopularity[]? serviceData;
-    private DailyEarning[]? dailyData;
+    private WorkerRevenueResult[]? workerData;
+    private ServicePopularityResult[]? serviceData;
+    private DailyEarningResult[]? dailyData;
     private ForecastResult? forecastResult;
-    private DayOfWeekEntry[]? dayOfWeekData;
-    private TopProduct[]? topProducts;
-    private CombinedTimeline? combinedTimeline;
+    private DayOfWeekResult[]? dayOfWeekData;
+    private TopProductResult[]? topProducts;
+    private CombinedTimelineResult? combinedTimeline;
     private bool needsChartRender;
 
     protected override async Task OnInitializedAsync()
@@ -303,22 +303,20 @@ else
         loading = true;
         try
         {
-            var qs = BuildQueryString();
-            workerData = await Http.GetFromJsonAsync<WorkerRevenue[]>($"api/analytics/revenue-by-worker{qs}");
-            serviceData = await Http.GetFromJsonAsync<ServicePopularity[]>($"api/analytics/service-popularity{qs}");
-            dailyData = await Http.GetFromJsonAsync<DailyEarning[]>($"api/analytics/daily-earnings{qs}");
+            var wId = WorkerContext.SelectedWorkerId;
+            workerData = (await AnalyticsService.GetRevenueByWorkerAsync(dateFrom, dateTo)).ToArray();
+            serviceData = (await AnalyticsService.GetServicePopularityAsync(wId, dateFrom, dateTo)).ToArray();
+            dailyData = (await AnalyticsService.GetDailyEarningsAsync(wId, dateFrom, dateTo)).ToArray();
             await LoadForecast();
 
-            try { dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}"); }
-            catch { dayOfWeekData = []; }
-
-            try { topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}"); }
-            catch { topProducts = []; }
-
-            try { combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}"); }
-            catch { }
+            dayOfWeekData = (await AnalyticsService.GetRevenueByDayOfWeekAsync(wId, dateFrom, dateTo)).ToArray();
+            topProducts = (await AnalyticsService.GetTopProductsAsync(wId, dateFrom, dateTo)).ToArray();
+            combinedTimeline = await AnalyticsService.GetCombinedTimelineAsync(wId, dateFrom, dateTo);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Analytics load failed: {ex.Message}");
+        }
         finally
         {
             loading = false;
@@ -331,11 +329,12 @@ else
         try
         {
             // Same filters as every other chart on this page.
-            var qs = BuildQueryString();
-            qs = qs.Length > 0 ? $"{qs}&forecastDays={forecastDays}" : $"?forecastDays={forecastDays}";
-            forecastResult = await Http.GetFromJsonAsync<ForecastResult>($"api/analytics/forecast{qs}");
+            forecastResult = await AnalyticsService.GetForecastAsync(WorkerContext.SelectedWorkerId, forecastDays, dateFrom, dateTo);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Forecast load failed: {ex.Message}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -356,7 +355,7 @@ else
 
         try
         {
-            if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+            if (combinedTimeline?.Points != null && combinedTimeline.Points.Count > 0)
             {
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
@@ -452,23 +451,4 @@ else
         catch { }
     }
 
-    private string BuildQueryString()
-    {
-        var parts = new List<string>();
-        if (dateFrom.HasValue) parts.Add($"from={dateFrom.Value.ToDateKey()}");
-        if (dateTo.HasValue) parts.Add($"to={dateTo.Value.ToDateKey()}");
-        if (WorkerContext.SelectedWorkerId.HasValue) parts.Add($"workerId={WorkerContext.SelectedWorkerId.Value}");
-        return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
-    }
-
-    private record WorkerRevenue(string Worker, decimal Revenue, decimal Tips);
-    private record ServicePopularity(string Service, int Count, decimal Revenue);
-    private record DailyEarning(string Date, decimal Revenue, decimal Tips);
-    private record HistoricalPoint(string Date, double Actual, double Trend);
-    private record ForecastPoint(string Date, double Predicted);
-    private record ForecastResult(HistoricalPoint[] Historical, ForecastPoint[] Forecast, double Slope, double Intercept, double RSquared);
-    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
-    private record TopProduct(string Product, int Quantity, decimal Revenue);
-    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 }

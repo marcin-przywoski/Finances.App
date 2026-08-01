@@ -1,6 +1,6 @@
 @page "/sales"
 @implements IDisposable
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -204,9 +204,9 @@ else
     {
         WorkerContext.OnChange += HandleWorkerChanged;
         await WorkerContext.InitializeAsync();
-        allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-        products = await Http.GetFromJsonAsync<List<Product>>("api/products");
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        allSales = (await Store.GetProductSalesAsync()).ToList();
+        products = (await Store.GetProductsAsync()).ToList();
+        workers = (await Store.GetWorkersAsync()).ToList();
     }
 
     private void HandleWorkerChanged()
@@ -326,26 +326,21 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/productsales/{editId}", formModel);
-                if (resp.IsSuccessStatusCode)
-                {
-                    Toast.Show("Sale updated");
-                    allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-                    showModal = false;
-                }
-                else Toast.Show("Failed to update sale", ToastLevel.Error);
+                await Store.UpdateProductSaleAsync(editId, formModel);
+                Toast.Show("Sale updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/productsales", formModel);
-                if (resp.IsSuccessStatusCode)
-                {
-                    Toast.Show("Sale recorded!");
-                    allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-                    showModal = false;
-                }
-                else Toast.Show("Failed to record sale", ToastLevel.Error);
+                await Store.AddProductSaleAsync(formModel);
+                Toast.Show("Sale recorded!");
             }
+            allSales = (await Store.GetProductSalesAsync()).ToList();
+            products = (await Store.GetProductsAsync()).ToList();
+            showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -359,13 +354,17 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/productsales/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode)
+        try
         {
+            await Store.DeleteProductSaleAsync(deleteTarget.Id);
             Toast.Show("Sale deleted");
-            allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
+            allSales = (await Store.GetProductSalesAsync()).ToList();
+            products = (await Store.GetProductsAsync()).ToList();
         }
-        else Toast.Show("Failed to delete sale", ToastLevel.Error);
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
         showDeleteConfirm = false;
         deleteTarget = null;
     }

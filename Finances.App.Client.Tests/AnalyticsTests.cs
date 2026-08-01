@@ -219,7 +219,7 @@ public class AnalyticsTests
         await store.AddProductSaleAsync(new ProductSale { ProductId = 1, DateSold = today, Quantity = 1, UnitPrice = 25 });
         await store.AddProductSaleAsync(new ProductSale { ProductId = 2, DateSold = today, Quantity = 5, UnitPrice = 10 });
 
-        var top = await store.GetTopProductsAsync(null, null);
+        var top = await store.GetTopProductsAsync(null, null, null);
 
         Assert.Equal(2, top.Count);
         Assert.Equal("Shampoo", top[0].Product);

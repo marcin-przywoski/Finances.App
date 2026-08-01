@@ -1,5 +1,5 @@
 @page "/products"
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject ToastService Toast
 
 <PageTitle>Products</PageTitle>
@@ -138,7 +138,7 @@ else
 
     private async Task LoadProducts()
     {
-        products = await Http.GetFromJsonAsync<List<Product>>("api/products");
+        products = (await Store.GetProductsAsync()).ToList();
     }
 
     private void OpenAddModal()
@@ -165,18 +165,20 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/products/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Product updated");
-                else Toast.Show("Failed to update product", ToastLevel.Error);
+                await Store.UpdateProductAsync(editId, formModel);
+                Toast.Show("Product updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/products", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Product added");
-                else Toast.Show("Failed to add product", ToastLevel.Error);
+                await Store.AddProductAsync(formModel);
+                Toast.Show("Product added");
             }
             await LoadProducts();
             showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -190,9 +192,15 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/products/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Product deleted");
-        else Toast.Show("Failed to delete product", ToastLevel.Error);
+        try
+        {
+            await Store.DeleteProductAsync(deleteTarget.Id);
+            Toast.Show("Product deleted");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadProducts();

@@ -1,8 +1,7 @@
 @using Finances.App.Client.Services
 @using Finances.App.Shared
 @implements IDisposable
-@inject HttpClient Http
-@inject LocalFinanceStore Store
+@inject IFinanceStore Store
 @inject WorkerContextService WorkerContext
 
 <div class="d-flex align-items-center gap-2">
@@ -32,7 +31,7 @@
 
     private async Task LoadWorkersAsync()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers") ?? [];
+        workers = (await Store.GetWorkersAsync()).ToList();
         await WorkerContext.InitializeAsync();
         await WorkerContext.EnsureWorkerExistsAsync(workers.Select(worker => worker.Id));
     }
@@ -45,12 +44,19 @@
             await WorkerContext.SetWorkerAsync(null);
     }
 
-    private async void HandleStoreChange()
+    private void HandleStoreChange()
     {
-        await InvokeAsync(async () =>
+        _ = InvokeAsync(async () =>
         {
-            await LoadWorkersAsync();
-            StateHasChanged();
+            try
+            {
+                await LoadWorkersAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Worker selector refresh failed: {ex.Message}");
+            }
         });
     }
 

@@ -1,5 +1,5 @@
 @page "/services"
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject ToastService Toast
 
 <PageTitle>Services</PageTitle>
@@ -114,7 +114,7 @@ else
 
     private async Task LoadServices()
     {
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        services = (await Store.GetServicesAsync()).ToList();
     }
 
     private void OpenAddModal()
@@ -141,18 +141,20 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/services/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service updated");
-                else Toast.Show("Failed to update service", ToastLevel.Error);
+                await Store.UpdateServiceAsync(editId, formModel);
+                Toast.Show("Service updated");
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/services", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service added");
-                else Toast.Show("Failed to add service", ToastLevel.Error);
+                await Store.AddServiceAsync(formModel);
+                Toast.Show("Service added");
             }
             await LoadServices();
             showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -166,9 +168,16 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/services/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Service deleted");
-        else Toast.Show("Failed to delete service. It may have related records.", ToastLevel.Error);
+        try
+        {
+            var result = await Store.DeleteServiceAsync(deleteTarget.Id);
+            if (result.Success) Toast.Show("Service deleted");
+            else Toast.Show(result.ErrorMessage ?? "Cannot delete this service.", ToastLevel.Error);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
         showDeleteConfirm = false;
         deleteTarget = null;
         await LoadServices();

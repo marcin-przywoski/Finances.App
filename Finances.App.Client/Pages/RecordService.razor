@@ -1,5 +1,5 @@
 @page "/record"
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject ToastService Toast
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
@@ -109,8 +109,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        workers = (await Store.GetWorkersAsync()).ToList();
+        services = (await Store.GetServicesAsync()).ToList();
 
         await WorkerContext.InitializeAsync();
         if (WorkerContext.SelectedWorkerId.HasValue && workers != null)
@@ -157,21 +157,18 @@ else
         saving = true;
         try
         {
-            var resp = await Http.PostAsJsonAsync("api/servicerecords", record);
-            if (resp.IsSuccessStatusCode)
+            await Store.AddServiceRecordAsync(record);
+            Toast.Show("Service recorded successfully!");
+            record = new ServiceRecord
             {
-                Toast.Show("Service recorded successfully!");
-                record = new ServiceRecord
-                {
-                    DatePerformed = DateTime.Today,
-                    WorkerId = record.WorkerId,
-                    CommissionPercentageApplied = record.CommissionPercentageApplied
-                };
-            }
-            else
-            {
-                Toast.Show("Failed to save record.", ToastLevel.Error);
-            }
+                DatePerformed = DateTime.Today,
+                WorkerId = record.WorkerId,
+                CommissionPercentageApplied = record.CommissionPercentageApplied
+            };
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }

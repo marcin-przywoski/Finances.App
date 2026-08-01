@@ -1,6 +1,6 @@
 @page "/"
 @implements IDisposable
-@inject HttpClient Http
+@inject IAnalyticsService Analytics
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -146,10 +146,10 @@ else
     private decimal? tipsTrend;
     private decimal? avgTicketTrend;
     private decimal? countTrend;
-    private RecentRecord[]? recentRecords;
-    private TopProduct[]? topProducts;
-    private DayOfWeekEntry[]? dayOfWeekData;
-    private CombinedTimeline? combinedTimeline;
+    private RecentRecordResult[]? recentRecords;
+    private TopProductResult[]? topProducts;
+    private DayOfWeekResult[]? dayOfWeekData;
+    private CombinedTimelineResult? combinedTimeline;
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
@@ -189,60 +189,33 @@ else
             var wId = WorkerContext.SelectedWorkerId;
             var now = DateTime.Today;
             var monthStart = new DateTime(now.Year, now.Month, 1);
-            var qs = $"?from={monthStart.ToDateKey()}&to={now.ToDateKey()}";
-            if (wId.HasValue) qs += $"&workerId={wId.Value}";
 
-            var summary = await Http.GetFromJsonAsync<SummaryDto>($"api/analytics/summary{qs}");
-            if (summary != null)
-            {
-                totalRevenue = summary.TotalRevenue.ToString("C");
-                totalTips = summary.TotalTips.ToString("C");
-                recordCount = summary.RecordCount.ToString();
-                avgTicket = summary.RecordCount > 0
-                    ? (summary.TotalRevenue / summary.RecordCount).ToString("C")
-                    : 0m.ToString("C");
-            }
+            var summary = await Analytics.GetSummaryAsync(wId, monthStart, now);
+            totalRevenue = summary.TotalRevenue.ToString("C");
+            totalTips = summary.TotalTips.ToString("C");
+            recordCount = summary.RecordCount.ToString();
+            avgTicket = summary.RecordCount > 0
+                ? (summary.TotalRevenue / summary.RecordCount).ToString("C")
+                : 0m.ToString("C");
 
-            try
-            {
-                var comparison = await Http.GetFromJsonAsync<MonthComparisonDto>(
-                    $"api/analytics/month-comparison{(wId.HasValue ? $"?workerId={wId.Value}" : "")}");
-                if (comparison != null)
-                {
-                    revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);
-                    tipsTrend = CalcTrend(comparison.CurrentTips, comparison.PreviousTips);
-                    avgTicketTrend = CalcTrend(comparison.CurrentAvgTicket, comparison.PreviousAvgTicket);
-                    countTrend = CalcTrend(comparison.CurrentCount, comparison.PreviousCount);
-                }
-            }
-            catch { }
+            var comparison = await Analytics.GetMonthComparisonAsync(wId);
+            revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);
+            tipsTrend = CalcTrend(comparison.CurrentTips, comparison.PreviousTips);
+            avgTicketTrend = CalcTrend(comparison.CurrentAvgTicket, comparison.PreviousAvgTicket);
+            countTrend = CalcTrend(comparison.CurrentCount, comparison.PreviousCount);
 
-            recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>("api/analytics/recent?count=5");
+            recentRecords = (await Analytics.GetRecentAsync(5)).ToArray();
+            topProducts = (await Analytics.GetTopProductsAsync(wId, monthStart, now)).ToArray();
+            dayOfWeekData = (await Analytics.GetRevenueByDayOfWeekAsync(wId, monthStart, now)).ToArray();
 
-            try
-            {
-                topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}");
-            }
-            catch { topProducts = []; }
-
-            try
-            {
-                dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}");
-            }
-            catch { dayOfWeekData = []; }
-
-            try
-            {
-                combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}");
-                if (combinedTimeline?.Points != null)
-                {
-                    serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
-                    productRevenueTotal = combinedTimeline.Points.Sum(p => p.ProductRevenue);
-                }
-            }
-            catch { }
+            combinedTimeline = await Analytics.GetCombinedTimelineAsync(wId, monthStart, now);
+            serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
+            productRevenueTotal = combinedTimeline.Points.Sum(p => p.ProductRevenue);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Dashboard load failed: {ex.Message}");
+        }
         finally
         {
             loading = false;
@@ -274,7 +247,7 @@ else
         // Each chart is wrapped individually so one failure doesn't block others
         try
         {
-            if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+            if (combinedTimeline?.Points != null && combinedTimeline.Points.Count > 0)
             {
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
@@ -315,11 +288,4 @@ else
         catch { }
     }
 
-    private record SummaryDto(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
-    private record RecentRecord(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
-    private record MonthComparisonDto(decimal CurrentRevenue, decimal PreviousRevenue, decimal CurrentTips, decimal PreviousTips, int CurrentCount, int PreviousCount, decimal CurrentAvgTicket, decimal PreviousAvgTicket);
-    private record TopProduct(string Product, int Quantity, decimal Revenue);
-    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
-    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 }

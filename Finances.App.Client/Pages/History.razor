@@ -1,6 +1,6 @@
 @page "/history"
 @implements IDisposable
-@inject HttpClient Http
+@inject IFinanceStore Store
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -194,9 +194,9 @@ else
     {
         WorkerContext.OnChange += HandleWorkerChanged;
         await WorkerContext.InitializeAsync();
-        allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+        workers = (await Store.GetWorkersAsync()).ToList();
+        services = (await Store.GetServicesAsync()).ToList();
     }
 
     private void HandleWorkerChanged()
@@ -300,17 +300,14 @@ else
         saving = true;
         try
         {
-            var resp = await Http.PutAsJsonAsync($"api/servicerecords/{editModel.Id}", editModel);
-            if (resp.IsSuccessStatusCode)
-            {
-                Toast.Show("Record updated");
-                allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-                showEditModal = false;
-            }
-            else
-            {
-                Toast.Show("Failed to update record", ToastLevel.Error);
-            }
+            await Store.UpdateServiceRecordAsync(editModel.Id, editModel);
+            Toast.Show("Record updated");
+            allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+            showEditModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -324,15 +321,15 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/servicerecords/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode)
+        try
         {
+            await Store.DeleteServiceRecordAsync(deleteTarget.Id);
             Toast.Show("Record deleted");
-            allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
+            allRecords = (await Store.GetServiceRecordsAsync()).ToList();
         }
-        else
+        catch (Exception ex)
         {
-            Toast.Show("Failed to delete record", ToastLevel.Error);
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         showDeleteConfirm = false;
         deleteTarget = null;
