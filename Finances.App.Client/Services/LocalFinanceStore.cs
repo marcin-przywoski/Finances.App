@@ -23,7 +23,7 @@ public sealed record ForecastResult(HistoricalPointResult[] Historical, Forecast
 
 public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
 
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc);
+public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc, int ApproximateSizeChars);
 
 public sealed record MonthComparisonResult(
     decimal CurrentRevenue, decimal PreviousRevenue,
@@ -39,23 +39,77 @@ public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, 
 
 public sealed record CombinedTimelineResult(IReadOnlyList<CombinedTimelinePoint> Points);
 
+public enum SnapshotLoadStatus
+{
+    Ok,
+    RecoveredFromCorruptData
+}
+
 public sealed class LocalFinanceStore
 {
     private const int CurrentSchemaVersion = 1;
-    private const string StorageKey = "Finances.App.snapshot";
-    private readonly IKeyValueStorage _storage;
-    private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
+    public const string StorageKey = "Finances.App.snapshot";
+    public const string QuarantineKey = "Finances.App.snapshot.quarantine";
+    public const string PreResetKey = "Finances.App.snapshot.pre-reset";
+    public const string RevisionKey = "Finances.App.snapshot.rev";
+
+    private static readonly JsonSerializerOptions CompactJson = new()
     {
+        TypeInfoResolver = FinanceJsonContext.Default,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly JsonSerializerOptions IndentedJson = new()
+    {
+        TypeInfoResolver = FinanceJsonContext.Default,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
 
+    private readonly IKeyValueStorage _storage;
+
     private FinanceSnapshot? _snapshot;
+    private Task? _loadTask;
+    private string? _loadedRevision;
 
     public event Action? OnChange;
+
+    public SnapshotLoadStatus LoadStatus { get; private set; } = SnapshotLoadStatus.Ok;
 
     public LocalFinanceStore(IKeyValueStorage storage)
     {
         _storage = storage;
+    }
+
+    public async Task<SnapshotLoadStatus> GetLoadStatusAsync()
+    {
+        await EnsureLoadedAsync();
+        return LoadStatus;
+    }
+
+    /// <summary>
+    /// Called when another tab wrote to the snapshot key. Drops the cached
+    /// snapshot so the next read reloads the newest persisted data.
+    /// </summary>
+    public void HandleExternalDataChange()
+    {
+        _snapshot = null;
+        _loadTask = null;
+        NotifyChanged();
+    }
+
+    public ValueTask<string?> GetQuarantinedJsonAsync()
+    {
+        return _storage.GetItemAsync(QuarantineKey);
+    }
+
+    public async Task ClearQuarantineAsync()
+    {
+        await _storage.RemoveItemAsync(QuarantineKey);
+        LoadStatus = SnapshotLoadStatus.Ok;
+        NotifyChanged();
     }
 
     public async Task<IReadOnlyList<Worker>> GetWorkersAsync()
@@ -262,6 +316,11 @@ public sealed class LocalFinanceStore
             throw new InvalidDataException("The selected worker does not exist.");
         }
 
+        if (product.StockQuantity < sale.Quantity)
+        {
+            throw new InvalidDataException($"Only {product.StockQuantity} of \"{product.Name}\" in stock — cannot sell {sale.Quantity}.");
+        }
+
         var stored = new ProductSale
         {
             Id = _snapshot.NextProductSaleId++,
@@ -275,14 +334,11 @@ public sealed class LocalFinanceStore
         };
 
         _snapshot.ProductSales.Add(stored);
+        product.StockQuantity -= stored.Quantity;
 
-        if (product.StockQuantity >= stored.Quantity)
-        {
-            product.StockQuantity -= stored.Quantity;
-        }
-
+        var enriched = EnrichProductSale(stored);
         await PersistAsync();
-        return EnrichProductSale(stored);
+        return enriched;
     }
 
     public async Task UpdateProductSaleAsync(int id, ProductSale sale)
@@ -297,15 +353,28 @@ public sealed class LocalFinanceStore
 
         var existing = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
 
-        if (_snapshot.Products.All(product => product.Id != sale.ProductId))
-        {
-            throw new InvalidDataException("The selected product does not exist.");
-        }
+        var newProduct = _snapshot.Products.FirstOrDefault(product => product.Id == sale.ProductId)
+            ?? throw new InvalidDataException("The selected product does not exist.");
 
         if (sale.WorkerId.HasValue && sale.WorkerId.Value != 0 && _snapshot.Workers.All(worker => worker.Id != sale.WorkerId.Value))
         {
             throw new InvalidDataException("The selected worker does not exist.");
         }
+
+        // Stock check before any mutation: the old quantity returns to the old
+        // product, so when the product is unchanged it counts as available.
+        var oldProduct = _snapshot.Products.FirstOrDefault(product => product.Id == existing.ProductId);
+        var available = newProduct.StockQuantity + (ReferenceEquals(oldProduct, newProduct) ? existing.Quantity : 0);
+        if (available < sale.Quantity)
+        {
+            throw new InvalidDataException($"Only {available} of \"{newProduct.Name}\" in stock — cannot sell {sale.Quantity}.");
+        }
+
+        if (oldProduct is not null)
+        {
+            oldProduct.StockQuantity += existing.Quantity;
+        }
+        newProduct.StockQuantity -= sale.Quantity;
 
         existing.ProductId = sale.ProductId;
         existing.WorkerId = sale.WorkerId == 0 ? null : sale.WorkerId;
@@ -324,6 +393,14 @@ public sealed class LocalFinanceStore
 
         var sale = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
         _snapshot.ProductSales.Remove(sale);
+
+        // Deleting a sale returns its units to stock (if the product still exists).
+        var product = _snapshot.Products.FirstOrDefault(item => item.Id == sale.ProductId);
+        if (product is not null)
+        {
+            product.StockQuantity += sale.Quantity;
+        }
+
         await PersistAsync();
     }
 
@@ -365,9 +442,10 @@ public sealed class LocalFinanceStore
         };
 
         _snapshot.ServiceRecords.Add(stored);
-        await PersistAsync();
 
-        return EnrichRecord(stored);
+        var enriched = EnrichRecord(stored);
+        await PersistAsync();
+        return enriched;
     }
 
     public async Task UpdateServiceRecordAsync(int id, ServiceRecord record)
@@ -656,13 +734,14 @@ public sealed class LocalFinanceStore
             _snapshot.ServiceRecords.Count,
             _snapshot.ProductSales.Count,
             _snapshot.SchemaVersion,
-            _snapshot.LastUpdatedUtc);
+            _snapshot.LastUpdatedUtc,
+            JsonSerializer.Serialize(_snapshot, CompactJson).Length);
     }
 
     public async Task<string> ExportAsync()
     {
         await EnsureLoadedAsync();
-        return JsonSerializer.Serialize(_snapshot, _jsonOptions);
+        return JsonSerializer.Serialize(_snapshot, IndentedJson);
     }
 
     public async Task ImportAsync(string json)
@@ -676,7 +755,7 @@ public sealed class LocalFinanceStore
 
         try
         {
-            imported = JsonSerializer.Deserialize<FinanceSnapshot>(json, _jsonOptions);
+            imported = JsonSerializer.Deserialize<FinanceSnapshot>(json, CompactJson);
         }
         catch (JsonException ex)
         {
@@ -692,6 +771,8 @@ public sealed class LocalFinanceStore
         NormalizeSnapshot(imported);
         ValidateSnapshot(imported);
 
+        await EnsureLoadedAsync();
+
         _snapshot = imported;
         _snapshot.LastUpdatedUtc = DateTime.UtcNow;
 
@@ -701,58 +782,128 @@ public sealed class LocalFinanceStore
 
     public async Task ResetAsync()
     {
+        await EnsureLoadedAsync();
+
+        try
+        {
+            // Cheap undo: keep the outgoing data under a side key.
+            var outgoing = JsonSerializer.Serialize(_snapshot, IndentedJson);
+            await _storage.SetItemAsync(PreResetKey, outgoing);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Could not write pre-reset backup: {ex.Message}");
+        }
+
         _snapshot = CreateDefaultSnapshot();
+        LoadStatus = SnapshotLoadStatus.Ok;
         await SaveAsync();
         NotifyChanged();
     }
 
-    private async Task EnsureLoadedAsync()
+    private Task EnsureLoadedAsync()
     {
-        if (_snapshot is not null)
+        // Cached-task latch: concurrent callers (e.g. the worker selector in the
+        // layout and the routed page) await one load instead of racing two.
+        if (_loadTask is null || _loadTask.IsFaulted || _loadTask.IsCanceled)
         {
-            return;
+            _loadTask = LoadCoreAsync();
         }
 
+        return _loadTask;
+    }
+
+    private async Task LoadCoreAsync()
+    {
         var json = await _storage.GetItemAsync(StorageKey);
+        _loadedRevision = await _storage.GetItemAsync(RevisionKey);
+
         if (string.IsNullOrWhiteSpace(json))
         {
             _snapshot = CreateDefaultSnapshot();
+            LoadStatus = SnapshotLoadStatus.Ok;
             await SaveAsync();
             return;
         }
 
+        FinanceSnapshot? loaded;
         try
         {
-            _snapshot = JsonSerializer.Deserialize<FinanceSnapshot>(json, _jsonOptions);
+            loaded = JsonSerializer.Deserialize<FinanceSnapshot>(json, CompactJson);
         }
         catch (JsonException)
         {
-            _snapshot = null;
+            loaded = null;
         }
 
-        if (_snapshot is null)
+        if (loaded is not null)
         {
+            try
+            {
+                MigrateSnapshot(loaded);
+                NormalizeSnapshot(loaded);
+                ValidateSnapshot(loaded);
+            }
+            catch (InvalidDataException)
+            {
+                loaded = null;
+            }
+        }
+
+        if (loaded is null)
+        {
+            // Never overwrite unreadable data: preserve the original bytes
+            // under a quarantine key, then start from defaults and tell the UI.
+            await _storage.SetItemAsync(QuarantineKey, json);
             _snapshot = CreateDefaultSnapshot();
+            LoadStatus = SnapshotLoadStatus.RecoveredFromCorruptData;
             await SaveAsync();
+            NotifyChanged();
             return;
         }
 
-        MigrateSnapshot(_snapshot);
-        NormalizeSnapshot(_snapshot);
+        _snapshot = loaded;
+        LoadStatus = SnapshotLoadStatus.Ok;
     }
 
     private async Task PersistAsync()
     {
+        await AssertNotChangedInAnotherTabAsync();
         _snapshot!.LastUpdatedUtc = DateTime.UtcNow;
         await SaveAsync();
         NotifyChanged();
     }
 
+    private async Task AssertNotChangedInAnotherTabAsync()
+    {
+        var currentRevision = await _storage.GetItemAsync(RevisionKey);
+        if (!string.Equals(currentRevision, _loadedRevision, StringComparison.Ordinal))
+        {
+            HandleExternalDataChange();
+            throw new ConcurrentUpdateException();
+        }
+    }
+
     private async Task SaveAsync()
     {
         _snapshot!.SchemaVersion = CurrentSchemaVersion;
-        var json = JsonSerializer.Serialize(_snapshot, _jsonOptions);
-        await _storage.SetItemAsync(StorageKey, json);
+        var json = JsonSerializer.Serialize(_snapshot, CompactJson);
+
+        try
+        {
+            await _storage.SetItemAsync(StorageKey, json);
+            var revision = Guid.NewGuid().ToString("N");
+            await _storage.SetItemAsync(RevisionKey, revision);
+            _loadedRevision = revision;
+        }
+        catch (Exception ex) when (ex is not ConcurrentUpdateException)
+        {
+            // Discard the unsaved in-memory state so the next read reloads the
+            // last successfully persisted snapshot; the UI re-renders that.
+            _snapshot = null;
+            _loadTask = null;
+            throw new StorageWriteException(ex);
+        }
     }
 
     private void NotifyChanged()
@@ -892,18 +1043,18 @@ public sealed class LocalFinanceStore
 
         foreach (var worker in snapshot.Workers)
         {
-            worker.Name = worker.Name.Trim();
+            worker.Name = (worker.Name ?? string.Empty).Trim();
             worker.ApplicationUserId = NormalizeOptionalText(worker.ApplicationUserId);
         }
 
         foreach (var service in snapshot.Services)
         {
-            service.Name = service.Name.Trim();
+            service.Name = (service.Name ?? string.Empty).Trim();
         }
 
         foreach (var product in snapshot.Products)
         {
-            product.Name = product.Name.Trim();
+            product.Name = (product.Name ?? string.Empty).Trim();
             product.Category = NormalizeOptionalText(product.Category);
         }
 
@@ -927,7 +1078,6 @@ public sealed class LocalFinanceStore
             sale.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
         }
 
-        snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductId = Math.Max(snapshot.NextProductId, snapshot.Products.Select(product => product.Id).DefaultIfEmpty().Max() + 1);
@@ -938,15 +1088,21 @@ public sealed class LocalFinanceStore
 
     private static void MigrateSnapshot(FinanceSnapshot snapshot)
     {
+        if (snapshot.SchemaVersion > CurrentSchemaVersion)
+        {
+            throw new InvalidDataException(
+                $"This backup was created by a newer version of the app (schema v{snapshot.SchemaVersion}; this app supports up to v{CurrentSchemaVersion}). Update the app, then import again.");
+        }
+
         if (snapshot.SchemaVersion <= 0)
         {
             snapshot.SchemaVersion = 1;
         }
 
-        if (snapshot.SchemaVersion < CurrentSchemaVersion)
-        {
-            snapshot.SchemaVersion = CurrentSchemaVersion;
-        }
+        // Per-version transforms go here as the schema evolves, e.g.:
+        // if (snapshot.SchemaVersion == 1) { ...upgrade to v2...; snapshot.SchemaVersion = 2; }
+
+        snapshot.SchemaVersion = CurrentSchemaVersion;
     }
 
     private static void ValidateSnapshot(FinanceSnapshot snapshot)
@@ -974,6 +1130,58 @@ public sealed class LocalFinanceStore
         if (snapshot.ProductSales.Any(sale => !productIds.Contains(sale.ProductId)))
         {
             throw new InvalidDataException("The backup references a product that does not exist.");
+        }
+
+        if (snapshot.ProductSales.Any(sale => sale.WorkerId.HasValue && !workerIds.Contains(sale.WorkerId.Value)))
+        {
+            throw new InvalidDataException("The backup references a worker that does not exist.");
+        }
+
+        // Money and quantity sanity — mirrors the [Range] attributes that only
+        // EditForm enforces, so bad values cannot arrive via import or old data.
+        if (snapshot.Workers.Any(worker => worker.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a worker without a name.");
+        }
+
+        if (snapshot.Workers.Any(worker => worker.DefaultCommissionPercentage is < 0 or > 100))
+        {
+            throw new InvalidDataException("The backup contains a commission percentage outside 0-100.");
+        }
+
+        if (snapshot.Services.Any(service => service.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a service without a name.");
+        }
+
+        if (snapshot.Services.Any(service => service.BasePrice < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative service price.");
+        }
+
+        if (snapshot.Products.Any(product => product.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a product without a name.");
+        }
+
+        if (snapshot.Products.Any(product => product.Price < 0 || product.StockQuantity < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative product price or stock quantity.");
+        }
+
+        if (snapshot.ServiceRecords.Any(record => record.AmountPaid < 0 || record.Tips < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative amount or tip.");
+        }
+
+        if (snapshot.ServiceRecords.Any(record => record.CommissionPercentageApplied is < 0 or > 100))
+        {
+            throw new InvalidDataException("The backup contains a commission percentage outside 0-100.");
+        }
+
+        if (snapshot.ProductSales.Any(sale => sale.Quantity < 1 || sale.UnitPrice < 0))
+        {
+            throw new InvalidDataException("The backup contains a product sale with an invalid quantity or price.");
         }
     }
 

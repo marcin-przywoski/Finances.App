@@ -8,22 +8,41 @@ public sealed class InMemoryKeyValueStorage : IKeyValueStorage
     public int ReadCount { get; private set; }
     public int WriteCount { get; private set; }
 
-    public ValueTask<string?> GetItemAsync(string key)
+    /// <summary>
+    /// When true, every operation yields first, mimicking real JS interop so
+    /// tests can exercise interleaved-await races.
+    /// </summary>
+    public bool SimulateAsync { get; set; }
+
+    public async ValueTask<string?> GetItemAsync(string key)
     {
+        if (SimulateAsync)
+        {
+            await Task.Yield();
+        }
+
         ReadCount++;
-        return ValueTask.FromResult(Items.TryGetValue(key, out var value) ? value : null);
+        return Items.TryGetValue(key, out var value) ? value : null;
     }
 
-    public ValueTask SetItemAsync(string key, string value)
+    public async ValueTask SetItemAsync(string key, string value)
     {
+        if (SimulateAsync)
+        {
+            await Task.Yield();
+        }
+
         WriteCount++;
         Items[key] = value;
-        return ValueTask.CompletedTask;
     }
 
-    public ValueTask RemoveItemAsync(string key)
+    public async ValueTask RemoveItemAsync(string key)
     {
+        if (SimulateAsync)
+        {
+            await Task.Yield();
+        }
+
         Items.Remove(key);
-        return ValueTask.CompletedTask;
     }
 }

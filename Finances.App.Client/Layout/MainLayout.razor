@@ -1,4 +1,8 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject LocalFinanceStore Store
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <div class="page">
     <div class="sidebar">
@@ -18,6 +22,17 @@
 
         <PwaBanner />
 
+        @if (showRecoveryBanner)
+        {
+            <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mx-4 mt-3 mb-0" role="alert">
+                <div>
+                    <strong>Your saved data could not be read.</strong>
+                    A copy of it was preserved — download it from the Data page before deciding what to do next.
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-dark" @onclick="GoToDataPage">Open Data page</button>
+            </div>
+        }
+
         <article class="content px-4 py-3">
             @Body
         </article>
@@ -32,9 +47,66 @@
 
 @code {
     private bool sidebarOpen;
+    private bool showRecoveryBanner;
+    private DotNetObjectReference<MainLayout>? selfRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.OnChange += HandleStoreChanged;
+        await RefreshRecoveryStateAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        selfRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("financeStorageSync.register", selfRef, LocalFinanceStore.StorageKey);
+    }
+
+    [JSInvokable]
+    public void OnExternalStorageChange()
+    {
+        Store.HandleExternalDataChange();
+    }
+
+    private void HandleStoreChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await RefreshRecoveryStateAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Layout refresh failed: {ex.Message}");
+            }
+        });
+    }
+
+    private async Task RefreshRecoveryStateAsync()
+    {
+        showRecoveryBanner = await Store.GetLoadStatusAsync() == SnapshotLoadStatus.RecoveredFromCorruptData;
+    }
+
+    private void GoToDataPage()
+    {
+        Navigation.NavigateTo("data");
+    }
 
     private void ToggleSidebar()
     {
         sidebarOpen = !sidebarOpen;
+    }
+
+    public void Dispose()
+    {
+        Store.OnChange -= HandleStoreChanged;
+        selfRef?.Dispose();
     }
 }
