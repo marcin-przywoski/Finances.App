@@ -30,6 +30,11 @@ public class ServiceRecord
 
     public string? Notes { get; set; }
 
-    public decimal WorkerShare => AmountPaid * (CommissionPercentageApplied / 100);
+    /// <summary>
+    /// The worker's cut, rounded to cents so displayed rows and their totals
+    /// agree. SalonShare is the exact remainder, so the two always sum to
+    /// AmountPaid.
+    /// </summary>
+    public decimal WorkerShare => Math.Round(AmountPaid * CommissionPercentageApplied / 100m, 2, MidpointRounding.AwayFromZero);
     public decimal SalonShare => AmountPaid - WorkerShare;
 }

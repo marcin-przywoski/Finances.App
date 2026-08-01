@@ -6,9 +6,9 @@
 
     @if (ActivePreset == "custom")
     {
-        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@From?.ToString("yyyy-MM-dd")" @onchange="OnFromChanged" />
+        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@From?.ToDateKey()" @onchange="OnFromChanged" />
         <span style="color: var(--text-muted);">to</span>
-        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@To?.ToString("yyyy-MM-dd")" @onchange="OnToChanged" />
+        <input type="date" class="form-control form-control-sm" style="width: auto;" value="@To?.ToDateKey()" @onchange="OnToChanged" />
     }
 </div>
 
@@ -53,7 +53,8 @@
 
     private async Task OnFromChanged(ChangeEventArgs e)
     {
-        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        // HTML date inputs always emit ISO yyyy-MM-dd regardless of locale.
+        if (TryParseIsoDate(e.Value?.ToString(), out var date))
         {
             From = date;
             await OnRangeChanged.InvokeAsync((From, To));
@@ -62,10 +63,16 @@
 
     private async Task OnToChanged(ChangeEventArgs e)
     {
-        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        if (TryParseIsoDate(e.Value?.ToString(), out var date))
         {
             To = date;
             await OnRangeChanged.InvokeAsync((From, To));
         }
+    }
+
+    private static bool TryParseIsoDate(string? value, out DateTime date)
+    {
+        return DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out date);
     }
 }

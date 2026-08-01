@@ -251,7 +251,7 @@ public sealed class LocalApiMessageHandler : HttpMessageHandler
             "daily-earnings" => JsonResponse(await _store.GetDailyEarningsAsync(workerId, from, to)),
             "revenue-by-worker" => JsonResponse(await _store.GetRevenueByWorkerAsync(from, to)),
             "service-popularity" => JsonResponse(await _store.GetServicePopularityAsync(from, to)),
-            "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, ReadInt(query, "forecastDays", 14))),
+            "forecast" => JsonResponse(await _store.GetForecastAsync(workerId, ReadInt(query, "forecastDays", 14), from, to)),
             "recent" => JsonResponse(await _store.GetRecentAsync(ReadInt(query, "count", 5))),
             "productsales-revenue" => JsonResponse(new { revenue = await _store.GetProductSalesRevenueAsync(from, to) }),
             "month-comparison" => JsonResponse(await _store.GetMonthComparisonAsync(workerId)),

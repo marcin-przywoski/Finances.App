@@ -493,7 +493,8 @@ public sealed class LocalFinanceStore
         var records = FilterStoredRecords(workerId, from, to).ToList();
         var totalRevenue = records.Sum(record => record.AmountPaid);
         var totalTips = records.Sum(record => record.Tips);
-        var totalWorkerShare = records.Sum(record => record.AmountPaid * (record.CommissionPercentageApplied / 100));
+        // Sum the rounded per-record shares so totals match the rows users see.
+        var totalWorkerShare = records.Sum(record => record.WorkerShare);
         var totalSalonShare = totalRevenue - totalWorkerShare;
 
         return new SummaryResult(totalRevenue, totalTips, totalWorkerShare, totalSalonShare, records.Count);
@@ -506,7 +507,7 @@ public sealed class LocalFinanceStore
         return FilterStoredRecords(workerId, from, to)
             .GroupBy(record => record.DatePerformed.Date)
             .Select(group => new DailyEarningResult(
-                group.Key.ToString("yyyy-MM-dd"),
+                group.Key.ToDateKey(),
                 group.Sum(record => record.AmountPaid),
                 group.Sum(record => record.Tips)))
             .OrderBy(item => item.Date, StringComparer.Ordinal)
@@ -545,13 +546,17 @@ public sealed class LocalFinanceStore
             .ToList();
     }
 
-    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays)
+    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? from = null, DateTime? to = null)
     {
         await EnsureLoadedAsync();
 
-        var cutoff = DateTime.Today.AddDays(-90);
+        // Honor the page's date filter when one is set; otherwise use the
+        // default 90-day training window.
+        var cutoff = (from ?? DateTime.Today.AddDays(-90)).Date;
         var dailyRevenue = _snapshot!.ServiceRecords
-            .Where(record => (!workerId.HasValue || record.WorkerId == workerId.Value) && record.DatePerformed.Date >= cutoff)
+            .Where(record => (!workerId.HasValue || record.WorkerId == workerId.Value)
+                && record.DatePerformed.Date >= cutoff
+                && (!to.HasValue || record.DatePerformed.Date <= to.Value.Date))
             .GroupBy(record => record.DatePerformed.Date)
             .Select(group => new
             {
@@ -593,7 +598,7 @@ public sealed class LocalFinanceStore
         {
             var dayIndex = (item.Date - baseDate).Days;
             return new HistoricalPointResult(
-                item.Date.ToString("yyyy-MM-dd"),
+                item.Date.ToDateKey(),
                 item.Revenue,
                 Math.Max(0, slope * dayIndex + intercept));
         }).ToArray();
@@ -604,7 +609,7 @@ public sealed class LocalFinanceStore
             var futureDate = lastDate.AddDays(offset);
             var dayIndex = (futureDate - baseDate).Days;
             return new ForecastPointResult(
-                futureDate.ToString("yyyy-MM-dd"),
+                futureDate.ToDateKey(),
                 Math.Max(0, slope * dayIndex + intercept));
         }).ToArray();
 
@@ -629,7 +634,7 @@ public sealed class LocalFinanceStore
             .Take(Math.Max(1, count))
             .Select(record => new RecentRecordResult(
                 record.Id,
-                record.DatePerformed.ToString("yyyy-MM-dd"),
+                record.DatePerformed.ToDateKey(),
                 workerNames.GetValueOrDefault(record.WorkerId, "Unknown"),
                 serviceNames.GetValueOrDefault(record.ServiceId, "Unknown"),
                 record.AmountPaid,
@@ -716,7 +721,7 @@ public sealed class LocalFinanceStore
         var allDates = servicesByDay.Keys.Union(productsByDay.Keys).OrderBy(d => d).ToList();
 
         var points = allDates.Select(d => new CombinedTimelinePoint(
-            d.ToString("yyyy-MM-dd"),
+            d.ToDateKey(),
             servicesByDay.GetValueOrDefault(d, 0),
             productsByDay.GetValueOrDefault(d, 0)
         )).ToList();

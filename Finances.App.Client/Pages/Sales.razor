@@ -1,5 +1,7 @@
 @page "/sales"
+@implements IDisposable
 @inject HttpClient Http
+@inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
 <PageTitle>Product Sales</PageTitle>
@@ -60,7 +62,7 @@ else
                         @foreach (var s in filtered)
                         {
                             <tr>
-                                <td>@s.DateSold.ToString("yyyy-MM-dd")</td>
+                                <td>@s.DateSold.ToDateKey()</td>
                                 <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
                                 <td>@(s.Worker?.Name ?? "—")</td>
                                 <td class="text-muted">@(s.ClientName ?? "—")</td>
@@ -175,7 +177,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Sale"
-               Message="@($"Are you sure you want to delete this product sale from {deleteTarget?.DateSold.ToString("yyyy-MM-dd")}? This cannot be undone.")"
+               Message="@($"Are you sure you want to delete this product sale from {deleteTarget?.DateSold.ToDateKey()}? This cannot be undone.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
@@ -200,9 +202,22 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        WorkerContext.OnChange += HandleWorkerChanged;
+        await WorkerContext.InitializeAsync();
         allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
         products = await Http.GetFromJsonAsync<List<Product>>("api/products");
         workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+    }
+
+    private void HandleWorkerChanged()
+    {
+        // Sales are filtered client-side, so a re-render is enough.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerChanged;
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -216,6 +231,9 @@ else
         if (allSales == null) return new();
 
         var q = allSales.AsEnumerable();
+
+        if (WorkerContext.SelectedWorkerId.HasValue)
+            q = q.Where(s => s.WorkerId == WorkerContext.SelectedWorkerId.Value);
 
         if (dateFrom.HasValue)
             q = q.Where(s => s.DateSold.Date >= dateFrom.Value.Date);

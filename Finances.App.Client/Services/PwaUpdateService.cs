@@ -81,7 +81,19 @@ public sealed class PwaUpdateService : IAsyncDisposable
     [JSInvokable]
     public Task UpdateState(string json)
     {
-        var nextState = JsonSerializer.Deserialize<PwaUpdateStateDto>(json, JsonOptions)?.ToState() ?? PwaUpdateState.Empty;
+        PwaUpdateState nextState;
+        try
+        {
+            nextState = JsonSerializer.Deserialize<PwaUpdateStateDto>(json, JsonOptions)?.ToState() ?? PwaUpdateState.Empty;
+        }
+        catch (JsonException ex)
+        {
+            // A malformed payload from JS must not become an unhandled
+            // promise rejection; keep the previous state.
+            Console.Error.WriteLine($"Ignoring malformed PWA state payload: {ex.Message}");
+            return Task.CompletedTask;
+        }
+
         var previousVersion = State.CurrentVersion;
         var shouldToast = nextState.JustUpdated && (!State.JustUpdated || !string.Equals(previousVersion, nextState.CurrentVersion, StringComparison.Ordinal));
 

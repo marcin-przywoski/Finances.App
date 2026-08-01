@@ -1,6 +1,8 @@
 @page "/analytics"
+@implements IDisposable
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject WorkerContextService WorkerContext
 
 <PageTitle>Analytics</PageTitle>
 
@@ -24,7 +26,7 @@ else
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h6 class="fw-semibold mb-0">Revenue Forecast</h6>
-                        <small class="text-muted">Linear regression on last 90 days &middot; @forecastDays-day projection</small>
+                        <small class="text-muted">Linear regression on @(dateFrom.HasValue ? "the selected range" : "the last 90 days") &middot; @forecastDays-day projection</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <label class="text-muted" style="font-size: 0.8rem;">Forecast days:</label>
@@ -141,6 +143,7 @@ else
                 <h6 class="fw-semibold mb-3">Top Services by Revenue</h6>
                 @if (serviceData != null && serviceData.Length > 0)
                 {
+                    var maxServiceRevenue = serviceData.Max(x => x.Revenue);
                     <div class="list-group list-group-flush">
                         @foreach (var s in serviceData.OrderByDescending(x => x.Revenue).Take(5))
                         {
@@ -152,9 +155,9 @@ else
                                     </div>
                                     <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
                                 </div>
-                                @if (serviceData.Max(x => x.Revenue) > 0)
+                                @if (maxServiceRevenue > 0)
                                 {
-                                    var pct = (double)s.Revenue / (double)serviceData.Max(x => x.Revenue) * 100;
+                                    var pct = (double)s.Revenue / (double)maxServiceRevenue * 100;
                                     <div class="progress-bar-custom">
                                         <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
                                     </div>
@@ -249,10 +252,33 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        WorkerContext.OnChange += HandleWorkerChanged;
+        await WorkerContext.InitializeAsync();
         var today = DateTime.Today;
         dateFrom = new DateTime(today.Year, today.Month, 1);
         dateTo = today;
         await LoadData();
+    }
+
+    private void HandleWorkerChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Analytics reload failed: {ex.Message}");
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerChanged;
     }
 
     private async Task OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -304,7 +330,10 @@ else
     {
         try
         {
-            forecastResult = await Http.GetFromJsonAsync<ForecastResult>($"api/analytics/forecast?forecastDays={forecastDays}");
+            // Same filters as every other chart on this page.
+            var qs = BuildQueryString();
+            qs = qs.Length > 0 ? $"{qs}&forecastDays={forecastDays}" : $"?forecastDays={forecastDays}";
+            forecastResult = await Http.GetFromJsonAsync<ForecastResult>($"api/analytics/forecast{qs}");
         }
         catch { }
     }
@@ -426,8 +455,9 @@ else
     private string BuildQueryString()
     {
         var parts = new List<string>();
-        if (dateFrom.HasValue) parts.Add($"from={dateFrom.Value:yyyy-MM-dd}");
-        if (dateTo.HasValue) parts.Add($"to={dateTo.Value:yyyy-MM-dd}");
+        if (dateFrom.HasValue) parts.Add($"from={dateFrom.Value.ToDateKey()}");
+        if (dateTo.HasValue) parts.Add($"to={dateTo.Value.ToDateKey()}");
+        if (WorkerContext.SelectedWorkerId.HasValue) parts.Add($"workerId={WorkerContext.SelectedWorkerId.Value}");
         return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
     }
 
