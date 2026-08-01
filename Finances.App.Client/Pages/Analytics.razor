@@ -7,7 +7,7 @@
 <PageTitle>Analytics</PageTitle>
 
 <div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Analytics</h2>
+    <h1 class="page-title mb-1">Analytics</h1>
     <p class="text-muted mb-0">Revenue trends, forecasting, and detailed breakdowns.</p>
 </div>
 
@@ -29,8 +29,8 @@ else
                         <small class="text-muted">Linear regression on @(dateFrom.HasValue ? "the selected range" : "the last 90 days") &middot; @forecastDays-day projection</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <label class="text-muted" style="font-size: 0.8rem;">Forecast days:</label>
-                        <select class="form-select form-select-sm" style="width: 80px;" value="@forecastDays" @onchange="OnForecastDaysChanged">
+                        <label class="text-muted" style="font-size: 0.8rem;" for="forecast-days">Forecast days:</label>
+                        <select id="forecast-days" class="form-select form-select-sm" style="width: 80px;" value="@forecastDays" @onchange="OnForecastDaysChanged">
                             <option value="7">7</option>
                             <option value="14">14</option>
                             <option value="30">30</option>
@@ -351,7 +351,7 @@ else
     private async Task RenderCharts()
     {
         // Each chart is wrapped individually so one failure doesn't block others
-        try { await RenderForecastChart(); } catch { }
+        try { await RenderForecastChart(); } catch (Exception ex) { Console.Error.WriteLine($"Forecast chart failed: {ex.Message}"); }
 
         try
         {
@@ -366,7 +366,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (combined timeline): {ex.Message}"); }
 
         try
         {
@@ -381,7 +381,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (worker revenue): {ex.Message}"); }
 
         try
         {
@@ -392,7 +392,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart", "servicePopularityChart", labels, data, (string[]?)null);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (service popularity): {ex.Message}"); }
 
         try
         {
@@ -404,7 +404,7 @@ else
                     new object[] { new { label = "Revenue", data = data, color = "#0d9488" } });
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (day-of-week): {ex.Message}"); }
 
         try
         {
@@ -415,7 +415,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderHorizontalBarChart", "topProductsChart", labels, data, (string[]?)null);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (top products): {ex.Message}"); }
 
         try
         {
@@ -429,7 +429,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (daily trend): {ex.Message}"); }
     }
 
     private async Task RenderForecastChart()
@@ -448,7 +448,7 @@ else
                     "forecastChart", histLabels, actualData, trendData, forecastLabels, forecastData);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Chart failed (forecast render): {ex.Message}"); }
     }
 
 }

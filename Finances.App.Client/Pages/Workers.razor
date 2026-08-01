@@ -1,25 +1,25 @@
 @page "/workers"
+@inherits CrudPageBase<Worker>
 @inject IFinanceStore Store
-@inject ToastService Toast
 
 <PageTitle>Workers</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Workers</h2>
+        <h1 class="page-title mb-1">Workers</h1>
         <p class="text-muted mb-0">Manage your team members and their commission rates.</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         Add Worker
     </button>
 </div>
 
-@if (workers == null)
+@if (items == null)
 {
     <LoadingSpinner />
 }
-else if (workers.Count == 0)
+else if (items.Count == 0)
 {
     <div class="card p-5 text-center">
         <p class="text-muted mb-3">No workers yet. Add your first team member to get started.</p>
@@ -35,17 +35,15 @@ else
                     <tr>
                         <th>Name</th>
                         <th>Commission %</th>
-                        <th>Linked User</th>
                         <th style="width: 140px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var worker in workers)
+                    @foreach (var worker in items)
                     {
                         <tr>
                             <td class="fw-semibold">@worker.Name</td>
                             <td>@worker.DefaultCommissionPercentage%</td>
-                            <td class="text-muted">@(worker.ApplicationUserId ?? "—")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(worker)">Edit</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(worker)">Delete</button>
@@ -58,40 +56,29 @@ else
     </div>
 }
 
-@if (showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Worker" : "Add Worker")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <InputText class="form-control" @bind-Value="formModel.Name" />
-                            <ValidationMessage For="() => formModel.Name" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Default Commission (%)</label>
-                            <InputNumber class="form-control" @bind-Value="formModel.DefaultCommissionPercentage" />
-                            <ValidationMessage For="() => formModel.DefaultCommissionPercentage" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
-                        </button>
-                    </div>
-                </EditForm>
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? "Edit Worker" : "Add Worker")" OnClose="CloseModal">
+    <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label" for="worker-name">Name</label>
+                <InputText id="worker-name" class="form-control" @bind-Value="formModel.Name" />
+                <ValidationMessage For="() => formModel.Name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="worker-commission">Default Commission (%)</label>
+                <InputNumber id="worker-commission" class="form-control" @bind-Value="formModel.DefaultCommissionPercentage" />
+                <ValidationMessage For="() => formModel.DefaultCommissionPercentage" />
             </div>
         </div>
-    </div>
-}
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Worker"
@@ -100,88 +87,23 @@ else
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
-    private List<Worker>? workers;
-    private Worker formModel = new();
-    private Worker? deleteTarget;
-    private bool showModal, isEditing, saving, showDeleteConfirm;
-    private int editId;
+    protected override string EntityName => "Worker";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task<IReadOnlyList<Worker>> LoadItemsAsync() => await Store.GetWorkersAsync();
+
+    protected override Task AddItemAsync(Worker item) => Store.AddWorkerAsync(item);
+
+    protected override Task UpdateItemAsync(int id, Worker item) => Store.UpdateWorkerAsync(id, item);
+
+    protected override Task<DeleteResult> DeleteItemAsync(Worker item) => Store.DeleteWorkerAsync(item.Id);
+
+    protected override int GetId(Worker item) => item.Id;
+
+    protected override Worker CloneItem(Worker item) => new()
     {
-        await LoadWorkers();
-    }
-
-    private async Task LoadWorkers()
-    {
-        workers = (await Store.GetWorkersAsync()).ToList();
-    }
-
-    private void OpenAddModal()
-    {
-        formModel = new Worker();
-        isEditing = false;
-        showModal = true;
-    }
-
-    private void OpenEditModal(Worker w)
-    {
-        formModel = new Worker { Id = w.Id, Name = w.Name, DefaultCommissionPercentage = w.DefaultCommissionPercentage, ApplicationUserId = w.ApplicationUserId };
-        editId = w.Id;
-        isEditing = true;
-        showModal = true;
-    }
-
-    private void CloseModal() => showModal = false;
-
-    private async Task HandleSubmit()
-    {
-        saving = true;
-        try
-        {
-            if (isEditing)
-            {
-                await Store.UpdateWorkerAsync(editId, formModel);
-                Toast.Show("Worker updated");
-            }
-            else
-            {
-                await Store.AddWorkerAsync(formModel);
-                Toast.Show("Worker added");
-            }
-            await LoadWorkers();
-            showModal = false;
-        }
-        catch (Exception ex)
-        {
-            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
-        }
-        finally { saving = false; }
-    }
-
-    private void ConfirmDelete(Worker w)
-    {
-        deleteTarget = w;
-        showDeleteConfirm = true;
-    }
-
-    private async Task HandleDelete()
-    {
-        if (deleteTarget == null) return;
-        try
-        {
-            var result = await Store.DeleteWorkerAsync(deleteTarget.Id);
-            if (result.Success) Toast.Show("Worker deleted");
-            else Toast.Show(result.ErrorMessage ?? "Cannot delete this worker.", ToastLevel.Error);
-        }
-        catch (Exception ex)
-        {
-            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
-        }
-        showDeleteConfirm = false;
-        deleteTarget = null;
-        await LoadWorkers();
-    }
+        Id = item.Id,
+        Name = item.Name,
+        DefaultCommissionPercentage = item.DefaultCommissionPercentage
+    };
 }

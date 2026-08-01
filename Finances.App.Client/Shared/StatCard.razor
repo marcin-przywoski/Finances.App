@@ -8,7 +8,7 @@
             var isUp = TrendPercent.Value >= 0;
             var trendClass = isUp ? "trend-up" : "trend-down";
             <div class="stat-trend @trendClass">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     @if (isUp)
                     {
                         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -20,7 +20,7 @@
                         <polyline points="17 18 23 18 23 12"/>
                     }
                 </svg>
-                <span>@(Math.Abs(TrendPercent.Value).ToString("F1"))%</span>
+                <span><span class="visually-hidden-text">@(isUp ? "up" : "down") </span>@(Math.Abs(TrendPercent.Value).ToString("F1"))%</span>
             </div>
         }
     </div>

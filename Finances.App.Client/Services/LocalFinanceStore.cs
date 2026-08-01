@@ -115,7 +115,6 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         var created = CloneWorker(worker);
         created.Id = _snapshot!.NextWorkerId++;
         created.Name = created.Name.Trim();
-        created.ApplicationUserId = NormalizeOptionalText(created.ApplicationUserId);
 
         _snapshot.Workers.Add(created);
         await PersistAsync();
@@ -136,7 +135,6 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         var existing = _snapshot!.Workers.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
         existing.Name = worker.Name.Trim();
         existing.DefaultCommissionPercentage = worker.DefaultCommissionPercentage;
-        existing.ApplicationUserId = NormalizeOptionalText(worker.ApplicationUserId);
 
         await PersistAsync();
     }
@@ -639,8 +637,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         {
             Id = worker.Id,
             Name = worker.Name,
-            DefaultCommissionPercentage = worker.DefaultCommissionPercentage,
-            ApplicationUserId = worker.ApplicationUserId
+            DefaultCommissionPercentage = worker.DefaultCommissionPercentage
         };
     }
 
@@ -739,7 +736,6 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         foreach (var worker in snapshot.Workers)
         {
             worker.Name = (worker.Name ?? string.Empty).Trim();
-            worker.ApplicationUserId = NormalizeOptionalText(worker.ApplicationUserId);
         }
 
         foreach (var service in snapshot.Services)

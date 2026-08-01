@@ -30,12 +30,21 @@ public class ToastService
 
     private async Task RemoveAfterDelay(ToastMessage toast)
     {
-        await Task.Delay(2700);
-        toast.FadingOut = true;
-        OnChange?.Invoke();
+        // Fire-and-forget: guard so a subscriber throwing never becomes an
+        // unobserved task exception.
+        try
+        {
+            await Task.Delay(2700);
+            toast.FadingOut = true;
+            OnChange?.Invoke();
 
-        await Task.Delay(300);
-        Toasts.Remove(toast);
-        OnChange?.Invoke();
+            await Task.Delay(300);
+            Toasts.Remove(toast);
+            OnChange?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Toast cleanup failed: {ex.Message}");
+        }
     }
 }

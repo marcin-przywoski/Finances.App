@@ -5,14 +5,20 @@
 @inject NavigationManager Navigation
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar @(sidebarOpen ? "open" : null)">
         <NavMenu />
     </div>
 
+    @if (sidebarOpen)
+    {
+        <div class="sidebar-backdrop d-md-none" @onclick="CloseSidebar"></div>
+    }
+
     <main>
         <div class="top-bar">
-            <button class="sidebar-toggle d-md-none" @onclick="ToggleSidebar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            <button class="sidebar-toggle d-md-none" @onclick="ToggleSidebar"
+                    aria-label="Toggle navigation" aria-expanded="@(sidebarOpen ? "true" : "false")">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <div class="top-bar-right">
                 <span class="top-bar-user">Stored only in this browser</span>
@@ -39,6 +45,8 @@
     </main>
 </div>
 
+<Toast />
+
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
@@ -53,6 +61,7 @@
     protected override async Task OnInitializedAsync()
     {
         Store.OnChange += HandleStoreChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
         await RefreshRecoveryStateAsync();
     }
 
@@ -89,6 +98,15 @@
         });
     }
 
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (sidebarOpen)
+        {
+            sidebarOpen = false;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task RefreshRecoveryStateAsync()
     {
         showRecoveryBanner = await Store.GetLoadStatusAsync() == SnapshotLoadStatus.RecoveredFromCorruptData;
@@ -104,9 +122,15 @@
         sidebarOpen = !sidebarOpen;
     }
 
+    private void CloseSidebar()
+    {
+        sidebarOpen = false;
+    }
+
     public void Dispose()
     {
         Store.OnChange -= HandleStoreChanged;
+        Navigation.LocationChanged -= HandleLocationChanged;
         selfRef?.Dispose();
     }
 }

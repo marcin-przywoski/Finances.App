@@ -560,3 +560,51 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+/* Page titles are h1 for document structure and FocusOnNavigate, styled to
+   the compact size the layout was designed around. */
+.content .page-title {
+    font-size: calc(1.325rem + 0.9vw);
+    font-weight: 700;
+}
+
+@media (min-width: 1200px) {
+    .content .page-title {
+        font-size: 2rem;
+    }
+}
+
+/* Sortable column headers are real buttons for keyboard access. */
+.sort-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: inherit;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.sort-button:hover {
+    color: var(--primary);
+}
+
+.sort-button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Visually hidden text for screen readers. */
+.visually-hidden-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

@@ -12,6 +12,4 @@ public class Worker
 
     [Range(0, 100)]
     public decimal DefaultCommissionPercentage { get; set; }
-
-    public string? ApplicationUserId { get; set; }
 }

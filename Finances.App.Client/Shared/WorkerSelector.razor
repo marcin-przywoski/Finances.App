@@ -5,8 +5,8 @@
 @inject WorkerContextService WorkerContext
 
 <div class="d-flex align-items-center gap-2">
-    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;">Worker:</label>
-    <select class="form-select form-select-sm" style="width: auto; min-width: 160px;"
+    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;" for="global-worker-filter">Worker:</label>
+    <select id="global-worker-filter" class="form-select form-select-sm" style="width: auto; min-width: 160px;"
             value="@WorkerContext.SelectedWorkerId" @onchange="OnWorkerChanged">
         <option value="">-- Select --</option>
         @if (workers != null)

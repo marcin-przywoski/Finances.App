@@ -1,3 +1,5 @@
+@* Accessible modal shell shared by all edit/create dialogs: labelled dialog
+   semantics, Escape-to-close, initial focus, and a labelled close button. *@
 @if (IsVisible)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.4);"
@@ -7,29 +9,21 @@
             <div class="modal-content" tabindex="-1" @ref="contentRef">
                 <div class="modal-header">
                     <h5 class="modal-title" id="@titleId">@Title</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="Cancel"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAsync"></button>
                 </div>
-                <div class="modal-body">
-                    <p>@Message</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="Confirm">@ConfirmText</button>
-                </div>
+                @ChildContent
             </div>
         </div>
     </div>
 }
 
 @code {
-    [Parameter] public string Title { get; set; } = "Confirm";
-    [Parameter] public string Message { get; set; } = "Are you sure?";
-    [Parameter] public string ConfirmText { get; set; } = "Delete";
     [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public EventCallback OnConfirm { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private readonly string titleId = $"confirm-title-{Guid.NewGuid():N}";
+    private readonly string titleId = $"modal-title-{Guid.NewGuid():N}";
     private ElementReference contentRef;
     private bool wasVisible;
 
@@ -37,6 +31,8 @@
     {
         if (IsVisible && !wasVisible)
         {
+            // Move focus into the dialog when it opens so keyboard and
+            // screen-reader users land inside it.
             try
             {
                 await contentRef.FocusAsync();
@@ -52,16 +48,11 @@
 
     private Task HandleKeyDown(KeyboardEventArgs e)
     {
-        return e.Key == "Escape" ? Cancel() : Task.CompletedTask;
+        return e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
     }
 
-    private async Task Confirm()
+    private Task CloseAsync()
     {
-        await OnConfirm.InvokeAsync();
-    }
-
-    private async Task Cancel()
-    {
-        await OnCancel.InvokeAsync();
+        return OnClose.InvokeAsync();
     }
 }

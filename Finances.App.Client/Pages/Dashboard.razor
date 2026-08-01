@@ -7,7 +7,7 @@
 <PageTitle>Dashboard</PageTitle>
 
 <div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Dashboard</h2>
+    <h1 class="page-title mb-1">Dashboard</h1>
     <p class="text-muted mb-0">Overview of your salon's financial performance.</p>
 </div>
 
@@ -258,22 +258,20 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Timeline chart failed: {ex.Message}"); }
 
         try
         {
-            var svcTotal = (decimal)serviceRevenueTotal;
-            var prdTotal = (decimal)productRevenueTotal;
-            if (svcTotal > 0 || prdTotal > 0)
+            if (serviceRevenueTotal > 0 || productRevenueTotal > 0)
             {
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart",
                     "revenueSourcesChart",
                     new[] { "Services", "Products" },
-                    new[] { svcTotal, prdTotal },
+                    new[] { serviceRevenueTotal, productRevenueTotal },
                     new[] { "#0d9488", "#8b5cf6" });
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Revenue sources chart failed: {ex.Message}"); }
 
         try
         {
@@ -285,7 +283,7 @@ else
                 await JS.InvokeVoidAsync("financeCharts.renderMiniBarChart", "dayOfWeekChart", labels, data, maxIdx);
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Day-of-week chart failed: {ex.Message}"); }
     }
 
 }

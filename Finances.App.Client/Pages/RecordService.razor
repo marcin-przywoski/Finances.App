@@ -7,7 +7,7 @@
 <PageTitle>Record Service</PageTitle>
 
 <div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Record a Service</h2>
+    <h1 class="page-title mb-1">Record a Service</h1>
     <p class="text-muted mb-0">Log a completed service for a client.</p>
 </div>
 
@@ -23,8 +23,8 @@ else
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Worker</label>
-                    <select class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
+                    <label class="form-label" for="record-worker">Worker</label>
+                    <select id="record-worker" class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
                         <option value="0">-- Select Worker --</option>
                         @foreach (var w in workers)
                         {
@@ -34,8 +34,8 @@ else
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Service</label>
-                    <select class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
+                    <label class="form-label" for="record-service">Service</label>
+                    <select id="record-service" class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
                         <option value="0">-- Select Service --</option>
                         @foreach (var s in services)
                         {
@@ -45,36 +45,36 @@ else
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Date</label>
-                    <InputDate class="form-control" @bind-Value="record.DatePerformed" />
+                    <label class="form-label" for="record-date">Date</label>
+                    <InputDate id="record-date" class="form-control" @bind-Value="record.DatePerformed" />
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Client Name</label>
-                    <InputText class="form-control" @bind-Value="record.ClientName" placeholder="Optional" />
+                    <label class="form-label" for="record-client">Client Name</label>
+                    <InputText id="record-client" class="form-control" @bind-Value="record.ClientName" placeholder="Optional" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Amount Paid</label>
-                    <InputNumber class="form-control" @bind-Value="record.AmountPaid" />
+                    <label class="form-label" for="record-amount">Amount Paid</label>
+                    <InputNumber id="record-amount" class="form-control" @bind-Value="record.AmountPaid" />
                     <ValidationMessage For="() => record.AmountPaid" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Commission %</label>
-                    <InputNumber class="form-control" @bind-Value="record.CommissionPercentageApplied" />
+                    <label class="form-label" for="record-commission">Commission %</label>
+                    <InputNumber id="record-commission" class="form-control" @bind-Value="record.CommissionPercentageApplied" />
                     <ValidationMessage For="() => record.CommissionPercentageApplied" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Tips</label>
-                    <InputNumber class="form-control" @bind-Value="record.Tips" />
+                    <label class="form-label" for="record-tips">Tips</label>
+                    <InputNumber id="record-tips" class="form-control" @bind-Value="record.Tips" />
                     <ValidationMessage For="() => record.Tips" />
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Notes</label>
-                    <InputTextArea class="form-control" @bind-Value="record.Notes" rows="2" placeholder="Optional notes..." />
+                    <label class="form-label" for="record-notes">Notes</label>
+                    <InputTextArea id="record-notes" class="form-control" @bind-Value="record.Notes" rows="2" placeholder="Optional notes..." />
                 </div>
             </div>
 
@@ -84,10 +84,8 @@ else
                 <div>
                     @if (record.AmountPaid > 0 && record.CommissionPercentageApplied > 0)
                     {
-                        var workerShare = record.AmountPaid * (record.CommissionPercentageApplied / 100);
-                        var salonShare = record.AmountPaid - workerShare;
                         <span class="text-muted" style="font-size: 0.875rem;">
-                            Worker: <strong>@workerShare.ToString("C")</strong> &middot; Salon: <strong>@salonShare.ToString("C")</strong>
+                            Worker: <strong>@record.WorkerShare.ToString("C")</strong> &middot; Salon: <strong>@record.SalonShare.ToString("C")</strong>
                         </span>
                     }
                 </div>
@@ -99,7 +97,6 @@ else
     </div>
 }
 
-<Toast />
 
 @code {
     private List<Worker>? workers;

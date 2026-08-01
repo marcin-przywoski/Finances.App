@@ -1,8 +1,8 @@
 <div class="date-range-filter">
-    <button class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Today</button>
-    <button class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>This Week</button>
-    <button class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>This Month</button>
-    <button class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Custom</button>
+    <button type="button" class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Today</button>
+    <button type="button" class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>This Week</button>
+    <button type="button" class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>This Month</button>
+    <button type="button" class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Custom</button>
 
     @if (ActivePreset == "custom")
     {
