@@ -1,6 +1,7 @@
 @page "/"
 @implements IDisposable
 @inject IAnalyticsService Analytics
+@inject IFinanceStore Store
 @inject MoneyFormat Money
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
@@ -15,6 +16,42 @@
 @if (loading)
 {
     <LoadingSpinner />
+}
+else if (isFirstRun)
+{
+    <div class="card p-4 mb-4" data-testid="first-run-card">
+        <h5 class="fw-semibold mb-2">Welcome! Let's set up your salon.</h5>
+        <p class="text-muted mb-4">
+            Everything you record stays in this browser only — no account, no server.
+            Three quick steps and your dashboard comes to life:
+        </p>
+        <ol class="list-unstyled d-flex flex-column gap-3 mb-4">
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">1</span>
+                <div>
+                    <a class="fw-semibold" href="workers">Add your workers</a>
+                    <div class="text-muted small">Names and their commission split.</div>
+                </div>
+            </li>
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">2</span>
+                <div>
+                    <a class="fw-semibold" href="services">Add your services</a>
+                    <div class="text-muted small">Your price list — haircuts, coloring, and so on.</div>
+                </div>
+            </li>
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">3</span>
+                <div>
+                    <a class="fw-semibold" href="record">Record your first visit</a>
+                    <div class="text-muted small">Revenue, commissions, and analytics start here.</div>
+                </div>
+            </li>
+        </ol>
+        <p class="text-muted small mb-0">
+            Moving from another device? <a href="data">Import a backup</a> instead.
+        </p>
+    </div>
 }
 else
 {
@@ -53,17 +90,35 @@ else
         <div class="col-lg-8">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Revenue Breakdown</h6>
-                <div style="height: 300px;">
-                    <canvas id="combinedTimelineChart"></canvas>
-                </div>
+                @if (combinedTimeline?.Points.Count > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="combinedTimelineChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No revenue recorded this month yet.</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Revenue Sources</h6>
-                <div style="height: 300px;">
-                    <canvas id="revenueSourcesChart"></canvas>
-                </div>
+                @if (serviceRevenueTotal > 0 || productRevenueTotal > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="revenueSourcesChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No revenue recorded this month yet.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -72,9 +127,18 @@ else
         <div class="col-lg-4">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Busiest Days</h6>
-                <div style="height: 240px;">
-                    <canvas id="dayOfWeekChart"></canvas>
-                </div>
+                @if (dayOfWeekData?.Any(d => d.Count > 0) == true)
+                {
+                    <div style="height: 240px;">
+                        <canvas id="dayOfWeekChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 240px;">
+                        <p class="text-muted mb-0">No services recorded this month yet.</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-4">
@@ -139,6 +203,7 @@ else
 
 @code {
     private bool loading = true;
+    private bool isFirstRun;
     private string totalRevenue = "0";
     private string totalTips = "0";
     private string avgTicket = "0";
@@ -187,6 +252,11 @@ else
         loading = true;
         try
         {
+            var dataState = await Store.GetDataStateSummaryAsync();
+            isFirstRun = dataState.WorkerCount == 0 && dataState.ServiceCount == 0
+                && dataState.ProductCount == 0 && dataState.ServiceRecordCount == 0
+                && dataState.ProductSaleCount == 0 && dataState.ExpenseCount == 0;
+
             var wId = WorkerContext.SelectedWorkerId;
             var now = DateTime.Today;
             var monthStart = new DateTime(now.Year, now.Month, 1);
@@ -276,7 +346,10 @@ else
 
         try
         {
-            if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+            // Guard matches the markup: the canvas only exists when at least
+            // one day has records, which also keeps an all-zero week from
+            // spuriously highlighting Monday as "busiest".
+            if (dayOfWeekData?.Any(d => d.Count > 0) == true)
             {
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();

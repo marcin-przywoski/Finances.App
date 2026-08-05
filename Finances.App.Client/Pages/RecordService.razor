@@ -16,6 +16,24 @@
 {
     <LoadingSpinner />
 }
+else if (workers.Count == 0 || services.Count == 0)
+{
+    <div class="card p-5 text-center" style="max-width: 640px;">
+        <p class="text-muted mb-3">
+            Recording a visit needs at least one worker and one service.
+        </p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            @if (workers.Count == 0)
+            {
+                <a class="btn btn-primary" href="workers">Add Workers</a>
+            }
+            @if (services.Count == 0)
+            {
+                <a class="btn btn-primary" href="services">Add Services</a>
+            }
+        </div>
+    </div>
+}
 else
 {
     <div class="card p-4" style="max-width: 640px;">

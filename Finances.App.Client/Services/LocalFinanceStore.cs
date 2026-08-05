@@ -248,13 +248,20 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         await PersistAsync();
     }
 
-    public async Task DeleteProductAsync(int id)
+    public async Task<DeleteResult> DeleteProductAsync(int id)
     {
         await EnsureLoadedAsync();
 
         var product = _snapshot!.Products.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+
+        if (_snapshot.ProductSales.Any(sale => sale.ProductId == id))
+        {
+            return new DeleteResult(false, "Cannot delete product with existing sales.");
+        }
+
         _snapshot.Products.Remove(product);
         await PersistAsync();
+        return new DeleteResult(true);
     }
 
     public async Task<IReadOnlyList<ProductSale>> GetProductSalesAsync()
@@ -565,6 +572,8 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
         await EnsureLoadedAsync();
 
+        await BackupOutgoingSnapshotAsync();
+
         _snapshot = imported;
         _snapshot.LastUpdatedUtc = DateTime.UtcNow;
 
@@ -572,13 +581,33 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         NotifyChanged();
     }
 
+    public ValueTask<string?> GetPreResetJsonAsync()
+    {
+        return _storage.GetItemAsync(PreResetKey);
+    }
+
     public async Task ResetAsync()
     {
         await EnsureLoadedAsync();
 
+        await BackupOutgoingSnapshotAsync();
+
+        _snapshot = CreateDefaultSnapshot();
+        LoadStatus = SnapshotLoadStatus.Ok;
+        await SaveAsync();
+        NotifyChanged();
+    }
+
+    /// <summary>
+    /// Cheap undo for the two whole-snapshot replacements (reset and import):
+    /// keep the outgoing data under one side key, surfaced on the Data page
+    /// as "Restore previous data". Best-effort — a full quota must not block
+    /// the reset/import itself.
+    /// </summary>
+    private async Task BackupOutgoingSnapshotAsync()
+    {
         try
         {
-            // Cheap undo: keep the outgoing data under a side key.
             var outgoing = JsonSerializer.Serialize(_snapshot, IndentedJson);
             await _storage.SetItemAsync(PreResetKey, outgoing);
         }
@@ -586,11 +615,6 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         {
             Console.Error.WriteLine($"Could not write pre-reset backup: {ex.Message}");
         }
-
-        _snapshot = CreateDefaultSnapshot();
-        LoadStatus = SnapshotLoadStatus.Ok;
-        await SaveAsync();
-        NotifyChanged();
     }
 
     private Task EnsureLoadedAsync()
@@ -799,26 +823,10 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
     private static FinanceSnapshot CreateDefaultSnapshot()
     {
-        var snapshot = new FinanceSnapshot
-        {
-            Workers =
-            [
-                new Worker { Id = 1, Name = "Jan Kowalski", DefaultCommissionPercentage = 50 },
-                new Worker { Id = 2, Name = "Anna Nowak", DefaultCommissionPercentage = 45 },
-                new Worker { Id = 3, Name = "Piotr Wisniewski", DefaultCommissionPercentage = 55 }
-            ],
-            Services =
-            [
-                new Service { Id = 1, Name = "Strzyzenie meskie", BasePrice = 50 },
-                new Service { Id = 2, Name = "Strzyzenie damskie", BasePrice = 80 },
-                new Service { Id = 3, Name = "Broda", BasePrice = 30 },
-                new Service { Id = 4, Name = "Koloryzacja", BasePrice = 150 },
-                new Service { Id = 5, Name = "Strzyzenie + Broda", BasePrice = 70 }
-            ],
-            Products = [],
-            ServiceRecords = []
-        };
-
+        // A brand-new install starts empty; the Dashboard shows a first-run
+        // checklist instead of placeholder people. Tests that need data seed
+        // it explicitly (see TestData.SeedSnapshot in the test project).
+        var snapshot = new FinanceSnapshot();
         NormalizeSnapshot(snapshot);
         return snapshot;
     }

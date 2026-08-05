@@ -162,7 +162,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Sale"
-               Message="@($"Are you sure you want to delete this product sale from {deleteTarget?.DateSold.ToDateKey()}? This cannot be undone.")"
+               Message="@($"Delete this product sale from {deleteTarget?.DateSold.ToDateKey()}? Its units return to stock, and you can undo right after deleting.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
@@ -338,10 +338,24 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
+        var deleted = deleteTarget;
         try
         {
-            await Store.DeleteProductSaleAsync(deleteTarget.Id);
-            Toast.Show("Sale deleted");
+            await Store.DeleteProductSaleAsync(deleted.Id);
+            // Undo goes back through AddProductSaleAsync, so stock is
+            // re-decremented with the usual sufficiency check; if the stock
+            // was sold meanwhile the undo fails with the real reason.
+            Toast.Show("Sale deleted", ToastLevel.Success, "Undo", async () =>
+            {
+                await Store.AddProductSaleAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allSales = (await Store.GetProductSalesAsync()).ToList();
+                    products = (await Store.GetProductsAsync()).ToList();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
             allSales = (await Store.GetProductSalesAsync()).ToList();
             products = (await Store.GetProductsAsync()).ToList();
             ApplyFilter();

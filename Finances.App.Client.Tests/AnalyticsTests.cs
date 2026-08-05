@@ -6,11 +6,11 @@ namespace Finances.App.Client.Tests;
 
 /// <summary>
 /// Characterization tests pinning the analytics math in <see cref="LocalFinanceStore"/>.
-/// The store seeds 3 workers (ids 1-3) and 5 services (ids 1-5) on first load.
+/// Storage is preloaded with the TestData catalog (workers 1-3, services 1-5).
 /// </summary>
 public class AnalyticsTests
 {
-    private static LocalFinanceStore CreateStore() => new(new InMemoryKeyValueStorage());
+    private static LocalFinanceStore CreateStore() => new(TestData.CreateSeededStorage());
 
     private static Task<ServiceRecord> AddRecordAsync(
         LocalFinanceStore store,

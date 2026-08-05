@@ -27,7 +27,7 @@ public class DataSafetyTests
 
         var workers = await store.GetWorkersAsync();
 
-        Assert.Equal(3, workers.Count);
+        Assert.Empty(workers);
         Assert.Equal(SnapshotLoadStatus.RecoveredFromCorruptData, store.LoadStatus);
         Assert.Equal("{definitely not json", storage.Items[LocalFinanceStore.QuarantineKey]);
     }
@@ -146,7 +146,6 @@ public class DataSafetyTests
 
         storage.FailWrites = false;
         var workers = await store.GetWorkersAsync();
-        Assert.Equal(3, workers.Count);
         Assert.DoesNotContain(workers, worker => worker.Name == "New");
     }
 
@@ -281,7 +280,7 @@ public class DataSafetyTests
 
         Assert.True(storage.Items.ContainsKey(LocalFinanceStore.PreResetKey));
         Assert.Contains("Keep me", storage.Items[LocalFinanceStore.PreResetKey]);
-        Assert.Equal(3, (await store.GetWorkersAsync()).Count);
+        Assert.Empty(await store.GetWorkersAsync());
     }
 
     [Fact]

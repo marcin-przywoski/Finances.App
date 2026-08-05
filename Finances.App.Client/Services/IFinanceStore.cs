@@ -29,7 +29,7 @@ public interface IFinanceStore
     Task<IReadOnlyList<Product>> GetProductsAsync();
     Task<Product> AddProductAsync(Product product);
     Task UpdateProductAsync(int id, Product product);
-    Task DeleteProductAsync(int id);
+    Task<DeleteResult> DeleteProductAsync(int id);
 
     Task<IReadOnlyList<ServiceRecord>> GetServiceRecordsAsync();
     Task<ServiceRecord> AddServiceRecordAsync(ServiceRecord record);
@@ -52,5 +52,6 @@ public interface IFinanceStore
     Task<string> ExportAsync();
     Task ImportAsync(string json);
     Task ResetAsync();
+    ValueTask<string?> GetPreResetJsonAsync();
     Task<DataStateSummary> GetDataStateSummaryAsync();
 }

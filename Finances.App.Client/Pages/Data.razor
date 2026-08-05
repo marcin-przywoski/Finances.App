@@ -113,8 +113,17 @@ else
                         Import JSON
                         <InputFile OnChange="ImportAsync" accept=".json,application/json" class="d-none" disabled="@busy" />
                     </label>
-                    <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Reset Starter Data</button>
+                    <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Erase All Data</button>
                 </div>
+                @if (preResetAvailable)
+                {
+                    <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => showRestoreConfirm = true" disabled="@busy" data-testid="restore-previous">
+                            Restore previous data
+                        </button>
+                        <span class="text-muted small">Brings back the data from before your last erase or import.</span>
+                    </div>
+                }
                 <p class="mb-0 mt-3 small @(IsStorageNearlyFull ? "text-danger fw-semibold" : "text-muted")">
                     Browser storage used: ~@FormatStorageSize(summary.ApproximateSizeChars)
                     @if (IsStorageNearlyFull)
@@ -223,11 +232,18 @@ else
 }
 
 <ConfirmDialog IsVisible="showResetConfirm"
-               Title="Reset Local Data"
-               Message="Replace the current browser data with the starter workers and services? This also removes all recorded history in this browser."
-               ConfirmText="Reset Data"
+               Title="Erase Local Data"
+               Message="Erase all data in this browser and start empty? A copy of the current data is kept, so you can restore it afterwards from this page."
+               ConfirmText="Erase Data"
                OnConfirm="HandleResetAsync"
                OnCancel="() => showResetConfirm = false" />
+
+<ConfirmDialog IsVisible="showRestoreConfirm"
+               Title="Restore Previous Data"
+               Message="Replace the current browser data with the copy saved before your last erase or import?"
+               ConfirmText="Restore"
+               OnConfirm="HandleRestorePreviousAsync"
+               OnCancel="() => showRestoreConfirm = false" />
 
 
 @code {
@@ -238,9 +254,11 @@ else
     private DataStateSummary? summary;
     private string? quarantinedJson;
     private string currencyCode = string.Empty;
+    private bool preResetAvailable;
     private bool busy;
     private bool pwaBusy;
     private bool showResetConfirm;
+    private bool showRestoreConfirm;
 
     private bool IsStorageNearlyFull => summary is not null && summary.ApproximateSizeChars > StorageWarningChars;
 
@@ -265,6 +283,7 @@ else
         summary = await Store.GetDataStateSummaryAsync();
         quarantinedJson = await Store.GetQuarantinedJsonAsync();
         currencyCode = (await Store.GetSettingsAsync()).CurrencyCode ?? string.Empty;
+        preResetAvailable = !string.IsNullOrWhiteSpace(await Store.GetPreResetJsonAsync());
     }
 
     private async Task OnCurrencyChangedAsync(ChangeEventArgs e)
@@ -401,7 +420,43 @@ else
             await Store.ResetAsync();
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Local data reset to starter values.");
+            Toast.Show("Local data erased. You can restore the previous data from this page.");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task HandleRestorePreviousAsync()
+    {
+        showRestoreConfirm = false;
+
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var json = await Store.GetPreResetJsonAsync();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Toast.Show("No previous data copy was found.", ToastLevel.Error);
+                return;
+            }
+
+            // Import writes its own pre-import backup of the current state, so
+            // restoring is reversible too.
+            await Store.ImportAsync(json);
+            await SyncSelectedWorkerAsync();
+            await RefreshSummaryAsync();
+            Toast.Show("Previous data restored.");
         }
         catch (Exception ex)
         {

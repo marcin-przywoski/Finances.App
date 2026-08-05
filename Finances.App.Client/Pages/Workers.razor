@@ -82,7 +82,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Worker"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}? This cannot be undone.")"
+               Message="@($"Delete {deleteTarget?.Name}? You can undo right after deleting.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />

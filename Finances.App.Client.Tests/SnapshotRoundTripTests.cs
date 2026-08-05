@@ -17,7 +17,7 @@ public class SnapshotRoundTripTests
     private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public async Task Fresh_store_seeds_default_workers_and_services_and_persists_them()
+    public async Task Fresh_store_starts_empty_and_persists_an_empty_snapshot()
     {
         var storage = new InMemoryKeyValueStorage();
         var store = new LocalFinanceStore(storage);
@@ -25,15 +25,15 @@ public class SnapshotRoundTripTests
         var workers = await store.GetWorkersAsync();
         var services = await store.GetServicesAsync();
 
-        Assert.Equal(3, workers.Count);
-        Assert.Equal(5, services.Count);
+        Assert.Empty(workers);
+        Assert.Empty(services);
         Assert.True(storage.Items.ContainsKey(StorageKey));
     }
 
     [Fact]
     public async Task Export_import_export_is_stable_apart_from_last_updated_timestamp()
     {
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         await store.AddServiceRecordAsync(new ServiceRecord
         {
             WorkerId = 1,
@@ -154,7 +154,7 @@ public class SnapshotRoundTripTests
     [Fact]
     public async Task Deleting_worker_with_service_records_is_refused()
     {
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         await store.AddServiceRecordAsync(new ServiceRecord
         {
             WorkerId = 1,

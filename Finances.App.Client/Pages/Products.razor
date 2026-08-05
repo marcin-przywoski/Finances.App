@@ -107,7 +107,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Product"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}?")"
+               Message="@($"Delete {deleteTarget?.Name}? You can undo right after deleting.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
@@ -121,11 +121,7 @@ else
 
     protected override Task UpdateItemAsync(int id, Product item) => Store.UpdateProductAsync(id, item);
 
-    protected override async Task<DeleteResult> DeleteItemAsync(Product item)
-    {
-        await Store.DeleteProductAsync(item.Id);
-        return new DeleteResult(true);
-    }
+    protected override Task<DeleteResult> DeleteItemAsync(Product item) => Store.DeleteProductAsync(item.Id);
 
     protected override int GetId(Product item) => item.Id;
 

@@ -119,7 +119,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Expense"
-               Message="@($"Are you sure you want to delete this {deleteTarget?.Category} expense from {deleteTarget?.Date.ToDateKey()}? This cannot be undone.")"
+               Message="@($"Delete this {deleteTarget?.Category} expense from {deleteTarget?.Date.ToDateKey()}? You can undo right after deleting.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
@@ -259,10 +259,21 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
+        var deleted = deleteTarget;
         try
         {
-            await Store.DeleteExpenseAsync(deleteTarget.Id);
-            Toast.Show("Expense deleted");
+            await Store.DeleteExpenseAsync(deleted.Id);
+            Toast.Show("Expense deleted", ToastLevel.Success, "Undo", async () =>
+            {
+                await Store.AddExpenseAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allExpenses = (await Store.GetExpensesAsync()).ToList();
+                    RefreshCategories();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
             allExpenses = (await Store.GetExpensesAsync()).ToList();
             RefreshCategories();
             ApplyFilter();

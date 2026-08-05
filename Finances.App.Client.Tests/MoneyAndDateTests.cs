@@ -37,7 +37,7 @@ public class MoneyAndDateTests
     [Fact]
     public async Task Summary_worker_share_equals_sum_of_displayed_row_shares()
     {
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         // Values chosen so unrounded shares would NOT sum to the rounded rows.
         var amounts = new[] { 9.99m, 33.335m, 77.77m };
         foreach (var amount in amounts)
@@ -86,7 +86,7 @@ public class MoneyAndDateTests
     [Fact]
     public async Task Forecast_honors_date_range_filter()
     {
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         var today = DateTime.Today;
         // Older data outside the filtered window.
         await store.AddServiceRecordAsync(new ServiceRecord { WorkerId = 1, ServiceId = 1, DatePerformed = today.AddDays(-10), AmountPaid = 999, CommissionPercentageApplied = 50 });
@@ -104,7 +104,7 @@ public class MoneyAndDateTests
     [Fact]
     public async Task Forecast_defaults_to_ninety_day_window_when_no_filter_given()
     {
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         var today = DateTime.Today;
         await store.AddServiceRecordAsync(new ServiceRecord { WorkerId = 1, ServiceId = 1, DatePerformed = today.AddDays(-120), AmountPaid = 999, CommissionPercentageApplied = 50 });
         await store.AddServiceRecordAsync(new ServiceRecord { WorkerId = 1, ServiceId = 1, DatePerformed = today.AddDays(-1), AmountPaid = 100, CommissionPercentageApplied = 50 });

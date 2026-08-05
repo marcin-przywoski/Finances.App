@@ -23,7 +23,8 @@
 else if (filtered.Count == 0)
 {
     <div class="card p-5 text-center mt-3">
-        <p class="text-muted mb-0">No records found for the selected period.</p>
+        <p class="text-muted mb-3">No records found for the selected period.</p>
+        <div><a class="btn btn-primary" href="record">Record Service</a></div>
     </div>
 }
 else
@@ -152,7 +153,7 @@ else
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
                Title="Delete Record"
-               Message="@($"Are you sure you want to delete this service record from {deleteTarget?.DatePerformed.ToDateKey()}? This cannot be undone.")"
+               Message="@($"Delete this service record from {deleteTarget?.DatePerformed.ToDateKey()}? You can undo right after deleting.")"
                ConfirmText="Delete"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
@@ -305,10 +306,22 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
+        var deleted = deleteTarget;
         try
         {
-            await Store.DeleteServiceRecordAsync(deleteTarget.Id);
-            Toast.Show("Record deleted");
+            await Store.DeleteServiceRecordAsync(deleted.Id);
+            // Undo re-adds the record under a fresh id; nothing references
+            // service-record ids, so the restore is lossless.
+            Toast.Show("Record deleted", ToastLevel.Success, "Undo", async () =>
+            {
+                await Store.AddServiceRecordAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
             allRecords = (await Store.GetServiceRecordsAsync()).ToList();
             ApplyFilter();
         }

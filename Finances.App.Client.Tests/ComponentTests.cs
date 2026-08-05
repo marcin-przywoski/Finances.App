@@ -102,7 +102,7 @@ public class WorkersPageTests : BunitContext
     public WorkersPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
+        var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         Services.AddSingleton<IFinanceStore>(store);
         Services.AddSingleton(new ToastService());
     }
@@ -137,7 +137,7 @@ public class WorkersPageTests : BunitContext
     public async Task Deleting_a_worker_with_records_shows_the_real_refusal_reason()
     {
         // Give worker 1 a service record so the delete is refused.
-        var storage = new InMemoryKeyValueStorage();
+        var storage = TestData.CreateSeededStorage();
         var store = new LocalFinanceStore(storage);
         await store.AddServiceRecordAsync(new Finances.App.Shared.ServiceRecord
         {

@@ -103,10 +103,11 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
 
         try
         {
+            var deleted = CloneItem(deleteTarget);
             var result = await DeleteItemAsync(deleteTarget);
             if (result.Success)
             {
-                Toast.Show($"{EntityName} deleted");
+                ShowUndoToast($"{EntityName} deleted", deleted);
             }
             else
             {
@@ -121,5 +122,23 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
         showDeleteConfirm = false;
         deleteTarget = null;
         await ReloadAsync();
+    }
+
+    /// <summary>
+    /// Deletable items are guaranteed unreferenced (referential-integrity
+    /// checks refuse otherwise), so undo can simply re-add the clone. The
+    /// restored item gets a fresh id, which nothing else points at.
+    /// </summary>
+    private void ShowUndoToast(string message, TItem deleted)
+    {
+        Toast.Show(message, ToastLevel.Success, "Undo", async () =>
+        {
+            await AddItemAsync(deleted);
+            await InvokeAsync(async () =>
+            {
+                await ReloadAsync();
+                StateHasChanged();
+            });
+        });
     }
 }

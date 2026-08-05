@@ -30,44 +30,76 @@ public sealed class SmokeTests
         var context = await browser.NewContextAsync(new BrowserNewContextOptions
         {
             BaseURL = server.BaseUri.ToString(),
-            ServiceWorkers = ServiceWorkerPolicy.Allow
+            ServiceWorkers = ServiceWorkerPolicy.Allow,
+            // Skip the toast slide-in animation so action buttons are
+            // immediately clickable (the CSS honors prefers-reduced-motion).
+            ReducedMotion = ReducedMotion.Reduce
         });
 
         var page = await context.NewPageAsync();
         return (server, playwright, browser, page);
     }
 
-    [Fact]
-    public async Task Fresh_load_seeds_default_workers()
+    private static async Task AddWorkerAsync(IPage page, string name, string commission)
     {
-        var (server, playwright, browser, page) = await StartAppAsync();
-        await using var _ = server;
-        using var __ = playwright;
-        await using var ___ = browser;
-
         await page.GotoAsync("/workers");
-
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Workers" })).ToBeVisibleAsync(new() { Timeout = 30000 });
-        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Jan Kowalski" })).ToBeVisibleAsync();
-        await Expect(page.Locator("tbody tr")).ToHaveCountAsync(3);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add Worker" }).First.ClickAsync();
+        await page.Locator("#worker-name").FillAsync(name);
+        await page.Locator("#worker-commission").FillAsync(commission);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add", Exact = true }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = name })).ToBeVisibleAsync();
+    }
+
+    private static async Task AddServiceAsync(IPage page, string name, string price)
+    {
+        await page.GotoAsync("/services");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Services" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add Service" }).First.ClickAsync();
+        await page.Locator("#service-name").FillAsync(name);
+        await page.Locator("#service-price").FillAsync(price);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add", Exact = true }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = name })).ToBeVisibleAsync();
     }
 
     [Fact]
-    public async Task Recording_a_service_updates_the_dashboard()
+    public async Task Fresh_load_shows_onboarding_checklist_and_empty_workers()
     {
         var (server, playwright, browser, page) = await StartAppAsync();
         await using var _ = server;
         using var __ = playwright;
         await using var ___ = browser;
 
+        await page.GotoAsync("/");
+
+        var firstRunCard = page.GetByTestId("first-run-card");
+        await Expect(firstRunCard).ToBeVisibleAsync(new() { Timeout = 30000 });
+        await Expect(firstRunCard.GetByRole(AriaRole.Link, new() { Name = "Add your workers" })).ToBeVisibleAsync();
+
+        await page.GotoAsync("/workers");
+        await Expect(page.GetByText("No workers yet")).ToBeVisibleAsync(new() { Timeout = 30000 });
+    }
+
+    [Fact]
+    public async Task Onboarding_flow_records_first_visit_and_updates_dashboard()
+    {
+        var (server, playwright, browser, page) = await StartAppAsync();
+        await using var _ = server;
+        using var __ = playwright;
+        await using var ___ = browser;
+
+        await AddWorkerAsync(page, "Anna Nowak", "45");
+        await AddServiceAsync(page, "Strzyzenie", "50");
+
         await page.GotoAsync("/record");
         await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Record a Service" })).ToBeVisibleAsync(new() { Timeout = 30000 });
-
         await page.Locator("#record-worker").SelectOptionAsync(new SelectOptionValue { Index = 1 });
         await page.Locator("#record-service").SelectOptionAsync(new SelectOptionValue { Index = 1 });
         await page.GetByRole(AriaRole.Button, new() { Name = "Save Record" }).ClickAsync();
-
         await Expect(page.Locator(".toast-item", new() { HasText = "recorded successfully" })).ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Link, new() { Name = "Service History" }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Anna Nowak" })).ToBeVisibleAsync();
 
         await page.GetByRole(AriaRole.Link, new() { Name = "Dashboard" }).ClickAsync();
         var servicesDoneCard = page.Locator(".stat-card", new() { HasText = "Services Done" });
@@ -75,21 +107,14 @@ public sealed class SmokeTests
     }
 
     [Fact]
-    public async Task Export_reset_import_round_trip_restores_data()
+    public async Task Export_erase_restore_and_import_round_trips_restore_data()
     {
         var (server, playwright, browser, page) = await StartAppAsync();
         await using var _ = server;
         using var __ = playwright;
         await using var ___ = browser;
 
-        // Create a distinctive worker.
-        await page.GotoAsync("/workers");
-        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Workers" })).ToBeVisibleAsync(new() { Timeout = 30000 });
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add Worker" }).First.ClickAsync();
-        await page.Locator("#worker-name").FillAsync("Roundtrip Test Worker");
-        await page.Locator("#worker-commission").FillAsync("40");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add", Exact = true }).ClickAsync();
-        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Roundtrip Test Worker" })).ToBeVisibleAsync();
+        await AddWorkerAsync(page, "Roundtrip Test Worker", "40");
 
         // Export a backup.
         await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
@@ -101,16 +126,29 @@ public sealed class SmokeTests
 
         try
         {
-            // Reset to starter data and confirm the worker is gone.
-            await page.GetByRole(AriaRole.Button, new() { Name = "Reset Starter Data" }).ClickAsync();
-            await page.GetByRole(AriaRole.Button, new() { Name = "Reset Data" }).ClickAsync();
-            await Expect(page.Locator(".toast-item", new() { HasText = "reset" })).ToBeVisibleAsync();
+            // Erase everything and confirm the worker is gone.
+            await page.GetByRole(AriaRole.Button, new() { Name = "Erase All Data" }).ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Erase Data" }).ClickAsync();
+            await Expect(page.Locator(".toast-item", new() { HasText = "erased" }).Last).ToBeVisibleAsync();
 
             await page.GetByRole(AriaRole.Link, new() { Name = "Workers" }).ClickAsync();
-            await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Roundtrip Test Worker" })).Not.ToBeVisibleAsync();
+            await Expect(page.GetByText("No workers yet")).ToBeVisibleAsync();
 
-            // Import the backup and confirm the worker is back.
+            // The erase kept a copy: restore it without touching the file.
             await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+            await page.GetByTestId("restore-previous").ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Restore", Exact = true }).ClickAsync();
+            await Expect(page.Locator(".toast-item", new() { HasText = "restored" })).ToBeVisibleAsync();
+
+            await page.GetByRole(AriaRole.Link, new() { Name = "Workers" }).ClickAsync();
+            await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Roundtrip Test Worker" })).ToBeVisibleAsync();
+
+            // Erase again and restore from the exported file instead.
+            await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Erase All Data" }).ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Erase Data" }).ClickAsync();
+            await Expect(page.Locator(".toast-item", new() { HasText = "erased" }).Last).ToBeVisibleAsync();
+
             await page.Locator("input[type=file]").SetInputFilesAsync(backupPath);
             await Expect(page.Locator(".toast-item", new() { HasText = "imported" })).ToBeVisibleAsync();
 
@@ -121,5 +159,35 @@ public sealed class SmokeTests
         {
             File.Delete(backupPath);
         }
+    }
+
+    [Fact]
+    public async Task Deleting_a_record_can_be_undone_from_the_toast()
+    {
+        var (server, playwright, browser, page) = await StartAppAsync();
+        await using var _ = server;
+        using var __ = playwright;
+        await using var ___ = browser;
+
+        await AddWorkerAsync(page, "Anna Nowak", "45");
+        await AddServiceAsync(page, "Strzyzenie", "50");
+
+        await page.GotoAsync("/record");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Record a Service" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+        await page.Locator("#record-worker").SelectOptionAsync(new SelectOptionValue { Index = 1 });
+        await page.Locator("#record-service").SelectOptionAsync(new SelectOptionValue { Index = 1 });
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save Record" }).ClickAsync();
+        await Expect(page.Locator(".toast-item", new() { HasText = "recorded successfully" })).ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Link, new() { Name = "Service History" }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Anna Nowak" })).ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Delete" }).First.ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Delete", Exact = true }).Last.ClickAsync();
+        await Expect(page.Locator(".toast-item", new() { HasText = "Record deleted" })).ToBeVisibleAsync();
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Undo" }).ClickAsync();
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Anna Nowak" })).ToBeVisibleAsync();
+        await Expect(page.Locator("tbody tr")).ToHaveCountAsync(1);
     }
 }

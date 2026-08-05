@@ -22,8 +22,12 @@ records, product sales, expenses, analytics with a linear-regression forecast).
   `settings` object so they travel with backups; money display goes through
   the `MoneyFormat` service, never `ToString("C")` directly in pages.
 - Related storage keys: `.quarantine` (preserved unreadable data), `.pre-reset`
-  (pre-reset backup), `.rev` (multi-tab write guard), `selectedWorkerId`, and
-  `Finances.App.pwa.*` (update state, owned by `js/pwa.js`).
+  (backup written before both reset and import; surfaced as "Restore previous
+  data" on the Data page), `.rev` (multi-tab write guard), `selectedWorkerId`,
+  and `Finances.App.pwa.*` (update state, owned by `js/pwa.js`).
+- **New installs start empty** — no placeholder workers/services. The Dashboard
+  shows a first-run checklist instead. Tests that need catalog data preload the
+  fixture from `Finances.App.Client.Tests/TestDoubles/TestData.cs`.
 
 ## Architecture
 

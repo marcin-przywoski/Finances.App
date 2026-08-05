@@ -62,9 +62,18 @@ else
                         </div>
                     </div>
                 }
-                <div style="height: 340px;">
-                    <canvas id="forecastChart"></canvas>
-                </div>
+                @if (forecastResult != null && forecastResult.Historical.Length > 0)
+                {
+                    <div style="height: 340px;">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 340px;">
+                        <p class="text-muted mb-0">Not enough data to forecast yet — record services on at least two different days.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -74,9 +83,18 @@ else
         <div class="col-12">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Services vs Products Revenue</h6>
-                <div style="height: 300px;">
-                    <canvas id="combinedTimelineChart"></canvas>
-                </div>
+                @if (combinedTimeline?.Points.Count > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="combinedTimelineChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No revenue in this period.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -86,17 +104,35 @@ else
         <div class="col-lg-6">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Revenue by Worker</h6>
-                <div style="height: 300px;">
-                    <canvas id="revenueByWorkerChart"></canvas>
-                </div>
+                @if (workerData != null && workerData.Length > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="revenueByWorkerChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No data for this period.</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Service Popularity</h6>
-                <div style="height: 300px;">
-                    <canvas id="servicePopularityChart"></canvas>
-                </div>
+                @if (serviceData != null && serviceData.Length > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="servicePopularityChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No data for this period.</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -106,9 +142,18 @@ else
         <div class="col-lg-6">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Revenue by Day of Week</h6>
-                <div style="height: 280px;">
-                    <canvas id="dayOfWeekAnalyticsChart"></canvas>
-                </div>
+                @if (dayOfWeekData?.Any(d => d.Count > 0) == true)
+                {
+                    <div style="height: 280px;">
+                        <canvas id="dayOfWeekAnalyticsChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
+                        <p class="text-muted mb-0">No data for this period.</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-6">
@@ -134,9 +179,18 @@ else
         <div class="col-lg-8">
             <div class="card p-3">
                 <h6 class="fw-semibold mb-3">Daily Revenue</h6>
-                <div style="height: 300px;">
-                    <canvas id="dailyTrendChart"></canvas>
-                </div>
+                @if (dailyData != null && dailyData.Length > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="dailyTrendChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">No data for this period.</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-4">
@@ -471,7 +525,9 @@ else
 
         try
         {
-            if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+            // Guard matches the markup: the canvas only exists when at least
+            // one day has records.
+            if (dayOfWeekData?.Any(d => d.Count > 0) == true)
             {
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
