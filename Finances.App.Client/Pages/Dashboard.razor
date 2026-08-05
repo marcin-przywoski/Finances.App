@@ -1,8 +1,9 @@
 @page "/"
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IAnalyticsService Analytics
 @inject IFinanceStore Store
 @inject MoneyFormat Money
+@inject ThemeService Theme
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -64,21 +65,21 @@ else
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@totalTips" Label="Total Tips" IconBg="#dbeafe" IconColor="#3b82f6" TrendPercent="@tipsTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@totalTips" Label="Total Tips" Variant="StatCardVariant.Info" TrendPercent="@tipsTrend" Subtitle="@("vs last month")">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@avgTicket" Label="Avg Ticket" IconBg="#fef3c7" IconColor="#f59e0b" TrendPercent="@avgTicketTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@avgTicket" Label="Avg Ticket" Variant="StatCardVariant.Warning" TrendPercent="@avgTicketTrend" Subtitle="@("vs last month")">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@recordCount" Label="Services Done" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@recordCount" Label="Services Done" Variant="StatCardVariant.Success" TrendPercent="@countTrend" Subtitle="@("vs last month")">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                 </IconContent>
@@ -219,9 +220,12 @@ else
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
+    private static readonly string[] ChartIds = ["combinedTimelineChart", "revenueSourcesChart", "dayOfWeekChart"];
+
     protected override async Task OnInitializedAsync()
     {
         WorkerContext.OnChange += HandleWorkerChanged;
+        Theme.OnChange += HandleThemeChanged;
         await WorkerContext.InitializeAsync();
         await LoadData();
     }
@@ -242,9 +246,30 @@ else
         });
     }
 
-    public void Dispose()
+    private void HandleThemeChanged()
+    {
+        // Charts hold their colors, so a theme change means re-rendering them
+        // to pick up the new token values.
+        _ = InvokeAsync(() =>
+        {
+            needsChartRender = true;
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
     {
         WorkerContext.OnChange -= HandleWorkerChanged;
+        Theme.OnChange -= HandleThemeChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("financeCharts.destroyMany", (object)ChartIds);
+        }
+        catch (Exception)
+        {
+            // JS runtime may already be gone during teardown.
+        }
     }
 
     private async Task LoadData()
@@ -313,6 +338,9 @@ else
         }
     }
 
+    // Locale null = browser default; the currency comes from settings.
+    private object MoneyOptions => new { locale = (string?)null, currency = Money.CurrencyCode };
+
     private async Task RenderCharts()
     {
         // Each chart is wrapped individually so one failure doesn't block others
@@ -323,10 +351,14 @@ else
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray() },
+                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray() }
                 };
-                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "combinedTimelineChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Timeline chart failed: {ex.Message}"); }
@@ -339,7 +371,11 @@ else
                     "revenueSourcesChart",
                     new[] { "Services", "Products" },
                     new[] { serviceRevenueTotal, productRevenueTotal },
-                    new[] { "#0d9488", "#8b5cf6" });
+                    MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "revenueSourcesChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Revenue sources chart failed: {ex.Message}"); }
@@ -354,7 +390,11 @@ else
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
                 var maxIdx = Array.IndexOf(data, data.Max());
-                await JS.InvokeVoidAsync("financeCharts.renderMiniBarChart", "dayOfWeekChart", labels, data, maxIdx);
+                await JS.InvokeVoidAsync("financeCharts.renderMiniBarChart", "dayOfWeekChart", labels, data, maxIdx, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "dayOfWeekChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Day-of-week chart failed: {ex.Message}"); }

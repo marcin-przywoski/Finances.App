@@ -1,6 +1,6 @@
 <div class="stat-card">
     <div class="d-flex justify-content-between align-items-start mb-2">
-        <div class="stat-icon" style="background-color: @IconBg; color: @IconColor;">
+        <div class="stat-icon stat-icon-@Variant.ToString().ToLowerInvariant()">
             @IconContent
         </div>
         @if (TrendPercent.HasValue)
@@ -36,8 +36,7 @@
     [Parameter] public string Value { get; set; } = "0";
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public RenderFragment? IconContent { get; set; }
-    [Parameter] public string IconBg { get; set; } = "#ccfbf1";
-    [Parameter] public string IconColor { get; set; } = "#0d9488";
+    [Parameter] public StatCardVariant Variant { get; set; } = StatCardVariant.Primary;
     [Parameter] public decimal? TrendPercent { get; set; }
     [Parameter] public string? Subtitle { get; set; }
 }

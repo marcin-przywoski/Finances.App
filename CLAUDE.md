@@ -24,7 +24,12 @@ records, product sales, expenses, analytics with a linear-regression forecast).
 - Related storage keys: `.quarantine` (preserved unreadable data), `.pre-reset`
   (backup written before both reset and import; surfaced as "Restore previous
   data" on the Data page), `.rev` (multi-tab write guard), `selectedWorkerId`,
-  and `Finances.App.pwa.*` (update state, owned by `js/pwa.js`).
+  `Finances.App.theme` (light/dark/auto, owned by `js/theme.js` and applied
+  pre-boot by an inline script in `index.html`), and `Finances.App.pwa.*`
+  (update state, owned by `js/pwa.js`).
+- Chart colors come from the CSS custom properties in `standalone-app.css`
+  (read via `getComputedStyle` in `js/standalone-charts.js`) — never hardcode
+  hex colors in pages or chart calls; add a token instead.
 - **New installs start empty** — no placeholder workers/services. The Dashboard
   shows a first-run checklist instead. Tests that need catalog data preload the
   fixture from `Finances.App.Client.Tests/TestDoubles/TestData.cs`.

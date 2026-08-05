@@ -1,4 +1,5 @@
 using Bunit;
+using Finances.App.Client.Models;
 using Finances.App.Client.Pages;
 using Finances.App.Client.Services;
 using Finances.App.Client.Services.Storage;
@@ -79,6 +80,29 @@ public class ConfirmDialogTests : BunitContext
 
         Assert.Equal(1, confirmed);
         Assert.Equal(2, cancelled);
+    }
+}
+
+public class StatCardTests : BunitContext
+{
+    [Fact]
+    public void Variant_resolves_to_semantic_icon_class()
+    {
+        var cut = Render<StatCard>(ps => ps
+            .Add(p => p.Value, "5")
+            .Add(p => p.Label, "Things")
+            .Add(p => p.Variant, StatCardVariant.Warning));
+
+        var icon = cut.Find(".stat-icon");
+        Assert.Contains("stat-icon-warning", icon.ClassList);
+    }
+
+    [Fact]
+    public void Default_variant_is_primary()
+    {
+        var cut = Render<StatCard>(ps => ps.Add(p => p.Value, "1"));
+
+        Assert.Contains("stat-icon-primary", cut.Find(".stat-icon").ClassList);
     }
 }
 

@@ -1,7 +1,8 @@
 @page "/analytics"
-@implements IDisposable
+@implements IAsyncDisposable
 @inject IAnalyticsService AnalyticsService
 @inject MoneyFormat Money
+@inject ThemeService Theme
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -42,21 +43,21 @@ else
                 {
                     <div class="row mb-3">
                         <div class="col-auto">
-                            <span class="badge" style="background-color: #0d948820; color: #0d9488; font-size: 0.8rem; padding: 6px 12px;">
+                            <span class="badge badge-tint badge-tint-primary">
                                 Slope: @forecastResult.Slope.ToString("F2")/day
                             </span>
                         </div>
                         <div class="col-auto">
-                            <span class="badge" style="background-color: #6366f120; color: #6366f1; font-size: 0.8rem; padding: 6px 12px;">
+                            <span class="badge badge-tint badge-tint-indigo">
                                 R&sup2;: @forecastResult.RSquared.ToString("F4")
                             </span>
                         </div>
                         <div class="col-auto">
                             @{
                                 var direction = forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Downward" : "Flat";
-                                var dirColor = forecastResult.Slope > 0 ? "#10b981" : forecastResult.Slope < 0 ? "#ef4444" : "#6b7280";
+                                var dirClass = forecastResult.Slope > 0 ? "badge-tint-up" : forecastResult.Slope < 0 ? "badge-tint-down" : "badge-tint-flat";
                             }
-                            <span class="badge" style="background-color: @(dirColor)20; color: @dirColor; font-size: 0.8rem; padding: 6px 12px;">
+                            <span class="badge badge-tint @dirClass">
                                 Trend: @direction
                             </span>
                         </div>
@@ -86,7 +87,7 @@ else
                 @if (combinedTimeline?.Points.Count > 0)
                 {
                     <div style="height: 300px;">
-                        <canvas id="combinedTimelineChart"></canvas>
+                        <canvas id="analyticsTimelineChart"></canvas>
                     </div>
                 }
                 else
@@ -373,9 +374,19 @@ else
     private decimal NetAfterExpenses =>
         (businessSummary?.TotalSalonShare ?? 0) + businessProductRevenue - (expenseSummary?.Total ?? 0);
 
+    private static readonly string[] ChartIds =
+    [
+        "forecastChart", "analyticsTimelineChart", "revenueByWorkerChart",
+        "servicePopularityChart", "dayOfWeekAnalyticsChart", "topProductsChart", "dailyTrendChart"
+    ];
+
+    // Locale null = browser default; the currency comes from settings.
+    private object MoneyOptions => new { locale = (string?)null, currency = Money.CurrencyCode };
+
     protected override async Task OnInitializedAsync()
     {
         WorkerContext.OnChange += HandleWorkerChanged;
+        Theme.OnChange += HandleThemeChanged;
         await WorkerContext.InitializeAsync();
         var today = DateTime.Today;
         dateFrom = new DateTime(today.Year, today.Month, 1);
@@ -399,9 +410,30 @@ else
         });
     }
 
-    public void Dispose()
+    private void HandleThemeChanged()
+    {
+        // Charts hold their colors, so a theme change means re-rendering them
+        // to pick up the new token values.
+        _ = InvokeAsync(() =>
+        {
+            needsChartRender = true;
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
     {
         WorkerContext.OnChange -= HandleWorkerChanged;
+        Theme.OnChange -= HandleThemeChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("financeCharts.destroyMany", (object)ChartIds);
+        }
+        catch (Exception)
+        {
+            // JS runtime may already be gone during teardown.
+        }
     }
 
     private async Task OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -489,10 +521,14 @@ else
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray() },
+                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray() }
                 };
-                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "analyticsTimelineChart", labels, datasets, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "analyticsTimelineChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (combined timeline): {ex.Message}"); }
@@ -504,10 +540,14 @@ else
                 var labels = workerData.Select(w => w.Worker).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = workerData.Select(w => w.Revenue).ToArray(), color = "#0d9488" },
-                    new { label = "Tips", data = workerData.Select(w => w.Tips).ToArray(), color = "#3b82f6" }
+                    new { label = "Revenue", data = workerData.Select(w => w.Revenue).ToArray() },
+                    new { label = "Tips", data = workerData.Select(w => w.Tips).ToArray() }
                 };
-                await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets);
+                await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "revenueByWorkerChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (worker revenue): {ex.Message}"); }
@@ -518,7 +558,12 @@ else
             {
                 var labels = serviceData.Select(s => s.Service).ToArray();
                 var data = serviceData.Select(s => (decimal)s.Count).ToArray();
-                await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart", "servicePopularityChart", labels, data, (string[]?)null);
+                // Counts, not money: no currency option.
+                await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart", "servicePopularityChart", labels, data, (object?)null);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "servicePopularityChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (service popularity): {ex.Message}"); }
@@ -532,7 +577,11 @@ else
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "dayOfWeekAnalyticsChart", labels,
-                    new object[] { new { label = "Revenue", data = data, color = "#0d9488" } });
+                    new object[] { new { label = "Revenue", data = data } }, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "dayOfWeekAnalyticsChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (day-of-week): {ex.Message}"); }
@@ -543,7 +592,11 @@ else
             {
                 var labels = topProducts.Select(p => p.Product).ToArray();
                 var data = topProducts.Select(p => p.Revenue).ToArray();
-                await JS.InvokeVoidAsync("financeCharts.renderHorizontalBarChart", "topProductsChart", labels, data, (string[]?)null);
+                await JS.InvokeVoidAsync("financeCharts.renderHorizontalBarChart", "topProductsChart", labels, data, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "topProductsChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (top products): {ex.Message}"); }
@@ -555,9 +608,13 @@ else
                 var labels = dailyData.Select(d => d.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray(), color = "#0d9488" }
+                    new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray() }
                 };
-                await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets);
+                await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "dailyTrendChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (daily trend): {ex.Message}"); }
@@ -576,7 +633,11 @@ else
                 var forecastData = forecastResult.Forecast.Select(f => f.Predicted).ToArray();
 
                 await JS.InvokeVoidAsync("financeCharts.renderForecastChart",
-                    "forecastChart", histLabels, actualData, trendData, forecastLabels, forecastData);
+                    "forecastChart", histLabels, actualData, trendData, forecastLabels, forecastData, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "forecastChart");
             }
         }
         catch (Exception ex) { Console.Error.WriteLine($"Chart failed (forecast render): {ex.Message}"); }

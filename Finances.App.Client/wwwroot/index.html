@@ -9,6 +9,23 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script>
+        // Apply the stored theme before first paint so a dark-mode user never
+        // sees a white flash. js/theme.js owns changes after boot.
+        (function () {
+            try {
+                var stored = localStorage.getItem('Finances.App.theme');
+                var mode = (stored === 'dark' || stored === 'light')
+                    ? stored
+                    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-bs-theme', mode);
+                if (mode === 'dark') {
+                    var meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', '#134e4a');
+                }
+            } catch (e) { /* default light */ }
+        })();
+    </script>
     <title>Finances App</title>
     <base href="./" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -56,6 +73,7 @@
     <script src="js/standalone-charts.js" defer></script>
     <script src="js/browserFiles.js" defer></script>
     <script src="js/storageSync.js" defer></script>
+    <script src="js/theme.js" defer></script>
     <script src="js/pwa.js" defer></script>
     <script src="_framework/blazor.webassembly.js" defer></script>
     <script>

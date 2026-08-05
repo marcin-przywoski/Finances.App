@@ -1,5 +1,8 @@
 /* ===== CSS Custom Properties ===== */
+/* The chart layer (js/standalone-charts.js) reads its palette from these
+   tokens via getComputedStyle, so chart colors follow the theme too. */
 :root {
+    color-scheme: light;
     --primary: #0d9488;
     --primary-hover: #0f766e;
     --primary-light: #ccfbf1;
@@ -25,6 +28,54 @@
     --success: #10b981;
     --warning: #f59e0b;
     --info: #3b82f6;
+    --indigo: #6366f1;
+    --purple: #8b5cf6;
+    --pink: #ec4899;
+    --tint-primary-bg: var(--primary-light);
+    --tint-info-bg: #dbeafe;
+    --tint-warning-bg: #fef3c7;
+    --tint-success-bg: #d1fae5;
+    --tint-danger-bg: #fee2e2;
+    --tint-purple-bg: #ede9fe;
+    --tint-pink-bg: #fce7f3;
+    --tint-indigo-bg: #e0e7ff;
+    --trend-up-fg: #059669;
+    --trend-up-bg: #d1fae5;
+    --trend-down-fg: #dc2626;
+    --trend-down-bg: #fee2e2;
+    --surface-subtle: rgba(17, 24, 39, 0.06);
+}
+
+/* Dark theme: driven by data-bs-theme on <html> (set pre-boot in index.html
+   and by js/theme.js), which also switches Bootstrap's own dark styles. */
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+    --primary: #14b8a6;
+    --primary-hover: #2dd4bf;
+    --primary-light: rgba(20, 184, 166, 0.16);
+    --sidebar-bg: #0b1120;
+    --topbar-bg: #111827;
+    --topbar-border: #1f2937;
+    --body-bg: #0f172a;
+    --card-bg: #1e293b;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-color: #334155;
+    --tint-info-bg: rgba(59, 130, 246, 0.18);
+    --tint-warning-bg: rgba(245, 158, 11, 0.18);
+    --tint-success-bg: rgba(16, 185, 129, 0.18);
+    --tint-danger-bg: rgba(239, 68, 68, 0.18);
+    --tint-purple-bg: rgba(139, 92, 246, 0.18);
+    --tint-pink-bg: rgba(236, 72, 153, 0.18);
+    --tint-indigo-bg: rgba(99, 102, 241, 0.18);
+    --trend-up-fg: #34d399;
+    --trend-up-bg: rgba(16, 185, 129, 0.18);
+    --trend-down-fg: #f87171;
+    --trend-down-bg: rgba(239, 68, 68, 0.18);
+    --surface-subtle: rgba(255, 255, 255, 0.08);
 }
 
 /* ===== Base ===== */
@@ -211,14 +262,36 @@ h1:focus {
 }
 
 .stat-trend.trend-up {
-    color: #059669;
-    background-color: #d1fae5;
+    color: var(--trend-up-fg);
+    background-color: var(--trend-up-bg);
 }
 
 .stat-trend.trend-down {
-    color: #dc2626;
-    background-color: #fee2e2;
+    color: var(--trend-down-fg);
+    background-color: var(--trend-down-bg);
 }
+
+/* Stat-card icon variants: semantic names resolved from theme tokens. */
+.stat-icon-primary { background-color: var(--tint-primary-bg); color: var(--primary); }
+.stat-icon-info { background-color: var(--tint-info-bg); color: var(--info); }
+.stat-icon-warning { background-color: var(--tint-warning-bg); color: var(--warning); }
+.stat-icon-success { background-color: var(--tint-success-bg); color: var(--success); }
+.stat-icon-danger { background-color: var(--tint-danger-bg); color: var(--danger); }
+.stat-icon-purple { background-color: var(--tint-purple-bg); color: var(--purple); }
+.stat-icon-pink { background-color: var(--tint-pink-bg); color: var(--pink); }
+
+/* Tinted badges (forecast card and friends). */
+.badge-tint {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 12px;
+}
+
+.badge-tint-primary { background-color: var(--tint-primary-bg); color: var(--primary); }
+.badge-tint-indigo { background-color: var(--tint-indigo-bg); color: var(--indigo); }
+.badge-tint-up { background-color: var(--trend-up-bg); color: var(--trend-up-fg); }
+.badge-tint-down { background-color: var(--trend-down-bg); color: var(--trend-down-fg); }
+.badge-tint-flat { background-color: var(--surface-subtle); color: var(--text-secondary); }
 
 /* ===== Tables ===== */
 .data-table {
@@ -291,9 +364,6 @@ h1:focus {
 
 .toast-item {
     pointer-events: auto;
-}
-
-.toast-item {
     padding: 0.75rem 1.25rem;
     border-radius: var(--radius);
     color: #fff;
@@ -582,7 +652,27 @@ h1:focus {
 }
 
 .darker-border-checkbox.form-check-input {
-    border-color: #929292;
+    border-color: var(--text-muted);
+}
+
+/* Theme toggle in the top bar. */
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.theme-toggle:hover {
+    color: var(--primary);
+    border-color: var(--primary);
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {

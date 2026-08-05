@@ -21,7 +21,90 @@ window.financeCharts = {
         });
     },
 
-    renderLineChart: async function (canvasId, labels, datasets) {
+    // All colors come from the CSS custom properties in standalone-app.css,
+    // so charts follow the active theme; re-rendering after a theme change
+    // picks up the new values.
+    _token: function (name, fallback) {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return value || fallback;
+    },
+
+    _palette: function () {
+        return [
+            this._token('--primary', '#0d9488'),
+            this._token('--info', '#3b82f6'),
+            this._token('--warning', '#f59e0b'),
+            this._token('--danger', '#ef4444'),
+            this._token('--purple', '#8b5cf6'),
+            this._token('--pink', '#ec4899'),
+            this._token('--success', '#10b981'),
+            this._token('--indigo', '#6366f1')
+        ];
+    },
+
+    _colors: function (index) {
+        const palette = this._palette();
+        return palette[index % palette.length];
+    },
+
+    _grid: function () {
+        return this._token('--border-color', '#e5e7eb');
+    },
+
+    // Adds a translucent alpha channel to a token color (hex or rgb/rgba).
+    _alpha: function (color, alpha) {
+        if (color.startsWith('#')) {
+            const hex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+            return color.length === 7 ? color + hex : color;
+        }
+        const match = color.match(/rgba?\(([^)]+)\)/);
+        if (match) {
+            const parts = match[1].split(',').slice(0, 3).join(',');
+            return `rgba(${parts}, ${alpha})`;
+        }
+        return color;
+    },
+
+    // money = { locale, currency } (either may be null). Returns a formatter
+    // for tooltip labels and axis ticks; falls back to plain numbers.
+    _moneyFormatter: function (money) {
+        try {
+            if (money && money.currency) {
+                return new Intl.NumberFormat(money.locale || undefined, {
+                    style: 'currency',
+                    currency: money.currency
+                });
+            }
+            return new Intl.NumberFormat((money && money.locale) || undefined, {
+                maximumFractionDigits: 2
+            });
+        } catch {
+            return { format: value => String(value) };
+        }
+    },
+
+    _moneyPlugins: function (money, legendPosition) {
+        const fmt = this._moneyFormatter(money);
+        return {
+            legend: legendPosition === 'none' ? { display: false } : { position: legendPosition || 'top' },
+            tooltip: {
+                callbacks: {
+                    label: context => {
+                        if (context.raw === null || context.raw === undefined) return null;
+                        const label = context.dataset.label ? context.dataset.label + ': ' : '';
+                        return label + fmt.format(context.raw);
+                    }
+                }
+            }
+        };
+    },
+
+    _moneyTicks: function (money) {
+        const fmt = this._moneyFormatter(money);
+        return { callback: value => fmt.format(value) };
+    },
+
+    renderLineChart: async function (canvasId, labels, datasets, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
@@ -33,7 +116,7 @@ window.financeCharts = {
                     label: dataset.label,
                     data: dataset.data,
                     borderColor: dataset.color || this._colors(index),
-                    backgroundColor: (dataset.color || this._colors(index)) + '20',
+                    backgroundColor: this._alpha(dataset.color || this._colors(index), 0.13),
                     fill: true,
                     tension: 0.3,
                     pointRadius: 3,
@@ -43,16 +126,16 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: this._moneyPlugins(money, 'top'),
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    y: { beginAtZero: true, grid: { color: this._grid() }, ticks: this._moneyTicks(money) },
                     x: { grid: { display: false } }
                 }
             }
         });
     },
 
-    renderBarChart: async function (canvasId, labels, datasets) {
+    renderBarChart: async function (canvasId, labels, datasets, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
@@ -70,41 +153,47 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: this._moneyPlugins(money, 'top'),
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    y: { beginAtZero: true, grid: { color: this._grid() }, ticks: this._moneyTicks(money) },
                     x: { grid: { display: false } }
                 }
             }
         });
     },
 
-    renderDoughnutChart: async function (canvasId, labels, data, colors) {
+    renderDoughnutChart: async function (canvasId, labels, data, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
+        const fmt = this._moneyFormatter(money);
         this.instances[canvasId] = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: colors || labels.map((_, index) => this._colors(index)),
+                    backgroundColor: labels.map((_, index) => this._colors(index)),
                     borderWidth: 2,
-                    borderColor: '#fff'
+                    borderColor: this._token('--card-bg', '#fff')
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right' }
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: context => `${context.label}: ${fmt.format(context.raw)}`
+                        }
+                    }
                 }
             }
         });
     },
 
-    renderForecastChart: async function (canvasId, historicalLabels, actualData, trendData, forecastLabels, forecastData) {
+    renderForecastChart: async function (canvasId, historicalLabels, actualData, trendData, forecastLabels, forecastData, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
@@ -120,6 +209,10 @@ window.financeCharts = {
 
         forecastPadded.push(...forecastData);
 
+        const primary = this._token('--primary', '#0d9488');
+        const indigo = this._token('--indigo', '#6366f1');
+        const warning = this._token('--warning', '#f59e0b');
+
         this.instances[canvasId] = new Chart(ctx, {
             type: 'line',
             data: {
@@ -128,8 +221,8 @@ window.financeCharts = {
                     {
                         label: 'Actual Revenue',
                         data: actualPadded,
-                        borderColor: '#0d9488',
-                        backgroundColor: '#0d948820',
+                        borderColor: primary,
+                        backgroundColor: this._alpha(primary, 0.13),
                         fill: true,
                         tension: 0.3,
                         pointRadius: 3,
@@ -138,7 +231,7 @@ window.financeCharts = {
                     {
                         label: 'Trend',
                         data: trendPadded,
-                        borderColor: '#6366f1',
+                        borderColor: indigo,
                         borderWidth: 2,
                         borderDash: [4, 4],
                         fill: false,
@@ -148,8 +241,8 @@ window.financeCharts = {
                     {
                         label: 'Forecast',
                         data: forecastPadded,
-                        borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b15',
+                        borderColor: warning,
+                        backgroundColor: this._alpha(warning, 0.08),
                         borderWidth: 2,
                         borderDash: [6, 3],
                         fill: true,
@@ -162,26 +255,16 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                if (context.raw === null) return null;
-                                return context.dataset.label + ': ' + context.raw.toFixed(2);
-                            }
-                        }
-                    }
-                },
+                plugins: this._moneyPlugins(money, 'top'),
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    y: { beginAtZero: true, grid: { color: this._grid() }, ticks: this._moneyTicks(money) },
                     x: { grid: { display: false }, ticks: { maxTicksLimit: 15 } }
                 }
             }
         });
     },
 
-    renderStackedBarChart: async function (canvasId, labels, datasets) {
+    renderStackedBarChart: async function (canvasId, labels, datasets, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
@@ -199,26 +282,27 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: this._moneyPlugins(money, 'top'),
                 scales: {
                     x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, grid: { color: '#e5e7eb' } }
+                    y: { stacked: true, beginAtZero: true, grid: { color: this._grid() }, ticks: this._moneyTicks(money) }
                 }
             }
         });
     },
 
-    renderHorizontalBarChart: async function (canvasId, labels, data, colors) {
+    renderHorizontalBarChart: async function (canvasId, labels, data, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
+        const fmt = this._moneyFormatter(money);
         this.instances[canvasId] = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
                     data: data,
-                    backgroundColor: colors || labels.map((_, index) => this._colors(index)),
+                    backgroundColor: labels.map((_, index) => this._colors(index)),
                     borderRadius: 4,
                     barThickness: 20
                 }]
@@ -227,20 +311,29 @@ window.financeCharts = {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: context => fmt.format(context.raw)
+                        }
+                    }
+                },
                 scales: {
-                    x: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { beginAtZero: true, grid: { color: this._grid() }, ticks: this._moneyTicks(money) },
                     y: { grid: { display: false } }
                 }
             }
         });
     },
 
-    renderMiniBarChart: async function (canvasId, labels, data, highlightIndex) {
+    renderMiniBarChart: async function (canvasId, labels, data, highlightIndex, money) {
         this._destroy(canvasId);
         const ctx = await this._waitForCanvas(canvasId);
         if (!ctx) return;
-        const colors = data.map((_, i) => i === highlightIndex ? '#0d9488' : '#0d948840');
+        const primary = this._token('--primary', '#0d9488');
+        const colors = data.map((_, i) => i === highlightIndex ? primary : this._alpha(primary, 0.25));
+        const fmt = this._moneyFormatter(money);
         this.instances[canvasId] = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -254,7 +347,14 @@ window.financeCharts = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: context => fmt.format(context.raw)
+                        }
+                    }
+                },
                 scales: {
                     x: { grid: { display: false }, ticks: { font: { size: 11 } } },
                     y: { display: false, beginAtZero: true }
@@ -263,15 +363,22 @@ window.financeCharts = {
         });
     },
 
+    // Public: called from page DisposeAsync and from empty-data branches so a
+    // chart for a canvas that left the DOM never lingers.
+    destroy: function (canvasId) {
+        this._destroy(canvasId);
+    },
+
+    destroyMany: function (canvasIds) {
+        for (const id of canvasIds) {
+            this._destroy(id);
+        }
+    },
+
     _destroy: function (canvasId) {
         if (this.instances[canvasId]) {
             this.instances[canvasId].destroy();
             delete this.instances[canvasId];
         }
-    },
-
-    _colors: function (index) {
-        const palette = ['#0d9488', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#10b981', '#6366f1'];
-        return palette[index % palette.length];
     }
 };

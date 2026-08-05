@@ -16,12 +16,12 @@
 }
 
 .pwa-banner-install {
-    background: linear-gradient(135deg, #ccfbf1 0%, #ffffff 100%);
+    background: linear-gradient(135deg, var(--tint-primary-bg) 0%, var(--card-bg) 100%);
     border-color: rgba(13, 148, 136, 0.2);
 }
 
 .pwa-banner-update {
-    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    background: linear-gradient(135deg, var(--tint-info-bg) 0%, var(--card-bg) 100%);
     border-color: rgba(59, 130, 246, 0.2);
 }
 
@@ -55,7 +55,7 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    background-color: rgba(17, 24, 39, 0.06);
+    background-color: var(--surface-subtle);
     color: var(--text-primary);
 }
 

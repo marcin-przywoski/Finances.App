@@ -162,6 +162,27 @@ public sealed class SmokeTests
     }
 
     [Fact]
+    public async Task Theme_toggle_switches_to_dark_and_persists_across_reload()
+    {
+        var (server, playwright, browser, page) = await StartAppAsync();
+        await using var _ = server;
+        using var __ = playwright;
+        await using var ___ = browser;
+
+        await page.GotoAsync("/");
+        var toggle = page.GetByTestId("theme-toggle");
+        await Expect(toggle).ToBeVisibleAsync(new() { Timeout = 30000 });
+
+        // Preference starts at auto (light in headless Chromium); one click = dark.
+        await toggle.ClickAsync();
+        await Expect(page.Locator("html")).ToHaveAttributeAsync("data-bs-theme", "dark");
+
+        // The pre-boot inline script must re-apply it on a full reload.
+        await page.ReloadAsync();
+        await Expect(page.Locator("html")).ToHaveAttributeAsync("data-bs-theme", "dark", new() { Timeout = 30000 });
+    }
+
+    [Fact]
     public async Task Deleting_a_record_can_be_undone_from_the_toast()
     {
         var (server, playwright, browser, page) = await StartAppAsync();

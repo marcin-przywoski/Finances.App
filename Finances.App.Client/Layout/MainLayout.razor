@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject IFinanceStore Store
 @inject MoneyFormat Money
+@inject ThemeService Theme
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -23,6 +24,21 @@
             </button>
             <div class="top-bar-right">
                 <span class="top-bar-user">Stored only in this browser</span>
+                <button type="button" class="theme-toggle" data-testid="theme-toggle"
+                        title="@ThemeLabel" aria-label="@ThemeLabel" @onclick="CycleThemeAsync">
+                    @if (Theme.Preference == ThemeService.Dark)
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    }
+                    else if (Theme.Preference == ThemeService.Light)
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    }
+                    else
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg>
+                    }
+                </button>
                 <WorkerSelector />
             </div>
         </div>
@@ -36,7 +52,7 @@
                     <strong>Your saved data could not be read.</strong>
                     A copy of it was preserved — download it from the Data page before deciding what to do next.
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-dark" @onclick="GoToDataPage">Open Data page</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToDataPage">Open Data page</button>
             </div>
         }
 
@@ -75,6 +91,21 @@
 
         selfRef = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("financeStorageSync.register", selfRef, LocalFinanceStore.StorageKey);
+
+        await Theme.InitializeAsync();
+        StateHasChanged();
+    }
+
+    private string ThemeLabel => $"Theme: {Theme.Preference switch
+    {
+        ThemeService.Dark => "dark",
+        ThemeService.Light => "light",
+        _ => "auto"
+    }} — click to switch";
+
+    private async Task CycleThemeAsync()
+    {
+        await Theme.CycleAsync();
     }
 
     [JSInvokable]
