@@ -6,12 +6,12 @@
 @inject PwaUpdateService PwaUpdate
 @inject ToastService Toast
 
-<PageTitle>Data</PageTitle>
+<PageTitle>Data &amp; Backups</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Local Data</h1>
-        <p class="text-muted mb-0">Everything in this branch is saved only in the current browser profile.</p>
+        <h1 class="page-title mb-1">Data &amp; Backups</h1>
+        <p class="text-muted mb-0">Everything is saved only in the current browser profile.</p>
     </div>
 </div>
 
@@ -131,6 +131,18 @@ else
                         <span> — storage is nearly full. Export a backup and remove old records.</span>
                     }
                 </p>
+
+                <hr class="my-3" />
+
+                <h6 class="fw-semibold mb-2">Export for Accountant</h6>
+                <p class="text-muted mb-3 small">
+                    Spreadsheet-friendly CSV files (all data, formatted for your locale's Excel).
+                </p>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportServiceRecordsCsvAsync" disabled="@busy">Service records CSV</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportSalesCsvAsync" disabled="@busy">Product sales CSV</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportExpensesCsvAsync" disabled="@busy">Expenses CSV</button>
+                </div>
             </div>
         </div>
 
@@ -221,7 +233,7 @@ else
                 <h6 class="fw-semibold mb-3">Privacy and Install Notes</h6>
                 <ul class="mb-0 text-muted" style="padding-left: 1rem;">
                     <li>Your data is stored only in this browser's local storage.</li>
-                    <li>No server-side account or database is used in this branch.</li>
+                    <li>No server-side account or database is used by this app.</li>
                     <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
                     <li>Use exported backups if you want to keep data across devices or browsers.</li>
                     <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
@@ -356,9 +368,96 @@ else
         {
             var json = await Store.ExportAsync();
             var fileName = $"finances-app-{DateTime.Now:yyyyMMdd-HHmmss}.json";
-            await JS.InvokeVoidAsync("financeBrowser.downloadTextFile", fileName, "application/json;charset=utf-8", json);
-            Toast.Show("Backup exported.");
+            await ShareOrDownloadAsync(fileName, "application/json;charset=utf-8", json, "Backup");
             await RefreshSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Mobile browsers (especially installed PWAs) get the native share sheet
+    /// when files can be shared; everywhere else this is a plain download.
+    /// </summary>
+    private async Task ShareOrDownloadAsync(string fileName, string contentType, string content, string what)
+    {
+        var outcome = await JS.InvokeAsync<string>("financeBrowser.shareOrDownloadFile", fileName, contentType, content);
+        switch (outcome)
+        {
+            case "shared":
+                Toast.Show($"{what} shared.");
+                break;
+            case "downloaded":
+                Toast.Show($"{what} exported.");
+                break;
+            // 'cancelled': the user closed the share sheet — no toast needed.
+        }
+    }
+
+    private async Task ExportServiceRecordsCsvAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var csv = CsvExport.BuildServiceRecordsCsv(await Store.GetServiceRecordsAsync());
+            await ShareOrDownloadAsync($"finances-services-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Service records CSV");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task ExportSalesCsvAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var csv = CsvExport.BuildProductSalesCsv(await Store.GetProductSalesAsync());
+            await ShareOrDownloadAsync($"finances-sales-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Product sales CSV");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(ex.Message, ToastLevel.Error);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task ExportExpensesCsvAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            var csv = CsvExport.BuildExpensesCsv(await Store.GetExpensesAsync());
+            await ShareOrDownloadAsync($"finances-expenses-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Expenses CSV");
         }
         catch (Exception ex)
         {

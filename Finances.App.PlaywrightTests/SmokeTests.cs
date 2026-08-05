@@ -117,7 +117,7 @@ public sealed class SmokeTests
         await AddWorkerAsync(page, "Roundtrip Test Worker", "40");
 
         // Export a backup.
-        await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Data & Backups" }).ClickAsync();
         var downloadTask = page.WaitForDownloadAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Export JSON" }).ClickAsync();
         var download = await downloadTask;
@@ -135,7 +135,7 @@ public sealed class SmokeTests
             await Expect(page.GetByText("No workers yet")).ToBeVisibleAsync();
 
             // The erase kept a copy: restore it without touching the file.
-            await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+            await page.GetByRole(AriaRole.Link, new() { Name = "Data & Backups" }).ClickAsync();
             await page.GetByTestId("restore-previous").ClickAsync();
             await page.GetByRole(AriaRole.Button, new() { Name = "Restore", Exact = true }).ClickAsync();
             await Expect(page.Locator(".toast-item", new() { HasText = "restored" })).ToBeVisibleAsync();
@@ -144,7 +144,7 @@ public sealed class SmokeTests
             await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Roundtrip Test Worker" })).ToBeVisibleAsync();
 
             // Erase again and restore from the exported file instead.
-            await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+            await page.GetByRole(AriaRole.Link, new() { Name = "Data & Backups" }).ClickAsync();
             await page.GetByRole(AriaRole.Button, new() { Name = "Erase All Data" }).ClickAsync();
             await page.GetByRole(AriaRole.Button, new() { Name = "Erase Data" }).ClickAsync();
             await Expect(page.Locator(".toast-item", new() { HasText = "erased" }).Last).ToBeVisibleAsync();
@@ -159,6 +159,39 @@ public sealed class SmokeTests
         {
             File.Delete(backupPath);
         }
+    }
+
+    [Fact]
+    public async Task History_search_filters_the_virtualized_table()
+    {
+        var (server, playwright, browser, page) = await StartAppAsync();
+        await using var _ = server;
+        using var __ = playwright;
+        await using var ___ = browser;
+
+        await AddWorkerAsync(page, "Anna Nowak", "45");
+        await AddServiceAsync(page, "Strzyzenie", "50");
+
+        foreach (var client in new[] { "Kasia", "Marek" })
+        {
+            await page.GotoAsync("/record");
+            await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Record a Service" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+            await page.Locator("#record-worker").SelectOptionAsync(new SelectOptionValue { Index = 1 });
+            await page.Locator("#record-service").SelectOptionAsync(new SelectOptionValue { Index = 1 });
+            await page.Locator("#record-client").FillAsync(client);
+            await page.GetByRole(AriaRole.Button, new() { Name = "Save Record" }).ClickAsync();
+            await Expect(page.Locator(".toast-item", new() { HasText = "recorded successfully" }).Last).ToBeVisibleAsync();
+        }
+
+        await page.GotoAsync("/history");
+        await Expect(page.Locator("tbody tr:has(td)")).ToHaveCountAsync(2, new() { Timeout = 30000 });
+
+        await page.Locator("#history-search").FillAsync("Kasia");
+        await Expect(page.Locator("tbody tr:has(td)")).ToHaveCountAsync(1);
+        await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Kasia" })).ToBeVisibleAsync();
+
+        await page.Locator("#history-search").FillAsync("");
+        await Expect(page.Locator("tbody tr:has(td)")).ToHaveCountAsync(2);
     }
 
     [Fact]
@@ -209,6 +242,6 @@ public sealed class SmokeTests
 
         await page.GetByRole(AriaRole.Button, new() { Name = "Undo" }).ClickAsync();
         await Expect(page.GetByRole(AriaRole.Cell, new() { Name = "Anna Nowak" })).ToBeVisibleAsync();
-        await Expect(page.Locator("tbody tr")).ToHaveCountAsync(1);
+        await Expect(page.Locator("tbody tr:has(td)")).ToHaveCountAsync(1);
     }
 }

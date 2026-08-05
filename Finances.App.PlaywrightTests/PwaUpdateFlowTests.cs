@@ -33,7 +33,7 @@ public sealed class PwaUpdateFlowTests
         var page = await context.NewPageAsync();
         await page.GotoAsync("/");
         await page.WaitForFunctionAsync("() => !!(navigator.serviceWorker && navigator.serviceWorker.controller)");
-        await page.GetByRole(AriaRole.Link, new() { Name = "Import and Export" }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Data & Backups" }).ClickAsync();
         await page.WaitForURLAsync("**/data");
 
         var installedBuild = page.GetByTestId("installed-build");

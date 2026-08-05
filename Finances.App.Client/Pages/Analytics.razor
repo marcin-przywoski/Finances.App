@@ -43,22 +43,22 @@ else
                 {
                     <div class="row mb-3">
                         <div class="col-auto">
-                            <span class="badge badge-tint badge-tint-primary">
-                                Slope: @forecastResult.Slope.ToString("F2")/day
-                            </span>
-                        </div>
-                        <div class="col-auto">
-                            <span class="badge badge-tint badge-tint-indigo">
-                                R&sup2;: @forecastResult.RSquared.ToString("F4")
-                            </span>
-                        </div>
-                        <div class="col-auto">
                             @{
                                 var direction = forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Downward" : "Flat";
                                 var dirClass = forecastResult.Slope > 0 ? "badge-tint-up" : forecastResult.Slope < 0 ? "badge-tint-down" : "badge-tint-flat";
                             }
                             <span class="badge badge-tint @dirClass">
                                 Trend: @direction
+                            </span>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge badge-tint badge-tint-primary">
+                                @(forecastResult.Slope >= 0 ? "+" : "−")@Money.Format(Math.Abs((decimal)forecastResult.Slope)) per day
+                            </span>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge badge-tint badge-tint-indigo" title="R² = @forecastResult.RSquared.ToString("F4")">
+                                Fit: @FitLabel(forecastResult.RSquared)
                             </span>
                         </div>
                     </div>
@@ -382,6 +382,15 @@ else
 
     // Locale null = browser default; the currency comes from settings.
     private object MoneyOptions => new { locale = (string?)null, currency = Money.CurrencyCode };
+
+    // Plain-language fit instead of a raw R² — the exact value stays in the
+    // badge tooltip for anyone who wants it.
+    private static string FitLabel(double rSquared) => rSquared switch
+    {
+        >= 0.7 => "strong",
+        >= 0.4 => "moderate",
+        _ => "weak"
+    };
 
     protected override async Task OnInitializedAsync()
     {

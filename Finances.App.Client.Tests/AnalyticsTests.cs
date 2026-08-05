@@ -210,6 +210,21 @@ public class AnalyticsTests
     }
 
     [Fact]
+    public async Task Recent_records_honor_the_worker_filter()
+    {
+        var store = CreateStore();
+        var today = DateTime.Today;
+        await AddRecordAsync(store, today, 100, workerId: 1);
+        await AddRecordAsync(store, today, 200, workerId: 2);
+
+        var all = await store.GetRecentAsync(5);
+        var filtered = await store.GetRecentAsync(5, workerId: 2);
+
+        Assert.Equal(2, all.Count);
+        Assert.Equal(200, Assert.Single(filtered).AmountPaid);
+    }
+
+    [Fact]
     public async Task Top_products_rank_by_revenue()
     {
         var store = CreateStore();

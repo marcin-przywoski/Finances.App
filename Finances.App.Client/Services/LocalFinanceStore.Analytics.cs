@@ -144,7 +144,7 @@ public sealed partial class LocalFinanceStore
             Math.Round(rSquared, 4));
     }
 
-    public async Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count)
+    public async Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count, int? workerId = null)
     {
         await EnsureLoadedAsync();
 
@@ -152,6 +152,7 @@ public sealed partial class LocalFinanceStore
         var serviceNames = _snapshot.Services.ToDictionary(service => service.Id, service => service.Name);
 
         return _snapshot.ServiceRecords
+            .Where(record => !workerId.HasValue || record.WorkerId == workerId.Value)
             .OrderByDescending(record => record.DatePerformed)
             .ThenByDescending(record => record.Id)
             .Take(Math.Max(1, count))

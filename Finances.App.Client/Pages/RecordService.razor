@@ -174,12 +174,22 @@ else
         try
         {
             await Store.AddServiceRecordAsync(record);
-            Toast.Show("Service recorded successfully!");
+            Toast.Show("Service recorded successfully!", ToastLevel.Success, "View History", () =>
+            {
+                Nav.NavigateTo("history");
+                return Task.CompletedTask;
+            });
+
+            // Keep worker, commission, and service: a salon logging a run of
+            // identical visits should not re-pick the service every time.
+            var service = services?.FirstOrDefault(s => s.Id == record.ServiceId);
             record = new ServiceRecord
             {
                 DatePerformed = DateTime.Today,
                 WorkerId = record.WorkerId,
-                CommissionPercentageApplied = record.CommissionPercentageApplied
+                CommissionPercentageApplied = record.CommissionPercentageApplied,
+                ServiceId = record.ServiceId,
+                AmountPaid = service?.BasePrice ?? 0
             };
         }
         catch (Exception ex)

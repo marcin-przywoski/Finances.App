@@ -14,7 +14,7 @@ public interface IAnalyticsService
     Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? fromDate, DateTime? toDate);
     Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
     Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays, DateTime? fromDate = null, DateTime? toDate = null);
-    Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count);
+    Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count, int? workerId = null);
     Task<MonthComparisonResult> GetMonthComparisonAsync(int? workerId);
     Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
     Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? fromDate, DateTime? toDate, int count = 5);

@@ -300,7 +300,7 @@ else
             avgTicketTrend = CalcTrend(comparison.CurrentAvgTicket, comparison.PreviousAvgTicket);
             countTrend = CalcTrend(comparison.CurrentCount, comparison.PreviousCount);
 
-            recentRecords = (await Analytics.GetRecentAsync(5)).ToArray();
+            recentRecords = (await Analytics.GetRecentAsync(5, wId)).ToArray();
             topProducts = (await Analytics.GetTopProductsAsync(wId, monthStart, now)).ToArray();
             dayOfWeekData = (await Analytics.GetRevenueByDayOfWeekAsync(wId, monthStart, now)).ToArray();
 

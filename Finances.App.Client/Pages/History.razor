@@ -14,7 +14,14 @@
     </div>
 </div>
 
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+<div class="d-flex flex-wrap align-items-center gap-3">
+    <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+    <div class="ms-auto" style="min-width: 240px;">
+        <label class="visually-hidden-text" for="history-search">Search records</label>
+        <input id="history-search" type="search" class="form-control form-control-sm"
+               placeholder="Search client, worker, service, notes…" @oninput="OnSearchInput" />
+    </div>
+</div>
 
 @if (allRecords == null)
 {
@@ -30,7 +37,7 @@ else if (filtered.Count == 0)
 else
 {
     <div class="card mt-3">
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
@@ -53,9 +60,8 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var r in filtered)
-                    {
-                        <tr>
+                    <Virtualize Items="filtered" Context="r" SpacerElement="tr">
+                        <tr @key="r.Id">
                             <td>@r.DatePerformed.ToDateKey()</td>
                             <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
                             <td>@(r.Service?.Name ?? "—")</td>
@@ -64,21 +70,21 @@ else
                             <td>@r.CommissionPercentageApplied%</td>
                             <td>@Money.Format(r.Tips)</td>
                             <td class="fw-semibold">@Money.Format(r.WorkerShare)</td>
-                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
+                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@r.Notes">@(r.Notes ?? "")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
                             </td>
                         </tr>
-                    }
+                    </Virtualize>
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
                         <td colspan="4">Totals</td>
-                        <td>@Money.Format(filtered.Sum(r => r.AmountPaid))</td>
+                        <td>@Money.Format(totalAmount)</td>
                         <td></td>
-                        <td>@Money.Format(filtered.Sum(r => r.Tips))</td>
-                        <td>@Money.Format(filtered.Sum(r => r.WorkerShare))</td>
+                        <td>@Money.Format(totalTips)</td>
+                        <td>@Money.Format(totalWorkerShare)</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -165,6 +171,11 @@ else
     private List<Service>? services;
     private DateTime? dateFrom;
     private DateTime? dateTo;
+    private string searchTerm = string.Empty;
+    private CancellationTokenSource? searchCts;
+    private decimal totalAmount;
+    private decimal totalTips;
+    private decimal totalWorkerShare;
     private readonly SortState sort = new("date");
 
     private ServiceRecord editModel = new();
@@ -196,6 +207,7 @@ else
     public void Dispose()
     {
         WorkerContext.OnChange -= HandleWorkerChanged;
+        searchCts?.Cancel();
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -211,13 +223,41 @@ else
         ApplyFilter();
     }
 
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        _ = DebounceSearchAsync(searchCts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(250, token);
+            ApplyFilter();
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Superseded by newer input.
+        }
+    }
+
+    private static bool Matches(string? value, string term)
+    {
+        return value?.Contains(term, StringComparison.CurrentCultureIgnoreCase) == true;
+    }
+
     // Recomputed on state changes rather than inside the render body, so the
-    // filter+sort does not re-run on every re-render.
+    // filter+sort (and the footer totals) do not re-run on every re-render.
     private void ApplyFilter()
     {
         if (allRecords == null)
         {
             filtered = new();
+            totalAmount = totalTips = totalWorkerShare = 0;
             return;
         }
 
@@ -232,6 +272,15 @@ else
         if (dateTo.HasValue)
             q = q.Where(r => r.DatePerformed.Date <= dateTo.Value.Date);
 
+        var term = searchTerm.Trim();
+        if (term.Length > 0)
+        {
+            q = q.Where(r => Matches(r.ClientName, term)
+                || Matches(r.Notes, term)
+                || Matches(r.Worker?.Name, term)
+                || Matches(r.Service?.Name, term));
+        }
+
         q = sort.Column switch
         {
             "date" => sort.Ascending ? q.OrderBy(r => r.DatePerformed) : q.OrderByDescending(r => r.DatePerformed),
@@ -241,6 +290,9 @@ else
         };
 
         filtered = q.ToList();
+        totalAmount = filtered.Sum(r => r.AmountPaid);
+        totalTips = filtered.Sum(r => r.Tips);
+        totalWorkerShare = filtered.Sum(r => r.WorkerShare);
     }
 
     private void OpenEditModal(ServiceRecord record)

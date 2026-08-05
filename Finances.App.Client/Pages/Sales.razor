@@ -18,7 +18,14 @@
     </button>
 </div>
 
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+<div class="d-flex flex-wrap align-items-center gap-3">
+    <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+    <div class="ms-auto" style="min-width: 240px;">
+        <label class="visually-hidden-text" for="sales-search">Search sales</label>
+        <input id="sales-search" type="search" class="form-control form-control-sm"
+               placeholder="Search client, worker, product, notes…" @oninput="OnSearchInput" />
+    </div>
+</div>
 
 @if (allSales == null)
 {
@@ -34,7 +41,7 @@ else if (filtered.Count == 0)
 else
 {
     <div class="card mt-3">
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
@@ -56,9 +63,8 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var s in filtered)
-                    {
-                        <tr>
+                    <Virtualize Items="filtered" Context="s" SpacerElement="tr">
+                        <tr @key="s.Id">
                             <td>@s.DateSold.ToDateKey()</td>
                             <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
                             <td>@(s.Worker?.Name ?? "—")</td>
@@ -66,20 +72,20 @@ else
                             <td>@s.Quantity</td>
                             <td>@Money.Format(s.UnitPrice)</td>
                             <td class="fw-semibold">@Money.Format(s.TotalPrice)</td>
-                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(s.Notes ?? "")</td>
+                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@s.Notes">@(s.Notes ?? "")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">Delete</button>
                             </td>
                         </tr>
-                    }
+                    </Virtualize>
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
                         <td colspan="4">Totals</td>
-                        <td>@filtered.Sum(s => s.Quantity)</td>
+                        <td>@totalQuantity</td>
                         <td></td>
-                        <td>@Money.Format(filtered.Sum(s => s.TotalPrice))</td>
+                        <td>@Money.Format(totalRevenue)</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -174,6 +180,10 @@ else
     private List<Worker>? workers;
     private DateTime? dateFrom;
     private DateTime? dateTo;
+    private string searchTerm = string.Empty;
+    private CancellationTokenSource? searchCts;
+    private int totalQuantity;
+    private decimal totalRevenue;
     private readonly SortState sort = new("date");
 
     private ProductSale formModel = new();
@@ -205,6 +215,7 @@ else
     public void Dispose()
     {
         WorkerContext.OnChange -= HandleWorkerChanged;
+        searchCts?.Cancel();
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
@@ -220,13 +231,42 @@ else
         ApplyFilter();
     }
 
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        _ = DebounceSearchAsync(searchCts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(250, token);
+            ApplyFilter();
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Superseded by newer input.
+        }
+    }
+
+    private static bool Matches(string? value, string term)
+    {
+        return value?.Contains(term, StringComparison.CurrentCultureIgnoreCase) == true;
+    }
+
     // Recomputed on state changes rather than inside the render body, so the
-    // filter+sort does not re-run on every re-render.
+    // filter+sort (and the footer totals) do not re-run on every re-render.
     private void ApplyFilter()
     {
         if (allSales == null)
         {
             filtered = new();
+            totalQuantity = 0;
+            totalRevenue = 0;
             return;
         }
 
@@ -241,6 +281,15 @@ else
         if (dateTo.HasValue)
             q = q.Where(s => s.DateSold.Date <= dateTo.Value.Date);
 
+        var term = searchTerm.Trim();
+        if (term.Length > 0)
+        {
+            q = q.Where(s => Matches(s.ClientName, term)
+                || Matches(s.Notes, term)
+                || Matches(s.Worker?.Name, term)
+                || Matches(s.Product?.Name, term));
+        }
+
         q = sort.Column switch
         {
             "date" => sort.Ascending ? q.OrderBy(s => s.DateSold) : q.OrderByDescending(s => s.DateSold),
@@ -250,6 +299,8 @@ else
         };
 
         filtered = q.ToList();
+        totalQuantity = filtered.Sum(s => s.Quantity);
+        totalRevenue = filtered.Sum(s => s.TotalPrice);
     }
 
     private void OpenAddModal()

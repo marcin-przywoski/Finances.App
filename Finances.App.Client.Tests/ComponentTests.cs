@@ -83,6 +83,29 @@ public class ConfirmDialogTests : BunitContext
     }
 }
 
+public class WorkerSelectorTests : BunitContext
+{
+    [Fact]
+    public void Empty_choice_reads_all_workers_and_active_filter_is_flagged()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var storage = TestData.CreateSeededStorage();
+        Services.AddSingleton<IKeyValueStorage>(storage);
+        Services.AddSingleton<IFinanceStore>(new LocalFinanceStore(storage));
+        Services.AddSingleton<WorkerContextService>();
+
+        var cut = Render<WorkerSelector>();
+
+        cut.WaitForAssertion(() => Assert.Contains("All workers", cut.Markup));
+        Assert.DoesNotContain("worker-filter-active", cut.Markup);
+
+        cut.Find("#global-worker-filter").Change("1");
+
+        cut.WaitForAssertion(() => Assert.Contains("worker-filter-active", cut.Markup));
+        Assert.Contains("Filtered", cut.Markup);
+    }
+}
+
 public class StatCardTests : BunitContext
 {
     [Fact]

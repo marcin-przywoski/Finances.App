@@ -49,7 +49,7 @@ else
                             <td class="text-muted">@(p.Category ?? "—")</td>
                             <td>@Money.Format(p.Price)</td>
                             <td>
-                                @if (p.StockQuantity <= 3)
+                                @if (p.StockQuantity <= LowStockThreshold)
                                 {
                                     <span class="badge bg-danger">@p.StockQuantity — low stock</span>
                                 }
@@ -113,6 +113,8 @@ else
                OnCancel="() => { showDeleteConfirm = false; }" />
 
 @code {
+    private const int LowStockThreshold = 3;
+
     protected override string EntityName => "Product";
 
     protected override async Task<IReadOnlyList<Product>> LoadItemsAsync() => await Store.GetProductsAsync();
