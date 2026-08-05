@@ -57,6 +57,13 @@ else
                 </IconContent>
             </StatCard>
         </div>
+        <div class="col-sm-6 col-xl-3">
+            <StatCard Value="@summary.ExpenseCount.ToString()" Label="Expenses" IconBg="#fee2e2" IconColor="#ef4444">
+                <IconContent>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </IconContent>
+            </StatCard>
+        </div>
     </div>
 
     @if (quarantinedJson is not null)
@@ -73,6 +80,25 @@ else
             </div>
         </div>
     }
+
+    <div class="card p-4 mb-4">
+        <h6 class="fw-semibold mb-2">Preferences</h6>
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-6 col-lg-4">
+                <label class="form-label" for="settings-currency">Currency</label>
+                <select id="settings-currency" class="form-select" value="@currencyCode" @onchange="OnCurrencyChangedAsync" disabled="@busy">
+                    <option value="">Browser default</option>
+                    @foreach (var option in MoneyFormat.SupportedCurrencies)
+                    {
+                        <option value="@option.Code">@option.Code (@option.Symbol)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-8">
+                <p class="text-muted small mb-2">Applies to every amount shown in the app and travels with your backups.</p>
+            </div>
+        </div>
+    </div>
 
     <div class="row g-3">
         <div class="col-lg-7">
@@ -211,6 +237,7 @@ else
 
     private DataStateSummary? summary;
     private string? quarantinedJson;
+    private string currencyCode = string.Empty;
     private bool busy;
     private bool pwaBusy;
     private bool showResetConfirm;
@@ -237,6 +264,25 @@ else
     {
         summary = await Store.GetDataStateSummaryAsync();
         quarantinedJson = await Store.GetQuarantinedJsonAsync();
+        currencyCode = (await Store.GetSettingsAsync()).CurrencyCode ?? string.Empty;
+    }
+
+    private async Task OnCurrencyChangedAsync(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? string.Empty;
+
+        try
+        {
+            var settings = await Store.GetSettingsAsync();
+            settings.CurrencyCode = string.IsNullOrEmpty(code) ? null : code;
+            await Store.UpdateSettingsAsync(settings);
+            currencyCode = code;
+            Toast.Show("Currency setting saved.");
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
     }
 
     private async Task DownloadQuarantineAsync()

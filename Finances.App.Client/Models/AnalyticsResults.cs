@@ -18,7 +18,7 @@ public sealed record ForecastResult(HistoricalPointResult[] Historical, Forecast
 
 public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
 
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc, int ApproximateSizeChars);
+public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int ExpenseCount, int SchemaVersion, DateTime LastUpdatedUtc, int ApproximateSizeChars);
 
 public sealed record MonthComparisonResult(
     decimal CurrentRevenue, decimal PreviousRevenue,
@@ -33,3 +33,7 @@ public sealed record TopProductResult(string Product, int Quantity, decimal Reve
 public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
 
 public sealed record CombinedTimelineResult(IReadOnlyList<CombinedTimelinePoint> Points);
+
+public sealed record ExpenseCategoryResult(string Category, decimal Total, int Count);
+
+public sealed record ExpenseSummaryResult(decimal Total, IReadOnlyList<ExpenseCategoryResult> ByCategory);

@@ -1,6 +1,7 @@
 @page "/products"
 @inherits CrudPageBase<Product>
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 
 <PageTitle>Products</PageTitle>
 
@@ -46,7 +47,7 @@ else
                         <tr>
                             <td class="fw-semibold">@p.Name</td>
                             <td class="text-muted">@(p.Category ?? "—")</td>
-                            <td>@p.Price.ToString("C")</td>
+                            <td>@Money.Format(p.Price)</td>
                             <td>
                                 @if (p.StockQuantity <= 3)
                                 {

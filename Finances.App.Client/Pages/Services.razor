@@ -1,6 +1,7 @@
 @page "/services"
 @inherits CrudPageBase<Service>
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 
 <PageTitle>Services</PageTitle>
 
@@ -43,7 +44,7 @@ else
                     {
                         <tr>
                             <td class="fw-semibold">@svc.Name</td>
-                            <td>@svc.BasePrice.ToString("C")</td>
+                            <td>@Money.Format(svc.BasePrice)</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>

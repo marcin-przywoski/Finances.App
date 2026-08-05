@@ -1,6 +1,7 @@
 @page "/history"
 @implements IDisposable
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -58,10 +59,10 @@ else
                             <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
                             <td>@(r.Service?.Name ?? "—")</td>
                             <td class="text-muted">@(r.ClientName ?? "—")</td>
-                            <td>@r.AmountPaid.ToString("C")</td>
+                            <td>@Money.Format(r.AmountPaid)</td>
                             <td>@r.CommissionPercentageApplied%</td>
-                            <td>@r.Tips.ToString("C")</td>
-                            <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
+                            <td>@Money.Format(r.Tips)</td>
+                            <td class="fw-semibold">@Money.Format(r.WorkerShare)</td>
                             <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
@@ -73,10 +74,10 @@ else
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
                         <td colspan="4">Totals</td>
-                        <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
+                        <td>@Money.Format(filtered.Sum(r => r.AmountPaid))</td>
                         <td></td>
-                        <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
-                        <td>@filtered.Sum(r => r.WorkerShare).ToString("C")</td>
+                        <td>@Money.Format(filtered.Sum(r => r.Tips))</td>
+                        <td>@Money.Format(filtered.Sum(r => r.WorkerShare))</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -109,7 +110,7 @@ else
                         {
                             @foreach (var s in services)
                             {
-                                <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
+                                <option value="@s.Id">@s.Name (@Money.Format(s.BasePrice))</option>
                             }
                         }
                     </select>

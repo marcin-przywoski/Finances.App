@@ -254,6 +254,26 @@ public sealed partial class LocalFinanceStore
         return new CombinedTimelineResult(points);
     }
 
+    public async Task<ExpenseSummaryResult> GetExpenseSummaryAsync(DateTime? fromDate, DateTime? toDate)
+    {
+        await EnsureLoadedAsync();
+
+        // Expenses are business-level costs; the worker filter deliberately
+        // does not apply here.
+        var query = _snapshot!.Expenses.AsEnumerable();
+        if (fromDate.HasValue) query = query.Where(expense => expense.Date.Date >= fromDate.Value.Date);
+        if (toDate.HasValue) query = query.Where(expense => expense.Date.Date <= toDate.Value.Date);
+
+        var expenses = query.ToList();
+        var byCategory = expenses
+            .GroupBy(expense => expense.Category)
+            .Select(group => new ExpenseCategoryResult(group.Key, group.Sum(expense => expense.Amount), group.Count()))
+            .OrderByDescending(item => item.Total)
+            .ToList();
+
+        return new ExpenseSummaryResult(expenses.Sum(expense => expense.Amount), byCategory);
+    }
+
     private IEnumerable<ServiceRecord> FilterStoredRecords(int? workerId, DateTime? fromDate, DateTime? toDate)
     {
         var query = _snapshot!.ServiceRecords.AsEnumerable();

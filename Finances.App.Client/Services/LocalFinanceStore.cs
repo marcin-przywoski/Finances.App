@@ -13,7 +13,7 @@ public enum SnapshotLoadStatus
 
 public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 {
-    private const int CurrentSchemaVersion = 1;
+    private const int CurrentSchemaVersion = 2;
     public const string StorageKey = "Finances.App.snapshot";
     public const string QuarantineKey = "Finances.App.snapshot.quarantine";
     public const string PreResetKey = "Finances.App.snapshot.pre-reset";
@@ -439,6 +439,82 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         await PersistAsync();
     }
 
+    public async Task<IReadOnlyList<Expense>> GetExpensesAsync()
+    {
+        await EnsureLoadedAsync();
+        return _snapshot!.Expenses
+            .OrderByDescending(expense => expense.Date)
+            .ThenByDescending(expense => expense.Id)
+            .Select(CloneExpense)
+            .ToList();
+    }
+
+    public async Task<Expense> AddExpenseAsync(Expense expense)
+    {
+        ArgumentNullException.ThrowIfNull(expense);
+        await EnsureLoadedAsync();
+
+        var created = CloneExpense(expense);
+        created.Id = _snapshot!.NextExpenseId++;
+        created.Category = created.Category.Trim();
+        created.Note = NormalizeOptionalText(created.Note);
+        created.Date = created.Date == default ? DateTime.Today : created.Date.Date;
+
+        _snapshot.Expenses.Add(created);
+        await PersistAsync();
+
+        return CloneExpense(created);
+    }
+
+    public async Task UpdateExpenseAsync(int id, Expense expense)
+    {
+        ArgumentNullException.ThrowIfNull(expense);
+        await EnsureLoadedAsync();
+
+        if (id != expense.Id)
+        {
+            throw new InvalidDataException("Expense identifier mismatch.");
+        }
+
+        var existing = _snapshot!.Expenses.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+        existing.Category = expense.Category.Trim();
+        existing.Amount = expense.Amount;
+        existing.Note = NormalizeOptionalText(expense.Note);
+        existing.Date = expense.Date == default ? DateTime.Today : expense.Date.Date;
+
+        await PersistAsync();
+    }
+
+    public async Task DeleteExpenseAsync(int id)
+    {
+        await EnsureLoadedAsync();
+
+        var expense = _snapshot!.Expenses.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+        _snapshot.Expenses.Remove(expense);
+        await PersistAsync();
+    }
+
+    public async Task<AppSettings> GetSettingsAsync()
+    {
+        await EnsureLoadedAsync();
+        return CloneSettings(_snapshot!.Settings ?? new AppSettings());
+    }
+
+    public async Task UpdateSettingsAsync(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        await EnsureLoadedAsync();
+
+        var stored = CloneSettings(settings);
+        if (!MoneyFormat.IsSupported(stored.CurrencyCode))
+        {
+            stored.CurrencyCode = null;
+        }
+
+        _snapshot!.Settings = stored;
+        await PersistAsync();
+    }
+
     public async Task<DataStateSummary> GetDataStateSummaryAsync()
     {
         await EnsureLoadedAsync();
@@ -448,6 +524,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
             _snapshot.Products.Count,
             _snapshot.ServiceRecords.Count,
             _snapshot.ProductSales.Count,
+            _snapshot.Expenses.Count,
             _snapshot.SchemaVersion,
             _snapshot.LastUpdatedUtc,
             JsonSerializer.Serialize(_snapshot, CompactJson).Length);
@@ -663,6 +740,26 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         };
     }
 
+    private static Expense CloneExpense(Expense expense)
+    {
+        return new Expense
+        {
+            Id = expense.Id,
+            Date = expense.Date,
+            Category = expense.Category,
+            Amount = expense.Amount,
+            Note = expense.Note
+        };
+    }
+
+    private static AppSettings CloneSettings(AppSettings settings)
+    {
+        return new AppSettings
+        {
+            CurrencyCode = settings.CurrencyCode
+        };
+    }
+
     private ServiceRecord EnrichRecord(ServiceRecord record)
     {
         return new ServiceRecord
@@ -769,11 +866,27 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
             sale.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
         }
 
+        snapshot.Expenses ??= [];
+
+        foreach (var expense in snapshot.Expenses)
+        {
+            expense.Category = (expense.Category ?? string.Empty).Trim();
+            expense.Note = NormalizeOptionalText(expense.Note);
+            expense.Date = expense.Date == default ? DateTime.Today : expense.Date.Date;
+        }
+
+        snapshot.Settings ??= new AppSettings();
+        if (!MoneyFormat.IsSupported(snapshot.Settings.CurrencyCode))
+        {
+            snapshot.Settings.CurrencyCode = null;
+        }
+
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductId = Math.Max(snapshot.NextProductId, snapshot.Products.Select(product => product.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceRecordId = Math.Max(snapshot.NextServiceRecordId, snapshot.ServiceRecords.Select(record => record.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductSaleId = Math.Max(snapshot.NextProductSaleId, snapshot.ProductSales.Select(sale => sale.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextExpenseId = Math.Max(snapshot.NextExpenseId, snapshot.Expenses.Select(expense => expense.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
@@ -790,8 +903,14 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
             snapshot.SchemaVersion = 1;
         }
 
-        // Per-version transforms go here as the schema evolves, e.g.:
-        // if (snapshot.SchemaVersion == 1) { ...upgrade to v2...; snapshot.SchemaVersion = 2; }
+        // Per-version transforms, applied in order so any old backup walks the
+        // whole chain to the current schema.
+        if (snapshot.SchemaVersion == 1)
+        {
+            // v2 added expenses and settings; both default to empty.
+            snapshot.Expenses ??= [];
+            snapshot.SchemaVersion = 2;
+        }
 
         snapshot.SchemaVersion = CurrentSchemaVersion;
     }
@@ -803,6 +922,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         EnsureDistinctIds(snapshot.Products, product => product.Id, "products");
         EnsureDistinctIds(snapshot.ServiceRecords, record => record.Id, "service records");
         EnsureDistinctIds(snapshot.ProductSales, sale => sale.Id, "product sales");
+        EnsureDistinctIds(snapshot.Expenses, expense => expense.Id, "expenses");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();
@@ -873,6 +993,16 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         if (snapshot.ProductSales.Any(sale => sale.Quantity < 1 || sale.UnitPrice < 0))
         {
             throw new InvalidDataException("The backup contains a product sale with an invalid quantity or price.");
+        }
+
+        if (snapshot.Expenses.Any(expense => expense.Category.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains an expense without a category.");
+        }
+
+        if (snapshot.Expenses.Any(expense => expense.Amount < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative expense amount.");
         }
     }
 

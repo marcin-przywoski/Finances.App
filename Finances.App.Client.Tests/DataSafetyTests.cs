@@ -74,7 +74,7 @@ public class DataSafetyTests
         var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
 
         var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
-            store.ImportAsync("""{"schemaVersion": 2, "workers": []}"""));
+            store.ImportAsync("""{"schemaVersion": 3, "workers": []}"""));
 
         Assert.Contains("newer version", ex.Message);
     }

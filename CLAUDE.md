@@ -2,7 +2,7 @@
 
 Standalone .NET 10 Blazor WebAssembly PWA — a salon/barbershop finance tracker
 (workers with commission splits, service catalog, products with stock, service
-records, product sales, analytics with a linear-regression forecast).
+records, product sales, expenses, analytics with a linear-regression forecast).
 
 ## Hard constraints
 
@@ -12,7 +12,15 @@ records, product sales, analytics with a linear-regression forecast).
 - **Snapshot format is a compatibility contract.** Persisted under the
   `Finances.App.snapshot` key as camelCase JSON via the source-generated
   `FinanceJsonContext`. Old backups must keep importing — the legacy-format
-  fixture test in `Finances.App.Client.Tests/DataSafetyTests.cs` pins this.
+  fixture test in `Finances.App.Client.Tests/DataSafetyTests.cs` and the
+  migration tests in `SchemaV2Tests.cs` pin this.
+- **Schema versioning rule:** current schema is v2 (v2 added `expenses` and
+  `settings`). Bump the version only for breaking shape changes and add a
+  step in `MigrateSnapshot`; a new *optional* property whose default is filled
+  in `NormalizeSnapshot` is additive and must NOT bump the version.
+- User preferences (currency, later language) live in the snapshot's
+  `settings` object so they travel with backups; money display goes through
+  the `MoneyFormat` service, never `ToString("C")` directly in pages.
 - Related storage keys: `.quarantine` (preserved unreadable data), `.pre-reset`
   (pre-reset backup), `.rev` (multi-tab write guard), `selectedWorkerId`, and
   `Finances.App.pwa.*` (update state, owned by `js/pwa.js`).

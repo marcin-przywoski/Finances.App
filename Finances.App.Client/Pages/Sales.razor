@@ -1,6 +1,7 @@
 @page "/sales"
 @implements IDisposable
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
 
@@ -63,8 +64,8 @@ else
                             <td>@(s.Worker?.Name ?? "—")</td>
                             <td class="text-muted">@(s.ClientName ?? "—")</td>
                             <td>@s.Quantity</td>
-                            <td>@s.UnitPrice.ToString("C")</td>
-                            <td class="fw-semibold">@s.TotalPrice.ToString("C")</td>
+                            <td>@Money.Format(s.UnitPrice)</td>
+                            <td class="fw-semibold">@Money.Format(s.TotalPrice)</td>
                             <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(s.Notes ?? "")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
@@ -78,7 +79,7 @@ else
                         <td colspan="4">Totals</td>
                         <td>@filtered.Sum(s => s.Quantity)</td>
                         <td></td>
-                        <td>@filtered.Sum(s => s.TotalPrice).ToString("C")</td>
+                        <td>@Money.Format(filtered.Sum(s => s.TotalPrice))</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -100,7 +101,7 @@ else
                         {
                             @foreach (var p in products)
                             {
-                                <option value="@p.Id">@p.Name (@p.Price.ToString("C"))</option>
+                                <option value="@p.Id">@p.Name (@Money.Format(p.Price))</option>
                             }
                         }
                     </select>
@@ -147,7 +148,7 @@ else
                 @if (formModel.Quantity > 0 && formModel.UnitPrice > 0)
                 {
                     <span class="text-muted" style="font-size: 0.875rem;">
-                        Total: <strong>@((formModel.UnitPrice * formModel.Quantity).ToString("C"))</strong>
+                        Total: <strong>@(Money.Format(formModel.UnitPrice * formModel.Quantity))</strong>
                     </span>
                 }
             </div>

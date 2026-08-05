@@ -1,6 +1,7 @@
 @page "/analytics"
 @implements IDisposable
 @inject IAnalyticsService AnalyticsService
+@inject MoneyFormat Money
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -153,7 +154,7 @@ else
                                         <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
                                         <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
                                     </div>
-                                    <span class="fw-semibold" style="color: var(--primary);">@s.Revenue.ToString("C")</span>
+                                    <span class="fw-semibold" style="color: var(--primary);">@Money.Format(s.Revenue)</span>
                                 </div>
                                 @if (maxServiceRevenue > 0)
                                 {
@@ -169,6 +170,66 @@ else
                 else
                 {
                     <p class="text-muted mb-0" style="font-size: 0.875rem;">No data for this period.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card p-3">
+                <div class="mb-3">
+                    <h6 class="fw-semibold mb-0">Expenses</h6>
+                    <small class="text-muted">Business-level costs for the selected period — the worker filter does not apply here.</small>
+                </div>
+                @if (expenseSummary != null && expenseSummary.ByCategory.Count > 0)
+                {
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <span class="text-muted small">Total expenses</span>
+                                <div class="fs-4 fw-bold">@Money.Format(expenseSummary.Total)</div>
+                            </div>
+                            <div>
+                                <span class="text-muted small">Net after expenses</span>
+                                <div class="fs-4 fw-bold" style="color: @(NetAfterExpenses >= 0 ? "var(--success)" : "var(--danger)");">
+                                    @Money.Format(NetAfterExpenses)
+                                </div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Salon share + product revenue − expenses</div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            @{
+                                var maxCategoryTotal = expenseSummary.ByCategory.Max(c => c.Total);
+                            }
+                            <div class="list-group list-group-flush">
+                                @foreach (var category in expenseSummary.ByCategory)
+                                {
+                                    <div class="list-group-item px-0" style="border-color: var(--border-color);">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <div>
+                                                <div class="fw-semibold" style="font-size: 0.875rem;">@category.Category</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">@category.Count @(category.Count == 1 ? "expense" : "expenses")</div>
+                                            </div>
+                                            <span class="fw-semibold" style="color: var(--danger);">@Money.Format(category.Total)</span>
+                                        </div>
+                                        @if (maxCategoryTotal > 0)
+                                        {
+                                            var pct = (double)category.Total / (double)maxCategoryTotal * 100;
+                                            <div class="progress-bar-custom">
+                                                <div class="progress-fill" style="width: @($"{pct:F0}")%;"></div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No expenses recorded for this period. <a href="expenses">Add expenses</a> to see net profit after costs.</p>
                 }
             </div>
         </div>
@@ -201,9 +262,9 @@ else
                                     var share = grandTotal > 0 ? (total / grandTotal * 100) : 0;
                                     <tr>
                                         <td class="fw-semibold">@w.Worker</td>
-                                        <td>@w.Revenue.ToString("C")</td>
-                                        <td>@w.Tips.ToString("C")</td>
-                                        <td class="fw-semibold">@total.ToString("C")</td>
+                                        <td>@Money.Format(w.Revenue)</td>
+                                        <td>@Money.Format(w.Tips)</td>
+                                        <td class="fw-semibold">@Money.Format(total)</td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="progress-bar-custom" style="width: 80px;">
@@ -218,9 +279,9 @@ else
                             <tfoot>
                                 <tr class="fw-bold" style="background-color: var(--body-bg);">
                                     <td>Total</td>
-                                    <td>@workerData.Sum(w => w.Revenue).ToString("C")</td>
-                                    <td>@workerData.Sum(w => w.Tips).ToString("C")</td>
-                                    <td>@workerData.Sum(w => w.Revenue + w.Tips).ToString("C")</td>
+                                    <td>@Money.Format(workerData.Sum(w => w.Revenue))</td>
+                                    <td>@Money.Format(workerData.Sum(w => w.Tips))</td>
+                                    <td>@Money.Format(workerData.Sum(w => w.Revenue + w.Tips))</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
@@ -248,7 +309,15 @@ else
     private DayOfWeekResult[]? dayOfWeekData;
     private TopProductResult[]? topProducts;
     private CombinedTimelineResult? combinedTimeline;
+    private ExpenseSummaryResult? expenseSummary;
+    private SummaryResult? businessSummary;
+    private decimal businessProductRevenue;
     private bool needsChartRender;
+
+    // Salon-side earnings (salon share of services plus all product revenue)
+    // minus expenses; deliberately unfiltered by worker, like the expenses.
+    private decimal NetAfterExpenses =>
+        (businessSummary?.TotalSalonShare ?? 0) + businessProductRevenue - (expenseSummary?.Total ?? 0);
 
     protected override async Task OnInitializedAsync()
     {
@@ -312,6 +381,12 @@ else
             dayOfWeekData = (await AnalyticsService.GetRevenueByDayOfWeekAsync(wId, dateFrom, dateTo)).ToArray();
             topProducts = (await AnalyticsService.GetTopProductsAsync(wId, dateFrom, dateTo)).ToArray();
             combinedTimeline = await AnalyticsService.GetCombinedTimelineAsync(wId, dateFrom, dateTo);
+
+            // Expense card inputs are business-level: no worker filter.
+            expenseSummary = await AnalyticsService.GetExpenseSummaryAsync(dateFrom, dateTo);
+            businessSummary = await AnalyticsService.GetSummaryAsync(null, dateFrom, dateTo);
+            businessProductRevenue = (await AnalyticsService.GetCombinedTimelineAsync(null, dateFrom, dateTo))
+                .Points.Sum(point => point.ProductRevenue);
         }
         catch (Exception ex)
         {

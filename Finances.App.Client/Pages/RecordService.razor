@@ -1,5 +1,6 @@
 @page "/record"
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject ToastService Toast
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
@@ -39,7 +40,7 @@ else
                         <option value="0">-- Select Service --</option>
                         @foreach (var s in services)
                         {
-                            <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
+                            <option value="@s.Id">@s.Name (@Money.Format(s.BasePrice))</option>
                         }
                     </select>
                 </div>
@@ -85,7 +86,7 @@ else
                     @if (record.AmountPaid > 0 && record.CommissionPercentageApplied > 0)
                     {
                         <span class="text-muted" style="font-size: 0.875rem;">
-                            Worker: <strong>@record.WorkerShare.ToString("C")</strong> &middot; Salon: <strong>@record.SalonShare.ToString("C")</strong>
+                            Worker: <strong>@Money.Format(record.WorkerShare)</strong> &middot; Salon: <strong>@Money.Format(record.SalonShare)</strong>
                         </span>
                     }
                 </div>

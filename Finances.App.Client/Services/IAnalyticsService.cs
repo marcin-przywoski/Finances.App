@@ -19,4 +19,5 @@ public interface IAnalyticsService
     Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
     Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(int? workerId, DateTime? fromDate, DateTime? toDate, int count = 5);
     Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? fromDate, DateTime? toDate);
+    Task<ExpenseSummaryResult> GetExpenseSummaryAsync(DateTime? fromDate, DateTime? toDate);
 }

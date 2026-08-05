@@ -1,6 +1,7 @@
 @page "/"
 @implements IDisposable
 @inject IAnalyticsService Analytics
+@inject MoneyFormat Money
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
 
@@ -87,7 +88,7 @@ else
                             <div class="list-group-item px-0" style="border-color: var(--border-color);">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="fw-semibold" style="font-size: 0.875rem;">@p.Product</span>
-                                    <span class="fw-semibold" style="color: var(--primary); font-size: 0.875rem;">@p.Revenue.ToString("C")</span>
+                                    <span class="fw-semibold" style="color: var(--primary); font-size: 0.875rem;">@Money.Format(p.Revenue)</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted" style="font-size: 0.75rem;">@p.Quantity sold</span>
@@ -122,7 +123,7 @@ else
                                     <div class="fw-semibold" style="font-size: 0.875rem;">@r.Service</div>
                                     <div class="text-muted" style="font-size: 0.75rem;">@r.Worker &middot; @r.Date</div>
                                 </div>
-                                <span class="fw-semibold" style="color: var(--primary);">@r.AmountPaid.ToString("C")</span>
+                                <span class="fw-semibold" style="color: var(--primary);">@Money.Format(r.AmountPaid)</span>
                             </div>
                         }
                     </div>
@@ -191,12 +192,12 @@ else
             var monthStart = new DateTime(now.Year, now.Month, 1);
 
             var summary = await Analytics.GetSummaryAsync(wId, monthStart, now);
-            totalRevenue = summary.TotalRevenue.ToString("C");
-            totalTips = summary.TotalTips.ToString("C");
+            totalRevenue = Money.Format(summary.TotalRevenue);
+            totalTips = Money.Format(summary.TotalTips);
             recordCount = summary.RecordCount.ToString();
             avgTicket = summary.RecordCount > 0
-                ? (summary.TotalRevenue / summary.RecordCount).ToString("C")
-                : 0m.ToString("C");
+                ? Money.Format(summary.TotalRevenue / summary.RecordCount)
+                : Money.Format(0m);
 
             var comparison = await Analytics.GetMonthComparisonAsync(wId);
             revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);

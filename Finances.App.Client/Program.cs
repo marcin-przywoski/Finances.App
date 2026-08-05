@@ -17,6 +17,7 @@ static class Program
         builder.Services.AddScoped<LocalFinanceStore>();
         builder.Services.AddScoped<IFinanceStore>(sp => sp.GetRequiredService<LocalFinanceStore>());
         builder.Services.AddScoped<IAnalyticsService>(sp => sp.GetRequiredService<LocalFinanceStore>());
+        builder.Services.AddScoped<MoneyFormat>();
         builder.Services.AddScoped<ToastService>();
         builder.Services.AddScoped<WorkerContextService>();
         builder.Services.AddScoped<PwaUpdateService>();

@@ -41,6 +41,14 @@ public interface IFinanceStore
     Task UpdateProductSaleAsync(int id, ProductSale sale);
     Task DeleteProductSaleAsync(int id);
 
+    Task<IReadOnlyList<Expense>> GetExpensesAsync();
+    Task<Expense> AddExpenseAsync(Expense expense);
+    Task UpdateExpenseAsync(int id, Expense expense);
+    Task DeleteExpenseAsync(int id);
+
+    Task<AppSettings> GetSettingsAsync();
+    Task UpdateSettingsAsync(AppSettings settings);
+
     Task<string> ExportAsync();
     Task ImportAsync(string json);
     Task ResetAsync();

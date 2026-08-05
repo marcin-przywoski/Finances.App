@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -110,6 +111,11 @@
     private async Task RefreshRecoveryStateAsync()
     {
         showRecoveryBanner = await Store.GetLoadStatusAsync() == SnapshotLoadStatus.RecoveredFromCorruptData;
+
+        // Keep the money formatter in sync with the persisted currency setting;
+        // pages re-render on the same store change and pick it up.
+        var settings = await Store.GetSettingsAsync();
+        Money.SetCurrency(settings.CurrencyCode);
     }
 
     private void GoToDataPage()
