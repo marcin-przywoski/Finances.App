@@ -1,6 +1,6 @@
 # Finances.App
 
-Standalone .NET 9 Blazor WebAssembly PWA — a salon/barbershop finance tracker
+Standalone .NET 10 Blazor WebAssembly PWA — a salon/barbershop finance tracker
 (workers with commission splits, service catalog, products with stock, service
 records, product sales, analytics with a linear-regression forecast).
 

@@ -51,7 +51,7 @@ dotnet publish .\Finances.App.Client\Finances.App.Client.csproj -c Release
 Publish output is written to:
 
 ```text
-Finances.App.Client\bin\Release\net9.0\publish\wwwroot
+Finances.App.Client\bin\Release\net10.0\publish\wwwroot
 ```
 
 Deploy the contents of that `wwwroot` folder to any static host.
