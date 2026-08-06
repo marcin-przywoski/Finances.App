@@ -1,3 +1,4 @@
+using System.Globalization;
 using Finances.App.Client.Models;
 using Finances.App.Shared;
 
@@ -199,14 +200,20 @@ public sealed partial class LocalFinanceStore
     {
         await EnsureLoadedAsync();
 
-        var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        // Monday-first business week; the labels follow the UI culture
+        // (invariant/English gives Mon..Sun, Polish gives pon..niedz.).
+        var format = CultureInfo.CurrentCulture.DateTimeFormat;
+        var week = new[]
+        {
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+            DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+        };
         var records = FilterStoredRecords(workerId, fromDate, toDate).ToList();
 
-        return dayNames.Select((name, i) =>
+        return week.Select(dow =>
         {
-            var dow = i == 6 ? DayOfWeek.Sunday : (DayOfWeek)(i + 1);
             var dayRecords = records.Where(r => r.DatePerformed.DayOfWeek == dow).ToList();
-            return new DayOfWeekResult(name, dayRecords.Sum(r => r.AmountPaid), dayRecords.Count);
+            return new DayOfWeekResult(format.GetAbbreviatedDayName(dow), dayRecords.Sum(r => r.AmountPaid), dayRecords.Count);
         }).ToList();
     }
 

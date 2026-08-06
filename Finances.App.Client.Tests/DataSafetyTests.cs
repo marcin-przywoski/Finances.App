@@ -206,10 +206,10 @@ public class DataSafetyTests
         var store = new LocalFinanceStore(new InMemoryKeyValueStorage());
         await store.AddProductAsync(new Product { Name = "Pomade", Price = 25, StockQuantity = 3 });
 
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Assert.ThrowsAsync<InsufficientStockException>(() =>
             store.AddProductSaleAsync(new ProductSale { ProductId = 1, DateSold = DateTime.Today, Quantity = 10, UnitPrice = 25 }));
 
-        Assert.Contains("3", ex.Message);
+        Assert.Equal(3, ex.Available);
         Assert.Empty(await store.GetProductSalesAsync());
         Assert.Equal(3, (await store.GetProductsAsync()).Single().StockQuantity);
     }
@@ -251,7 +251,7 @@ public class DataSafetyTests
         var sale = await store.AddProductSaleAsync(new ProductSale { ProductId = 1, DateSold = DateTime.Today, Quantity = 2, UnitPrice = 25 });
 
         var update = new ProductSale { Id = sale.Id, ProductId = 1, DateSold = DateTime.Today, Quantity = 8, UnitPrice = 25 };
-        await Assert.ThrowsAsync<InvalidDataException>(() => store.UpdateProductSaleAsync(sale.Id, update));
+        await Assert.ThrowsAsync<InsufficientStockException>(() => store.UpdateProductSaleAsync(sale.Id, update));
 
         Assert.Equal(3, (await store.GetProductsAsync()).Single().StockQuantity);
         Assert.Equal(2, (await store.GetProductSalesAsync()).Single().Quantity);

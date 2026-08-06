@@ -3,15 +3,17 @@
 @inject IFinanceStore Store
 @inject WorkerContextService WorkerContext
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @inject PwaUpdateService PwaUpdate
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Data &amp; Backups</PageTitle>
+<PageTitle>@L["Data_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Data &amp; Backups</h1>
-        <p class="text-muted mb-0">Everything is saved only in the current browser profile.</p>
+        <h1 class="page-title mb-1">@L["Data_Title"]</h1>
+        <p class="text-muted mb-0">@L["Data_Subtitle"]</p>
     </div>
 </div>
 
@@ -23,42 +25,42 @@ else
 {
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.WorkerCount.ToString()" Label="Workers" Variant="StatCardVariant.Info">
+            <StatCard Value="@summary.WorkerCount.ToString()" Label="@L["Data_Workers"]" Variant="StatCardVariant.Info">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ServiceCount.ToString()" Label="Services" Variant="StatCardVariant.Warning">
+            <StatCard Value="@summary.ServiceCount.ToString()" Label="@L["Data_Services"]" Variant="StatCardVariant.Warning">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ProductCount.ToString()" Label="Products" Variant="StatCardVariant.Purple">
+            <StatCard Value="@summary.ProductCount.ToString()" Label="@L["Data_Products"]" Variant="StatCardVariant.Purple">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="Recorded Services" Variant="StatCardVariant.Success">
+            <StatCard Value="@summary.ServiceRecordCount.ToString()" Label="@L["Data_RecordedServices"]" Variant="StatCardVariant.Success">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ProductSaleCount.ToString()" Label="Product Sales" Variant="StatCardVariant.Pink">
+            <StatCard Value="@summary.ProductSaleCount.ToString()" Label="@L["Data_ProductSales"]" Variant="StatCardVariant.Pink">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@summary.ExpenseCount.ToString()" Label="Expenses" Variant="StatCardVariant.Danger">
+            <StatCard Value="@summary.ExpenseCount.ToString()" Label="@L["Data_Expenses"]" Variant="StatCardVariant.Danger">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                 </IconContent>
@@ -69,33 +71,40 @@ else
     @if (quarantinedJson is not null)
     {
         <div class="alert alert-warning mb-4" role="alert">
-            <h6 class="fw-semibold mb-2">Unreadable data was preserved</h6>
+            <h6 class="fw-semibold mb-2">@L["Data_QuarantineTitle"]</h6>
             <p class="mb-2">
-                A previous copy of your data could not be read (it may be corrupt or from a newer app version), so the app
-                started fresh. The original content was kept — download it before dismissing this notice.
+                @L["Data_QuarantineBody"]
             </p>
             <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-sm btn-primary" @onclick="DownloadQuarantineAsync" disabled="@busy">Download preserved copy</button>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="DismissQuarantineAsync" disabled="@busy">Dismiss and delete copy</button>
+                <button class="btn btn-sm btn-primary" @onclick="DownloadQuarantineAsync" disabled="@busy">@L["Data_QuarantineDownload"]</button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="DismissQuarantineAsync" disabled="@busy">@L["Data_QuarantineDismiss"]</button>
             </div>
         </div>
     }
 
     <div class="card p-4 mb-4">
-        <h6 class="fw-semibold mb-2">Preferences</h6>
+        <h6 class="fw-semibold mb-2">@L["Data_Preferences"]</h6>
         <div class="row g-3 align-items-end">
             <div class="col-sm-6 col-lg-4">
-                <label class="form-label" for="settings-currency">Currency</label>
+                <label class="form-label" for="settings-currency">@L["Data_Currency"]</label>
                 <select id="settings-currency" class="form-select" value="@currencyCode" @onchange="OnCurrencyChangedAsync" disabled="@busy">
-                    <option value="">Browser default</option>
+                    <option value="">@L["Data_BrowserDefault"]</option>
                     @foreach (var option in MoneyFormat.SupportedCurrencies)
                     {
                         <option value="@option.Code">@option.Code (@option.Symbol)</option>
                     }
                 </select>
             </div>
-            <div class="col-sm-6 col-lg-8">
-                <p class="text-muted small mb-2">Applies to every amount shown in the app and travels with your backups.</p>
+            <div class="col-sm-6 col-lg-4">
+                <label class="form-label" for="settings-language">@L["Data_Language"]</label>
+                <select id="settings-language" class="form-select" value="@languageCode" @onchange="OnLanguageChangedAsync" disabled="@busy">
+                    <option value="">@L["Data_LanguageAuto"]</option>
+                    <option value="pl">Polski</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="col-lg-4">
+                <p class="text-muted small mb-2">@L["Data_CurrencyHint"] @L["Data_LanguageHint"]</p>
             </div>
         </div>
     </div>
@@ -103,45 +112,45 @@ else
     <div class="row g-3">
         <div class="col-lg-7">
             <div class="card p-4 h-100">
-                <h6 class="fw-semibold mb-3">Back Up or Restore</h6>
+                <h6 class="fw-semibold mb-3">@L["Data_BackupTitle"]</h6>
                 <p class="text-muted mb-3">
-                    Use export to save your data as a JSON backup. Use import to restore a previous backup on this browser or move it to another device.
+                    @L["Data_BackupBody"]
                 </p>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? "Working..." : "Export JSON")</button>
+                    <button class="btn btn-primary" @onclick="ExportAsync" disabled="@busy">@(busy ? L["Common_Working"] : L["Data_ExportJson"])</button>
                     <label class="btn btn-outline-primary mb-0 @(busy ? "disabled" : string.Empty)">
-                        Import JSON
+                        @L["Data_ImportJson"]
                         <InputFile OnChange="ImportAsync" accept=".json,application/json" class="d-none" disabled="@busy" />
                     </label>
-                    <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">Erase All Data</button>
+                    <button class="btn btn-outline-danger" @onclick="() => showResetConfirm = true" disabled="@busy">@L["Data_EraseAll"]</button>
                 </div>
                 @if (preResetAvailable)
                 {
                     <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
                         <button class="btn btn-outline-secondary btn-sm" @onclick="() => showRestoreConfirm = true" disabled="@busy" data-testid="restore-previous">
-                            Restore previous data
+                            @L["Data_RestorePrevious"]
                         </button>
-                        <span class="text-muted small">Brings back the data from before your last erase or import.</span>
+                        <span class="text-muted small">@L["Data_RestoreHint"]</span>
                     </div>
                 }
                 <p class="mb-0 mt-3 small @(IsStorageNearlyFull ? "text-danger fw-semibold" : "text-muted")">
-                    Browser storage used: ~@FormatStorageSize(summary.ApproximateSizeChars)
+                    @L["Data_StorageUsed", FormatStorageSize(summary.ApproximateSizeChars)]
                     @if (IsStorageNearlyFull)
                     {
-                        <span> — storage is nearly full. Export a backup and remove old records.</span>
+                        <span> @L["Data_StorageFull"]</span>
                     }
                 </p>
 
                 <hr class="my-3" />
 
-                <h6 class="fw-semibold mb-2">Export for Accountant</h6>
+                <h6 class="fw-semibold mb-2">@L["Data_AccountantTitle"]</h6>
                 <p class="text-muted mb-3 small">
-                    Spreadsheet-friendly CSV files (all data, formatted for your locale's Excel).
+                    @L["Data_AccountantBody"]
                 </p>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportServiceRecordsCsvAsync" disabled="@busy">Service records CSV</button>
-                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportSalesCsvAsync" disabled="@busy">Product sales CSV</button>
-                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportExpensesCsvAsync" disabled="@busy">Expenses CSV</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportServiceRecordsCsvAsync" disabled="@busy">@L["Data_CsvServices"]</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportSalesCsvAsync" disabled="@busy">@L["Data_CsvSales"]</button>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="ExportExpensesCsvAsync" disabled="@busy">@L["Data_CsvExpenses"]</button>
                 </div>
             </div>
         </div>
@@ -150,48 +159,47 @@ else
             <div class="card p-4 h-100">
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
                     <div>
-                        <h6 class="fw-semibold mb-1">App Updates</h6>
-                        <p class="text-muted mb-0">Check for a newer offline build, then reload once to switch the installed PWA to it.</p>
+                        <h6 class="fw-semibold mb-1">@L["Data_UpdatesTitle"]</h6>
+                        <p class="text-muted mb-0">@L["Data_UpdatesBody"]</p>
                     </div>
                     <span class="badge rounded-pill @(PwaUpdate.State.UpdateAvailable ? "text-bg-primary" : "text-bg-secondary")">@GetPwaStatusLabel()</span>
                 </div>
 
                 <dl class="row mb-3 small">
-                    <dt class="col-5 text-muted">Installed build</dt>
+                    <dt class="col-5 text-muted">@L["Data_InstalledBuild"]</dt>
                     <dd class="col-7 fw-semibold" data-testid="installed-build">@GetBuildLabel()</dd>
 
-                    <dt class="col-5 text-muted">Available build</dt>
+                    <dt class="col-5 text-muted">@L["Data_AvailableBuild"]</dt>
                     <dd class="col-7" data-testid="available-build">@GetAvailableBuildLabel()</dd>
 
-                    <dt class="col-5 text-muted">Last checked</dt>
+                    <dt class="col-5 text-muted">@L["Data_LastChecked"]</dt>
                     <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastCheckedUtc)</dd>
 
-                    <dt class="col-5 text-muted">Last applied</dt>
+                    <dt class="col-5 text-muted">@L["Data_LastApplied"]</dt>
                     <dd class="col-7">@FormatDateTime(PwaUpdate.State.LastAppliedUpdateUtc)</dd>
 
-                    <dt class="col-5 text-muted">Backup schema</dt>
+                    <dt class="col-5 text-muted">@L["Data_BackupSchema"]</dt>
                     <dd class="col-7">v@(summary.SchemaVersion)</dd>
                 </dl>
 
                 @if (!string.IsNullOrWhiteSpace(PwaUpdate.State.InstallError))
                 {
                     <div class="alert alert-warning py-2 small" role="alert">
-                        The last update failed to install, so this device stays on the current build.
-                        Check your connection and try again. (@PwaUpdate.State.InstallError)
+                        @L["Data_InstallError", PwaUpdate.State.InstallError!]
                     </div>
                 }
 
                 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? "Checking..." : "Check for updates")</button>
+                    <button class="btn btn-outline-primary" @onclick="CheckForUpdatesAsync" disabled="@(busy || pwaBusy)">@(pwaBusy ? L["Data_Checking"] : L["Data_CheckUpdates"])</button>
 
                     @if (PwaUpdate.State.UpdateAvailable)
                     {
-                        <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">Reload to update</button>
+                        <button class="btn btn-primary" @onclick="ApplyUpdateAsync" disabled="@(busy || pwaBusy)">@L["Data_ReloadToUpdate"]</button>
                     }
 
                     @if (PwaUpdate.State.InstallAvailable && !PwaUpdate.State.IsStandalone)
                     {
-                        <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">Install app</button>
+                        <button class="btn btn-outline-secondary" @onclick="PromptInstallAsync" disabled="@(busy || pwaBusy)">@L["Data_InstallApp"]</button>
                     }
                 </div>
 
@@ -230,13 +238,13 @@ else
                     </div>
                 }
 
-                <h6 class="fw-semibold mb-3">Privacy and Install Notes</h6>
+                <h6 class="fw-semibold mb-3">@L["Data_PrivacyTitle"]</h6>
                 <ul class="mb-0 text-muted" style="padding-left: 1rem;">
-                    <li>Your data is stored only in this browser's local storage.</li>
-                    <li>No server-side account or database is used by this app.</li>
-                    <li>The PWA keeps its offline cache after the first successful online load and can check for updates without clearing local data.</li>
-                    <li>Use exported backups if you want to keep data across devices or browsers.</li>
-                    <li>Last local update: <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
+                    <li>@L["Data_Privacy1"]</li>
+                    <li>@L["Data_Privacy2"]</li>
+                    <li>@L["Data_Privacy3"]</li>
+                    <li>@L["Data_Privacy4"]</li>
+                    <li>@L["Data_Privacy5"] <strong>@summary.LastUpdatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></li>
                 </ul>
             </div>
         </div>
@@ -244,16 +252,16 @@ else
 }
 
 <ConfirmDialog IsVisible="showResetConfirm"
-               Title="Erase Local Data"
-               Message="Erase all data in this browser and start empty? A copy of the current data is kept, so you can restore it afterwards from this page."
-               ConfirmText="Erase Data"
+               Title="@L["Data_EraseTitle"]"
+               Message="@L["Data_EraseMessage"]"
+               ConfirmText="@L["Data_EraseConfirm"]"
                OnConfirm="HandleResetAsync"
                OnCancel="() => showResetConfirm = false" />
 
 <ConfirmDialog IsVisible="showRestoreConfirm"
-               Title="Restore Previous Data"
-               Message="Replace the current browser data with the copy saved before your last erase or import?"
-               ConfirmText="Restore"
+               Title="@L["Data_RestoreTitle"]"
+               Message="@L["Data_RestoreMessage"]"
+               ConfirmText="@L["Data_RestoreConfirm"]"
                OnConfirm="HandleRestorePreviousAsync"
                OnCancel="() => showRestoreConfirm = false" />
 
@@ -266,6 +274,7 @@ else
     private DataStateSummary? summary;
     private string? quarantinedJson;
     private string currencyCode = string.Empty;
+    private string languageCode = string.Empty;
     private bool preResetAvailable;
     private bool busy;
     private bool pwaBusy;
@@ -294,8 +303,29 @@ else
     {
         summary = await Store.GetDataStateSummaryAsync();
         quarantinedJson = await Store.GetQuarantinedJsonAsync();
-        currencyCode = (await Store.GetSettingsAsync()).CurrencyCode ?? string.Empty;
+        var settings = await Store.GetSettingsAsync();
+        currencyCode = settings.CurrencyCode ?? string.Empty;
+        languageCode = settings.Language ?? string.Empty;
         preResetAvailable = !string.IsNullOrWhiteSpace(await Store.GetPreResetJsonAsync());
+    }
+
+    private async Task OnLanguageChangedAsync(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? string.Empty;
+
+        try
+        {
+            var settings = await Store.GetSettingsAsync();
+            settings.Language = string.IsNullOrEmpty(code) ? null : code;
+            await Store.UpdateSettingsAsync(settings);
+            languageCode = code;
+            // The culture is applied at boot, so a full reload switches the UI.
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
     }
 
     private async Task OnCurrencyChangedAsync(ChangeEventArgs e)
@@ -308,7 +338,7 @@ else
             settings.CurrencyCode = string.IsNullOrEmpty(code) ? null : code;
             await Store.UpdateSettingsAsync(settings);
             currencyCode = code;
-            Toast.Show("Currency setting saved.");
+            Toast.Show(L["Data_ToastCurrencySaved"]);
         }
         catch (Exception ex)
         {
@@ -327,7 +357,7 @@ else
         {
             var fileName = $"finances-app-preserved-{DateTime.Now:yyyyMMdd-HHmmss}.json";
             await JS.InvokeVoidAsync("financeBrowser.downloadTextFile", fileName, "application/json;charset=utf-8", quarantinedJson);
-            Toast.Show("Preserved copy downloaded.");
+            Toast.Show(L["Data_ToastQuarantineDownloaded"]);
         }
         catch (Exception ex)
         {
@@ -341,7 +371,7 @@ else
         {
             await Store.ClearQuarantineAsync();
             quarantinedJson = null;
-            Toast.Show("Preserved copy removed.");
+            Toast.Show(L["Data_ToastQuarantineRemoved"]);
         }
         catch (Exception ex)
         {
@@ -349,11 +379,11 @@ else
         }
     }
 
-    private static string FormatStorageSize(int chars)
+    private string FormatStorageSize(int chars)
     {
         return chars >= 1024 * 1024
-            ? $"{chars / (1024.0 * 1024.0):0.0} MB of ~5 MB"
-            : $"{chars / 1024.0:0} KB of ~5 MB";
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, L["Data_StorageOf5MB"], $"{chars / (1024.0 * 1024.0):0.0} MB")
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, L["Data_StorageOf5MB"], $"{chars / 1024.0:0} KB");
     }
 
     private async Task ExportAsync()
@@ -368,7 +398,7 @@ else
         {
             var json = await Store.ExportAsync();
             var fileName = $"finances-app-{DateTime.Now:yyyyMMdd-HHmmss}.json";
-            await ShareOrDownloadAsync(fileName, "application/json;charset=utf-8", json, "Backup");
+            await ShareOrDownloadAsync(fileName, "application/json;charset=utf-8", json, L["Data_Backup"]);
             await RefreshSummaryAsync();
         }
         catch (Exception ex)
@@ -391,10 +421,10 @@ else
         switch (outcome)
         {
             case "shared":
-                Toast.Show($"{what} shared.");
+                Toast.Show(L["Data_ToastShared", what]);
                 break;
             case "downloaded":
-                Toast.Show($"{what} exported.");
+                Toast.Show(L["Data_ToastExported", what]);
                 break;
             // 'cancelled': the user closed the share sheet — no toast needed.
         }
@@ -411,7 +441,7 @@ else
         try
         {
             var csv = CsvExport.BuildServiceRecordsCsv(await Store.GetServiceRecordsAsync());
-            await ShareOrDownloadAsync($"finances-services-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Service records CSV");
+            await ShareOrDownloadAsync($"finances-services-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, L["Data_CsvServices"]);
         }
         catch (Exception ex)
         {
@@ -434,7 +464,7 @@ else
         try
         {
             var csv = CsvExport.BuildProductSalesCsv(await Store.GetProductSalesAsync());
-            await ShareOrDownloadAsync($"finances-sales-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Product sales CSV");
+            await ShareOrDownloadAsync($"finances-sales-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, L["Data_CsvSales"]);
         }
         catch (Exception ex)
         {
@@ -457,7 +487,7 @@ else
         try
         {
             var csv = CsvExport.BuildExpensesCsv(await Store.GetExpensesAsync());
-            await ShareOrDownloadAsync($"finances-expenses-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, "Expenses CSV");
+            await ShareOrDownloadAsync($"finances-expenses-{DateTime.Now:yyyyMMdd}.csv", CsvExport.ContentType, csv, L["Data_CsvExpenses"]);
         }
         catch (Exception ex)
         {
@@ -492,7 +522,7 @@ else
             await Store.ImportAsync(json);
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Backup imported.");
+            Toast.Show(L["Data_ToastImported"]);
         }
         catch (Exception ex)
         {
@@ -519,7 +549,7 @@ else
             await Store.ResetAsync();
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Local data erased. You can restore the previous data from this page.");
+            Toast.Show(L["Data_ToastErased"]);
         }
         catch (Exception ex)
         {
@@ -546,7 +576,7 @@ else
             var json = await Store.GetPreResetJsonAsync();
             if (string.IsNullOrWhiteSpace(json))
             {
-                Toast.Show("No previous data copy was found.", ToastLevel.Error);
+                Toast.Show(L["Data_ToastNoPrevious"], ToastLevel.Error);
                 return;
             }
 
@@ -555,7 +585,7 @@ else
             await Store.ImportAsync(json);
             await SyncSelectedWorkerAsync();
             await RefreshSummaryAsync();
-            Toast.Show("Previous data restored.");
+            Toast.Show(L["Data_ToastRestored"]);
         }
         catch (Exception ex)
         {
@@ -586,8 +616,8 @@ else
         {
             var updateReady = await PwaUpdate.CheckForUpdatesAsync();
             Toast.Show(updateReady
-                ? "A newer offline build is ready. Reload to apply it."
-                : "You already have the latest available offline build.");
+                ? L["Data_ToastUpdateReady"]
+                : L["Data_ToastUpToDate"]);
         }
         catch (Exception ex)
         {
@@ -613,7 +643,7 @@ else
             var updateStarted = await PwaUpdate.ApplyUpdateAsync();
             if (!updateStarted)
             {
-                Toast.Show("No pending update was found.", ToastLevel.Error);
+                Toast.Show(L["Data_ToastNoUpdate"], ToastLevel.Error);
             }
         }
         catch (Exception ex)
@@ -640,7 +670,7 @@ else
             var accepted = await PwaUpdate.PromptInstallAsync();
             if (!accepted)
             {
-                Toast.Show("The install prompt is not available right now.", ToastLevel.Error);
+                Toast.Show(L["Data_ToastNoInstallPrompt"], ToastLevel.Error);
             }
         }
         catch (Exception ex)
@@ -657,33 +687,33 @@ else
     {
         if (pwaBusy || PwaUpdate.State.IsCheckingForUpdates)
         {
-            return "Checking";
+            return L["Data_PwaChecking"];
         }
 
         if (PwaUpdate.State.UpdateAvailable)
         {
-            return "Update ready";
+            return L["Data_PwaUpdateReady"];
         }
 
         if (PwaUpdate.State.JustUpdated)
         {
-            return "Updated";
+            return L["Data_PwaUpdated"];
         }
 
-        return PwaUpdate.State.IsOfflineReady ? "Up to date" : "Initializing";
+        return PwaUpdate.State.IsOfflineReady ? L["Data_PwaUpToDate"] : L["Data_PwaInitializing"];
     }
 
     private string GetBuildLabel()
     {
         return string.IsNullOrWhiteSpace(PwaUpdate.State.CurrentVersion)
-            ? "Detecting..."
+            ? L["Data_Detecting"].Value
             : PwaUpdate.State.CurrentVersion!;
     }
 
     private string GetAvailableBuildLabel()
     {
         return string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableVersion)
-            ? "No pending update"
+            ? L["Data_NoPendingUpdate"].Value
             : PwaUpdate.State.AvailableVersion!;
     }
 
@@ -695,13 +725,15 @@ else
     private string GetReleaseHeading()
     {
         return PwaUpdate.State.AvailableRelease is not null
-            ? "What changed"
-            : "Current release";
+            ? L["Data_WhatChanged"].Value
+            : L["Data_CurrentRelease"].Value;
     }
 
-    private static string FormatDateTime(DateTimeOffset? value)
+    private string NotYetLabel => L["Data_NotYet"];
+
+    private string FormatDateTime(DateTimeOffset? value)
     {
-        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "Not yet";
+        return value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? NotYetLabel;
     }
 
     private void HandlePwaStateChanged()

@@ -1,15 +1,17 @@
+@inject IStringLocalizer<AppStrings> L
+
 <div class="date-range-filter">
-    <button type="button" class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>Today</button>
-    <button type="button" class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>This Week</button>
-    <button type="button" class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>This Month</button>
-    <button type="button" class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>Custom</button>
+    <button type="button" class="btn-preset @(ActivePreset == "today" ? "active" : "")" @onclick='() => SetPreset("today")'>@L["Range_Today"]</button>
+    <button type="button" class="btn-preset @(ActivePreset == "week" ? "active" : "")" @onclick='() => SetPreset("week")'>@L["Range_Week"]</button>
+    <button type="button" class="btn-preset @(ActivePreset == "month" ? "active" : "")" @onclick='() => SetPreset("month")'>@L["Range_Month"]</button>
+    <button type="button" class="btn-preset @(ActivePreset == "custom" ? "active" : "")" @onclick='() => SetPreset("custom")'>@L["Range_Custom"]</button>
 
     @if (ActivePreset == "custom")
     {
-        <label class="visually-hidden-text" for="@fromId">From date</label>
+        <label class="visually-hidden-text" for="@fromId">@L["Range_From"]</label>
         <input id="@fromId" type="date" class="form-control form-control-sm" style="width: auto;" value="@From?.ToDateKey()" @onchange="OnFromChanged" />
-        <span style="color: var(--text-muted);" aria-hidden="true">to</span>
-        <label class="visually-hidden-text" for="@toId">To date</label>
+        <span style="color: var(--text-muted);" aria-hidden="true">@L["Range_ToSeparator"]</span>
+        <label class="visually-hidden-text" for="@toId">@L["Range_To"]</label>
         <input id="@toId" type="date" class="form-control form-control-sm" style="width: auto;" value="@To?.ToDateKey()" @onchange="OnToChanged" />
     }
 </div>

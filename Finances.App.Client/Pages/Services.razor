@@ -3,16 +3,16 @@
 @inject IFinanceStore Store
 @inject MoneyFormat Money
 
-<PageTitle>Services</PageTitle>
+<PageTitle>@L["Svc_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Services</h1>
-        <p class="text-muted mb-0">Manage the services your shop offers and their base prices.</p>
+        <h1 class="page-title mb-1">@L["Svc_Title"]</h1>
+        <p class="text-muted mb-0">@L["Svc_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Add Service
+        @L["Svc_Add"]
     </button>
 </div>
 
@@ -23,8 +23,8 @@
 else if (items.Count == 0)
 {
     <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No services yet. Add your first service to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Service</button></div>
+        <p class="text-muted mb-3">@L["Svc_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Svc_Add"]</button></div>
     </div>
 }
 else
@@ -34,9 +34,9 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Service Name</th>
-                        <th>Base Price</th>
-                        <th style="width: 140px;">Actions</th>
+                        <th>@L["Svc_Name"]</th>
+                        <th>@L["Svc_BasePrice"]</th>
+                        <th style="width: 140px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,8 +46,8 @@ else
                             <td class="fw-semibold">@svc.Name</td>
                             <td>@Money.Format(svc.BasePrice)</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     }
@@ -57,39 +57,41 @@ else
     </div>
 }
 
-<ModalDialog IsVisible="showModal" Title="@(isEditing ? "Edit Service" : "Add Service")" OnClose="CloseModal">
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Svc_EditTitle"] : L["Svc_Add"])" OnClose="CloseModal">
     <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <div class="modal-body">
             <div class="mb-3">
-                <label class="form-label" for="service-name">Service Name</label>
+                <label class="form-label" for="service-name">@L["Svc_Name"]</label>
                 <InputText id="service-name" class="form-control" @bind-Value="formModel.Name" />
                 <ValidationMessage For="() => formModel.Name" />
             </div>
             <div class="mb-3">
-                <label class="form-label" for="service-price">Base Price</label>
+                <label class="form-label" for="service-price">@L["Svc_BasePrice"]</label>
                 <InputNumber id="service-price" class="form-control" @bind-Value="formModel.BasePrice" />
                 <ValidationMessage For="() => formModel.BasePrice" />
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
             <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Add"]))
             </button>
         </div>
     </EditForm>
 </ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Service"
-               Message="@($"Delete {deleteTarget?.Name}? You can undo right after deleting.")"
-               ConfirmText="Delete"
+               Title="@L["Svc_DeleteTitle"]"
+               Message="@L["Crud_DeleteMessage", deleteTarget?.Name ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
 @code {
-    protected override string EntityName => "Service";
+    protected override string ToastAdded => L["Svc_Added"];
+    protected override string ToastUpdated => L["Svc_Updated"];
+    protected override string ToastDeleted => L["Svc_Deleted"];
 
     protected override async Task<IReadOnlyList<Service>> LoadItemsAsync() => await Store.GetServicesAsync();
 

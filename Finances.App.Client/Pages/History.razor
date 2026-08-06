@@ -4,22 +4,23 @@
 @inject MoneyFormat Money
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>History</PageTitle>
+<PageTitle>@L["Hist_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Service History</h1>
-        <p class="text-muted mb-0">View, edit, and manage past service records.</p>
+        <h1 class="page-title mb-1">@L["Hist_Title"]</h1>
+        <p class="text-muted mb-0">@L["Hist_Subtitle"]</p>
     </div>
 </div>
 
 <div class="d-flex flex-wrap align-items-center gap-3">
     <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
     <div class="ms-auto" style="min-width: 240px;">
-        <label class="visually-hidden-text" for="history-search">Search records</label>
+        <label class="visually-hidden-text" for="history-search">@L["Hist_SearchLabel"]</label>
         <input id="history-search" type="search" class="form-control form-control-sm"
-               placeholder="Search client, worker, service, notes…" @oninput="OnSearchInput" />
+               placeholder="@L["Hist_SearchPlaceholder"]" @oninput="OnSearchInput" />
     </div>
 </div>
 
@@ -30,8 +31,8 @@
 else if (filtered.Count == 0)
 {
     <div class="card p-5 text-center mt-3">
-        <p class="text-muted mb-3">No records found for the selected period.</p>
-        <div><a class="btn btn-primary" href="record">Record Service</a></div>
+        <p class="text-muted mb-3">@L["Hist_Empty"]</p>
+        <div><a class="btn btn-primary" href="record">@L["Nav_RecordService"]</a></div>
     </div>
 }
 else
@@ -42,21 +43,21 @@ else
                 <thead>
                     <tr>
                         <th aria-sort="@sort.AriaSort("date")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>Date <span aria-hidden="true">@sort.Icon("date")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
                         </th>
-                        <th>Worker</th>
-                        <th>Service</th>
-                        <th>Client</th>
+                        <th>@L["Common_Worker"]</th>
+                        <th>@L["Common_Service"]</th>
+                        <th>@L["Common_Client"]</th>
                         <th aria-sort="@sort.AriaSort("amount")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>Amount <span aria-hidden="true">@sort.Icon("amount")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>@L["Common_Amount"] <span aria-hidden="true">@sort.Icon("amount")</span></button>
                         </th>
-                        <th>Commission</th>
-                        <th>Tips</th>
+                        <th>@L["Common_Commission"]</th>
+                        <th>@L["Common_Tips"]</th>
                         <th aria-sort="@sort.AriaSort("worker_share")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("worker_share")'>Worker Share <span aria-hidden="true">@sort.Icon("worker_share")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("worker_share")'>@L["Hist_WorkerShare"] <span aria-hidden="true">@sort.Icon("worker_share")</span></button>
                         </th>
-                        <th>Notes</th>
-                        <th style="width: 100px;">Actions</th>
+                        <th>@L["Common_Notes"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,15 +73,15 @@ else
                             <td class="fw-semibold">@Money.Format(r.WorkerShare)</td>
                             <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@r.Notes">@(r.Notes ?? "")</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     </Virtualize>
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
-                        <td colspan="4">Totals</td>
+                        <td colspan="4">@L["Common_Totals"]</td>
                         <td>@Money.Format(totalAmount)</td>
                         <td></td>
                         <td>@Money.Format(totalTips)</td>
@@ -93,13 +94,13 @@ else
     </div>
 }
 
-<ModalDialog IsVisible="showEditModal" Title="Edit Service Record" OnClose="CloseEditModal">
+<ModalDialog IsVisible="showEditModal" Title="@L["Hist_EditTitle"]" OnClose="CloseEditModal">
     <EditForm Model="@editModel" OnValidSubmit="HandleEditSubmit">
         <DataAnnotationsValidator />
         <div class="modal-body">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label" for="edit-worker">Worker</label>
+                    <label class="form-label" for="edit-worker">@L["Common_Worker"]</label>
                     <select id="edit-worker" class="form-select" value="@editModel.WorkerId" @onchange="OnEditWorkerChanged">
                         @if (workers != null)
                         {
@@ -111,7 +112,7 @@ else
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="edit-service">Service</label>
+                    <label class="form-label" for="edit-service">@L["Common_Service"]</label>
                     <select id="edit-service" class="form-select" value="@editModel.ServiceId" @onchange="OnEditServiceChanged">
                         @if (services != null)
                         {
@@ -123,44 +124,44 @@ else
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="edit-date">Date</label>
+                    <label class="form-label" for="edit-date">@L["Common_Date"]</label>
                     <InputDate id="edit-date" class="form-control" @bind-Value="editModel.DatePerformed" />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="edit-client">Client Name</label>
-                    <InputText id="edit-client" class="form-control" @bind-Value="editModel.ClientName" placeholder="Optional" />
+                    <label class="form-label" for="edit-client">@L["Common_ClientName"]</label>
+                    <InputText id="edit-client" class="form-control" @bind-Value="editModel.ClientName" placeholder="@L["Common_Optional"]" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="edit-amount">Amount Paid</label>
+                    <label class="form-label" for="edit-amount">@L["Hist_AmountPaid"]</label>
                     <InputNumber id="edit-amount" class="form-control" @bind-Value="editModel.AmountPaid" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="edit-commission">Commission %</label>
+                    <label class="form-label" for="edit-commission">@L["Common_Commission"]</label>
                     <InputNumber id="edit-commission" class="form-control" @bind-Value="editModel.CommissionPercentageApplied" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="edit-tips">Tips</label>
+                    <label class="form-label" for="edit-tips">@L["Common_Tips"]</label>
                     <InputNumber id="edit-tips" class="form-control" @bind-Value="editModel.Tips" />
                 </div>
                 <div class="col-12">
-                    <label class="form-label" for="edit-notes">Notes</label>
+                    <label class="form-label" for="edit-notes">@L["Common_Notes"]</label>
                     <InputTextArea id="edit-notes" class="form-control" @bind-Value="editModel.Notes" rows="2" />
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Cancel</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">@L["Common_Cancel"]</button>
             <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "Saving..." : "Update")
+                @(saving ? L["Common_Saving"] : L["Common_Update"])
             </button>
         </div>
     </EditForm>
 </ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Record"
-               Message="@($"Delete this service record from {deleteTarget?.DatePerformed.ToDateKey()}? You can undo right after deleting.")"
-               ConfirmText="Delete"
+               Title="@L["Hist_DeleteTitle"]"
+               Message="@L["Hist_DeleteMessage", deleteTarget?.DatePerformed.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -337,7 +338,7 @@ else
         try
         {
             await Store.UpdateServiceRecordAsync(editModel.Id, editModel);
-            Toast.Show("Record updated");
+            Toast.Show(L["Hist_Updated"]);
             allRecords = (await Store.GetServiceRecordsAsync()).ToList();
             ApplyFilter();
             showEditModal = false;
@@ -364,7 +365,7 @@ else
             await Store.DeleteServiceRecordAsync(deleted.Id);
             // Undo re-adds the record under a fresh id; nothing references
             // service-record ids, so the restore is lossless.
-            Toast.Show("Record deleted", ToastLevel.Success, "Undo", async () =>
+            Toast.Show(L["Hist_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
             {
                 await Store.AddServiceRecordAsync(deleted);
                 await InvokeAsync(async () =>

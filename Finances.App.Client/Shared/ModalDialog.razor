@@ -1,3 +1,5 @@
+@inject IStringLocalizer<AppStrings> L
+
 @* Accessible modal shell shared by all edit/create dialogs: labelled dialog
    semantics, Escape-to-close, initial focus, and a labelled close button. *@
 @if (IsVisible)
@@ -9,7 +11,7 @@
             <div class="modal-content" tabindex="-1" @ref="contentRef">
                 <div class="modal-header">
                     <h5 class="modal-title" id="@titleId">@Title</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAsync"></button>
+                    <button type="button" class="btn-close" aria-label="@L["Common_Close"]" @onclick="CloseAsync"></button>
                 </div>
                 @ChildContent
             </div>

@@ -96,7 +96,7 @@ public class OnboardingAndUndoTests
         // Another sale eats the returned stock before the undo happens.
         await store.AddProductSaleAsync(new ProductSale { ProductId = product.Id, DateSold = DateTime.Today, Quantity = 3, UnitPrice = 25 });
 
-        await Assert.ThrowsAsync<InvalidDataException>(() => store.AddProductSaleAsync(sale));
+        await Assert.ThrowsAsync<InsufficientStockException>(() => store.AddProductSaleAsync(sale));
         Assert.Equal(1, (await store.GetProductsAsync()).Single().StockQuantity);
     }
 }

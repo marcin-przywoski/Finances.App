@@ -1,3 +1,5 @@
+@inject IStringLocalizer<AppStrings> L
+
 <div class="stat-card">
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div class="stat-icon stat-icon-@Variant.ToString().ToLowerInvariant()">
@@ -20,7 +22,7 @@
                         <polyline points="17 18 23 18 23 12"/>
                     }
                 </svg>
-                <span><span class="visually-hidden-text">@(isUp ? "up" : "down") </span>@(Math.Abs(TrendPercent.Value).ToString("F1"))%</span>
+                <span><span class="visually-hidden-text">@(isUp ? L["Trend_Up"] : L["Trend_Down"]) </span>@(Math.Abs(TrendPercent.Value).ToString("F1"))%</span>
             </div>
         }
     </div>

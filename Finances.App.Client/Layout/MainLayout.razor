@@ -5,6 +5,7 @@
 @inject ThemeService Theme
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject IStringLocalizer<AppStrings> L
 
 <div class="page">
     <div class="sidebar @(sidebarOpen ? "open" : null)">
@@ -19,11 +20,11 @@
     <main>
         <div class="top-bar">
             <button class="sidebar-toggle d-md-none" @onclick="ToggleSidebar"
-                    aria-label="Toggle navigation" aria-expanded="@(sidebarOpen ? "true" : "false")">
+                    aria-label="@L["Layout_ToggleNav"]" aria-expanded="@(sidebarOpen ? "true" : "false")">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <div class="top-bar-right">
-                <span class="top-bar-user">Stored only in this browser</span>
+                <span class="top-bar-user">@L["Layout_StoredLocally"]</span>
                 <button type="button" class="theme-toggle" data-testid="theme-toggle"
                         title="@ThemeLabel" aria-label="@ThemeLabel" @onclick="CycleThemeAsync">
                     @if (Theme.Preference == ThemeService.Dark)
@@ -49,10 +50,10 @@
         {
             <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mx-4 mt-3 mb-0" role="alert">
                 <div>
-                    <strong>Your saved data could not be read.</strong>
-                    A copy of it was preserved — download it from the Data page before deciding what to do next.
+                    <strong>@L["Layout_RecoveryTitle"]</strong>
+                    @L["Layout_RecoveryBody"]
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToDataPage">Open Data page</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToDataPage">@L["Layout_OpenDataPage"]</button>
             </div>
         }
 
@@ -67,9 +68,9 @@
 @* Raw JS onclick on purpose: when this shows, Blazor may be dead and C#
    handlers would never fire. *@
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <button type="button" class="dismiss" aria-label="Dismiss error"
+    @L["Layout_ErrorOccurred"]
+    <a href="." class="reload">@L["Layout_Reload"]</a>
+    <button type="button" class="dismiss" aria-label="@L["Layout_DismissError"]"
             onclick="this.parentElement.style.display='none'">&times;</button>
 </div>
 
@@ -99,12 +100,12 @@
         StateHasChanged();
     }
 
-    private string ThemeLabel => $"Theme: {Theme.Preference switch
+    private string ThemeLabel => Theme.Preference switch
     {
-        ThemeService.Dark => "dark",
-        ThemeService.Light => "light",
-        _ => "auto"
-    }} — click to switch";
+        ThemeService.Dark => L["Layout_ThemeDark"],
+        ThemeService.Light => L["Layout_ThemeLight"],
+        _ => L["Layout_ThemeAuto"]
+    };
 
     private async Task CycleThemeAsync()
     {

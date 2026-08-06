@@ -5,12 +5,13 @@
 @inject ThemeService Theme
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Analytics</PageTitle>
+<PageTitle>@L["An_Title"]</PageTitle>
 
 <div class="mb-4">
-    <h1 class="page-title mb-1">Analytics</h1>
-    <p class="text-muted mb-0">Revenue trends, forecasting, and detailed breakdowns.</p>
+    <h1 class="page-title mb-1">@L["An_Title"]</h1>
+    <p class="text-muted mb-0">@L["An_Subtitle"]</p>
 </div>
 
 <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
@@ -27,11 +28,11 @@ else
             <div class="card p-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h6 class="fw-semibold mb-0">Revenue Forecast</h6>
-                        <small class="text-muted">Linear regression on @(dateFrom.HasValue ? "the selected range" : "the last 90 days") &middot; @forecastDays-day projection</small>
+                        <h6 class="fw-semibold mb-0">@L["An_ForecastTitle"]</h6>
+                        <small class="text-muted">@L["An_ForecastSubtitle", dateFrom.HasValue ? L["An_SelectedRange"].Value : L["An_Last90Days"].Value, forecastDays]</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <label class="text-muted" style="font-size: 0.8rem;" for="forecast-days">Forecast days:</label>
+                        <label class="text-muted" style="font-size: 0.8rem;" for="forecast-days">@L["An_ForecastDays"]</label>
                         <select id="forecast-days" class="form-select form-select-sm" style="width: 80px;" value="@forecastDays" @onchange="OnForecastDaysChanged">
                             <option value="7">7</option>
                             <option value="14">14</option>
@@ -44,21 +45,21 @@ else
                     <div class="row mb-3">
                         <div class="col-auto">
                             @{
-                                var direction = forecastResult.Slope > 0 ? "Upward" : forecastResult.Slope < 0 ? "Downward" : "Flat";
+                                var direction = forecastResult.Slope > 0 ? L["An_TrendUpward"] : forecastResult.Slope < 0 ? L["An_TrendDownward"] : L["An_TrendFlat"];
                                 var dirClass = forecastResult.Slope > 0 ? "badge-tint-up" : forecastResult.Slope < 0 ? "badge-tint-down" : "badge-tint-flat";
                             }
                             <span class="badge badge-tint @dirClass">
-                                Trend: @direction
+                                @direction
                             </span>
                         </div>
                         <div class="col-auto">
                             <span class="badge badge-tint badge-tint-primary">
-                                @(forecastResult.Slope >= 0 ? "+" : "−")@Money.Format(Math.Abs((decimal)forecastResult.Slope)) per day
+                                @L["An_PerDay", (forecastResult.Slope >= 0 ? "+" : "−") + Money.Format(Math.Abs((decimal)forecastResult.Slope))]
                             </span>
                         </div>
                         <div class="col-auto">
                             <span class="badge badge-tint badge-tint-indigo" title="R² = @forecastResult.RSquared.ToString("F4")">
-                                Fit: @FitLabel(forecastResult.RSquared)
+                                @L["An_Fit", FitLabel(forecastResult.RSquared)]
                             </span>
                         </div>
                     </div>
@@ -72,7 +73,7 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 340px;">
-                        <p class="text-muted mb-0">Not enough data to forecast yet — record services on at least two different days.</p>
+                        <p class="text-muted mb-0">@L["An_ForecastEmpty"]</p>
                     </div>
                 }
             </div>
@@ -83,7 +84,7 @@ else
     <div class="row g-3 mt-1">
         <div class="col-12">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Services vs Products Revenue</h6>
+                <h6 class="fw-semibold mb-3">@L["An_ServicesVsProducts"]</h6>
                 @if (combinedTimeline?.Points.Count > 0)
                 {
                     <div style="height: 300px;">
@@ -93,7 +94,7 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
-                        <p class="text-muted mb-0">No revenue in this period.</p>
+                        <p class="text-muted mb-0">@L["An_NoRevenuePeriod"]</p>
                     </div>
                 }
             </div>
@@ -104,7 +105,7 @@ else
     <div class="row g-3 mt-1">
         <div class="col-lg-6">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue by Worker</h6>
+                <h6 class="fw-semibold mb-3">@L["An_RevenueByWorker"]</h6>
                 @if (workerData != null && workerData.Length > 0)
                 {
                     <div style="height: 300px;">
@@ -114,14 +115,14 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
-                        <p class="text-muted mb-0">No data for this period.</p>
+                        <p class="text-muted mb-0">@L["Common_NoDataPeriod"]</p>
                     </div>
                 }
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Service Popularity</h6>
+                <h6 class="fw-semibold mb-3">@L["An_ServicePopularity"]</h6>
                 @if (serviceData != null && serviceData.Length > 0)
                 {
                     <div style="height: 300px;">
@@ -131,7 +132,7 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
-                        <p class="text-muted mb-0">No data for this period.</p>
+                        <p class="text-muted mb-0">@L["Common_NoDataPeriod"]</p>
                     </div>
                 }
             </div>
@@ -142,7 +143,7 @@ else
     <div class="row g-3 mt-1">
         <div class="col-lg-6">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue by Day of Week</h6>
+                <h6 class="fw-semibold mb-3">@L["An_RevenueByDay"]</h6>
                 @if (dayOfWeekData?.Any(d => d.Count > 0) == true)
                 {
                     <div style="height: 280px;">
@@ -152,14 +153,14 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
-                        <p class="text-muted mb-0">No data for this period.</p>
+                        <p class="text-muted mb-0">@L["Common_NoDataPeriod"]</p>
                     </div>
                 }
             </div>
         </div>
         <div class="col-lg-6">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Products</h6>
+                <h6 class="fw-semibold mb-3">@L["Dash_TopProducts"]</h6>
                 @if (topProducts != null && topProducts.Length > 0)
                 {
                     <div style="height: 280px;">
@@ -169,7 +170,7 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 280px;">
-                        <p class="text-muted mb-0">No product sales in this period.</p>
+                        <p class="text-muted mb-0">@L["An_NoProductSalesPeriod"]</p>
                     </div>
                 }
             </div>
@@ -179,7 +180,7 @@ else
     <div class="row g-3 mt-1">
         <div class="col-lg-8">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Daily Revenue</h6>
+                <h6 class="fw-semibold mb-3">@L["An_DailyRevenue"]</h6>
                 @if (dailyData != null && dailyData.Length > 0)
                 {
                     <div style="height: 300px;">
@@ -189,14 +190,14 @@ else
                 else
                 {
                     <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
-                        <p class="text-muted mb-0">No data for this period.</p>
+                        <p class="text-muted mb-0">@L["Common_NoDataPeriod"]</p>
                     </div>
                 }
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Services by Revenue</h6>
+                <h6 class="fw-semibold mb-3">@L["An_TopServices"]</h6>
                 @if (serviceData != null && serviceData.Length > 0)
                 {
                     var maxServiceRevenue = serviceData.Max(x => x.Revenue);
@@ -207,7 +208,7 @@ else
                                 <div class="d-flex justify-content-between mb-1">
                                     <div>
                                         <div class="fw-semibold" style="font-size: 0.875rem;">@s.Service</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">@s.Count services</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">@L["An_ServiceCount", s.Count]</div>
                                     </div>
                                     <span class="fw-semibold" style="color: var(--primary);">@Money.Format(s.Revenue)</span>
                                 </div>
@@ -224,7 +225,7 @@ else
                 }
                 else
                 {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No data for this period.</p>
+                    <p class="text-muted mb-0" style="font-size: 0.875rem;">@L["Common_NoDataPeriod"]</p>
                 }
             </div>
         </div>
@@ -235,23 +236,23 @@ else
         <div class="col-12">
             <div class="card p-3">
                 <div class="mb-3">
-                    <h6 class="fw-semibold mb-0">Expenses</h6>
-                    <small class="text-muted">Business-level costs for the selected period — the worker filter does not apply here.</small>
+                    <h6 class="fw-semibold mb-0">@L["An_ExpensesTitle"]</h6>
+                    <small class="text-muted">@L["An_ExpensesSubtitle"]</small>
                 </div>
                 @if (expenseSummary != null && expenseSummary.ByCategory.Count > 0)
                 {
                     <div class="row g-3">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <span class="text-muted small">Total expenses</span>
+                                <span class="text-muted small">@L["An_TotalExpenses"]</span>
                                 <div class="fs-4 fw-bold">@Money.Format(expenseSummary.Total)</div>
                             </div>
                             <div>
-                                <span class="text-muted small">Net after expenses</span>
+                                <span class="text-muted small">@L["An_NetAfterExpenses"]</span>
                                 <div class="fs-4 fw-bold" style="color: @(NetAfterExpenses >= 0 ? "var(--success)" : "var(--danger)");">
                                     @Money.Format(NetAfterExpenses)
                                 </div>
-                                <div class="text-muted" style="font-size: 0.75rem;">Salon share + product revenue − expenses</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">@L["An_NetFormula"]</div>
                             </div>
                         </div>
                         <div class="col-md-8">
@@ -265,7 +266,7 @@ else
                                         <div class="d-flex justify-content-between mb-1">
                                             <div>
                                                 <div class="fw-semibold" style="font-size: 0.875rem;">@category.Category</div>
-                                                <div class="text-muted" style="font-size: 0.75rem;">@category.Count @(category.Count == 1 ? "expense" : "expenses")</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">@L["An_ExpenseEntries", category.Count]</div>
                                             </div>
                                             <span class="fw-semibold" style="color: var(--danger);">@Money.Format(category.Total)</span>
                                         </div>
@@ -284,7 +285,7 @@ else
                 }
                 else
                 {
-                    <p class="text-muted mb-0">No expenses recorded for this period. <a href="expenses">Add expenses</a> to see net profit after costs.</p>
+                    <p class="text-muted mb-0">@L["An_NoExpensesPeriod"] <a href="expenses">@L["An_AddExpensesLink"]</a> @L["An_AddExpensesSuffix"]</p>
                 }
             </div>
         </div>
@@ -293,18 +294,18 @@ else
     <div class="row g-3 mt-1 mb-4">
         <div class="col-12">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Commission Report</h6>
+                <h6 class="fw-semibold mb-3">@L["An_CommissionReport"]</h6>
                 @if (workerData != null && workerData.Length > 0)
                 {
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th>Worker</th>
-                                    <th>Revenue</th>
-                                    <th>Tips</th>
-                                    <th>Total</th>
-                                    <th>Share</th>
+                                    <th>@L["Common_Worker"]</th>
+                                    <th>@L["Chart_Revenue"]</th>
+                                    <th>@L["Common_Tips"]</th>
+                                    <th>@L["Common_Total"]</th>
+                                    <th>@L["An_Share"]</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -333,7 +334,7 @@ else
                             </tbody>
                             <tfoot>
                                 <tr class="fw-bold" style="background-color: var(--body-bg);">
-                                    <td>Total</td>
+                                    <td>@L["Common_Total"]</td>
                                     <td>@Money.Format(workerData.Sum(w => w.Revenue))</td>
                                     <td>@Money.Format(workerData.Sum(w => w.Tips))</td>
                                     <td>@Money.Format(workerData.Sum(w => w.Revenue + w.Tips))</td>
@@ -345,7 +346,7 @@ else
                 }
                 else
                 {
-                    <p class="text-muted mb-0">No data for this period.</p>
+                    <p class="text-muted mb-0">@L["Common_NoDataPeriod"]</p>
                 }
             </div>
         </div>
@@ -385,11 +386,11 @@ else
 
     // Plain-language fit instead of a raw R² — the exact value stays in the
     // badge tooltip for anyone who wants it.
-    private static string FitLabel(double rSquared) => rSquared switch
+    private string FitLabel(double rSquared) => rSquared switch
     {
-        >= 0.7 => "strong",
-        >= 0.4 => "moderate",
-        _ => "weak"
+        >= 0.7 => L["An_FitStrong"],
+        >= 0.4 => L["An_FitModerate"],
+        _ => L["An_FitWeak"]
     };
 
     protected override async Task OnInitializedAsync()
@@ -530,8 +531,8 @@ else
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray() },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray() }
+                    new { label = L["Chart_Services"].Value, data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray() },
+                    new { label = L["Chart_Products"].Value, data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray() }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "analyticsTimelineChart", labels, datasets, MoneyOptions);
             }
@@ -549,8 +550,8 @@ else
                 var labels = workerData.Select(w => w.Worker).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = workerData.Select(w => w.Revenue).ToArray() },
-                    new { label = "Tips", data = workerData.Select(w => w.Tips).ToArray() }
+                    new { label = L["Chart_Revenue"].Value, data = workerData.Select(w => w.Revenue).ToArray() },
+                    new { label = L["Chart_Tips"].Value, data = workerData.Select(w => w.Tips).ToArray() }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "revenueByWorkerChart", labels, datasets, MoneyOptions);
             }
@@ -586,7 +587,7 @@ else
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
                 await JS.InvokeVoidAsync("financeCharts.renderBarChart", "dayOfWeekAnalyticsChart", labels,
-                    new object[] { new { label = "Revenue", data = data } }, MoneyOptions);
+                    new object[] { new { label = L["Chart_Revenue"].Value, data = data } }, MoneyOptions);
             }
             else
             {
@@ -617,7 +618,7 @@ else
                 var labels = dailyData.Select(d => d.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Revenue", data = dailyData.Select(d => d.Revenue).ToArray() }
+                    new { label = L["Chart_Revenue"].Value, data = dailyData.Select(d => d.Revenue).ToArray() }
                 };
                 await JS.InvokeVoidAsync("financeCharts.renderLineChart", "dailyTrendChart", labels, datasets, MoneyOptions);
             }

@@ -1,6 +1,6 @@
 namespace Finances.App.Client.Models;
 
-public sealed record DeleteResult(bool Success, string? ErrorMessage = null);
+public sealed record DeleteResult(bool Success, string? ErrorMessage = null, string? ErrorCode = null);
 
 public sealed record SummaryResult(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
 

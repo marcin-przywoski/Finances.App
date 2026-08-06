@@ -4,26 +4,27 @@
 @inject MoneyFormat Money
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Product Sales</PageTitle>
+<PageTitle>@L["Sales_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Product Sales</h1>
-        <p class="text-muted mb-0">Record and manage retail product sales.</p>
+        <h1 class="page-title mb-1">@L["Sales_Title"]</h1>
+        <p class="text-muted mb-0">@L["Sales_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Record Sale
+        @L["Sales_RecordSale"]
     </button>
 </div>
 
 <div class="d-flex flex-wrap align-items-center gap-3">
     <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
     <div class="ms-auto" style="min-width: 240px;">
-        <label class="visually-hidden-text" for="sales-search">Search sales</label>
+        <label class="visually-hidden-text" for="sales-search">@L["Sales_SearchLabel"]</label>
         <input id="sales-search" type="search" class="form-control form-control-sm"
-               placeholder="Search client, worker, product, notes…" @oninput="OnSearchInput" />
+               placeholder="@L["Sales_SearchPlaceholder"]" @oninput="OnSearchInput" />
     </div>
 </div>
 
@@ -34,8 +35,8 @@
 else if (filtered.Count == 0)
 {
     <div class="card p-5 text-center mt-3">
-        <p class="text-muted mb-3">No product sales found for the selected period.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Record Sale</button></div>
+        <p class="text-muted mb-3">@L["Sales_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Sales_RecordSale"]</button></div>
     </div>
 }
 else
@@ -46,20 +47,20 @@ else
                 <thead>
                     <tr>
                         <th aria-sort="@sort.AriaSort("date")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>Date <span aria-hidden="true">@sort.Icon("date")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
                         </th>
-                        <th>Product</th>
-                        <th>Worker</th>
-                        <th>Client</th>
-                        <th>Qty</th>
+                        <th>@L["Sales_Product"]</th>
+                        <th>@L["Common_Worker"]</th>
+                        <th>@L["Common_Client"]</th>
+                        <th>@L["Sales_Qty"]</th>
                         <th aria-sort="@sort.AriaSort("price")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("price")'>Unit Price <span aria-hidden="true">@sort.Icon("price")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("price")'>@L["Sales_UnitPrice"] <span aria-hidden="true">@sort.Icon("price")</span></button>
                         </th>
                         <th aria-sort="@sort.AriaSort("total")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("total")'>Total <span aria-hidden="true">@sort.Icon("total")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("total")'>@L["Common_Total"] <span aria-hidden="true">@sort.Icon("total")</span></button>
                         </th>
-                        <th>Notes</th>
-                        <th style="width: 100px;">Actions</th>
+                        <th>@L["Common_Notes"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,15 +75,15 @@ else
                             <td class="fw-semibold">@Money.Format(s.TotalPrice)</td>
                             <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@s.Notes">@(s.Notes ?? "")</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     </Virtualize>
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
-                        <td colspan="4">Totals</td>
+                        <td colspan="4">@L["Common_Totals"]</td>
                         <td>@totalQuantity</td>
                         <td></td>
                         <td>@Money.Format(totalRevenue)</td>
@@ -94,15 +95,15 @@ else
     </div>
 }
 
-<ModalDialog IsVisible="showModal" Title="@(isEditing ? "Edit Sale" : "Record Product Sale")" OnClose="CloseModal">
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Sales_EditTitle"] : L["Sales_AddTitle"])" OnClose="CloseModal">
     <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <div class="modal-body">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label" for="sale-product">Product</label>
+                    <label class="form-label" for="sale-product">@L["Sales_Product"]</label>
                     <select id="sale-product" class="form-select" value="@formModel.ProductId" @onchange="OnProductChanged">
-                        <option value="0">-- Select Product --</option>
+                        <option value="0">@L["Sales_SelectProduct"]</option>
                         @if (products != null)
                         {
                             @foreach (var p in products)
@@ -113,9 +114,9 @@ else
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="sale-worker">Worker (optional)</label>
+                    <label class="form-label" for="sale-worker">@L["Sales_WorkerOptional"]</label>
                     <select id="sale-worker" class="form-select" value="@(formModel.WorkerId ?? 0)" @onchange="OnWorkerChanged">
-                        <option value="0">— None —</option>
+                        <option value="0">@L["Sales_NoWorker"]</option>
                         @if (workers != null)
                         {
                             @foreach (var w in workers)
@@ -126,25 +127,25 @@ else
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="sale-date">Date</label>
+                    <label class="form-label" for="sale-date">@L["Common_Date"]</label>
                     <InputDate id="sale-date" class="form-control" @bind-Value="formModel.DateSold" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="sale-quantity">Quantity</label>
+                    <label class="form-label" for="sale-quantity">@L["Sales_Quantity"]</label>
                     <InputNumber id="sale-quantity" class="form-control" @bind-Value="formModel.Quantity" />
                     <ValidationMessage For="() => formModel.Quantity" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="sale-price">Unit Price</label>
+                    <label class="form-label" for="sale-price">@L["Sales_UnitPriceFull"]</label>
                     <InputNumber id="sale-price" class="form-control" @bind-Value="formModel.UnitPrice" />
                     <ValidationMessage For="() => formModel.UnitPrice" />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="sale-client">Client Name</label>
-                    <InputText id="sale-client" class="form-control" @bind-Value="formModel.ClientName" placeholder="Optional" />
+                    <label class="form-label" for="sale-client">@L["Common_ClientName"]</label>
+                    <InputText id="sale-client" class="form-control" @bind-Value="formModel.ClientName" placeholder="@L["Common_Optional"]" />
                 </div>
                 <div class="col-12">
-                    <label class="form-label" for="sale-notes">Notes</label>
+                    <label class="form-label" for="sale-notes">@L["Common_Notes"]</label>
                     <InputTextArea id="sale-notes" class="form-control" @bind-Value="formModel.Notes" rows="2" />
                 </div>
             </div>
@@ -154,22 +155,22 @@ else
                 @if (formModel.Quantity > 0 && formModel.UnitPrice > 0)
                 {
                     <span class="text-muted" style="font-size: 0.875rem;">
-                        Total: <strong>@(Money.Format(formModel.UnitPrice * formModel.Quantity))</strong>
+                        @L["Sales_TotalLabel"] <strong>@(Money.Format(formModel.UnitPrice * formModel.Quantity))</strong>
                     </span>
                 }
             </div>
-            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
             <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "Saving..." : (isEditing ? "Update" : "Save"))
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Save"]))
             </button>
         </div>
     </EditForm>
 </ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Sale"
-               Message="@($"Delete this product sale from {deleteTarget?.DateSold.ToDateKey()}? Its units return to stock, and you can undo right after deleting.")"
-               ConfirmText="Delete"
+               Title="@L["Sales_DeleteTitle"]"
+               Message="@L["Sales_DeleteMessage", deleteTarget?.DateSold.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -351,7 +352,7 @@ else
     {
         if (formModel.ProductId == 0)
         {
-            Toast.Show("Please select a product.", ToastLevel.Error);
+            Toast.Show(L["Sales_SelectProductError"], ToastLevel.Error);
             return;
         }
 
@@ -361,12 +362,12 @@ else
             if (isEditing)
             {
                 await Store.UpdateProductSaleAsync(editId, formModel);
-                Toast.Show("Sale updated");
+                Toast.Show(L["Sales_Updated"]);
             }
             else
             {
                 await Store.AddProductSaleAsync(formModel);
-                Toast.Show("Sale recorded!");
+                Toast.Show(L["Sales_Recorded"]);
             }
             allSales = (await Store.GetProductSalesAsync()).ToList();
             products = (await Store.GetProductsAsync()).ToList();
@@ -396,7 +397,7 @@ else
             // Undo goes back through AddProductSaleAsync, so stock is
             // re-decremented with the usual sufficiency check; if the stock
             // was sold meanwhile the undo fails with the real reason.
-            Toast.Show("Sale deleted", ToastLevel.Success, "Undo", async () =>
+            Toast.Show(L["Sales_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
             {
                 await Store.AddProductSaleAsync(deleted);
                 await InvokeAsync(async () =>

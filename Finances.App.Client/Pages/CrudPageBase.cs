@@ -1,6 +1,7 @@
 using Finances.App.Client.Models;
 using Finances.App.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 
 namespace Finances.App.Client.Pages;
 
@@ -13,6 +14,7 @@ namespace Finances.App.Client.Pages;
 public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, new()
 {
     [Inject] protected ToastService Toast { get; set; } = default!;
+    [Inject] protected IStringLocalizer<AppStrings> L { get; set; } = default!;
 
     protected List<TItem>? items;
     protected TItem formModel = new();
@@ -23,8 +25,10 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
     protected bool showDeleteConfirm;
     protected int editId;
 
-    /// <summary>Singular display name used in toasts, e.g. "Worker".</summary>
-    protected abstract string EntityName { get; }
+    /// <summary>Localized toast texts, e.g. "Worker added".</summary>
+    protected abstract string ToastAdded { get; }
+    protected abstract string ToastUpdated { get; }
+    protected abstract string ToastDeleted { get; }
 
     protected abstract Task<IReadOnlyList<TItem>> LoadItemsAsync();
     protected abstract Task AddItemAsync(TItem item);
@@ -68,12 +72,12 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
             if (isEditing)
             {
                 await UpdateItemAsync(editId, formModel);
-                Toast.Show($"{EntityName} updated");
+                Toast.Show(ToastUpdated);
             }
             else
             {
                 await AddItemAsync(formModel);
-                Toast.Show($"{EntityName} added");
+                Toast.Show(ToastAdded);
             }
             await ReloadAsync();
             showModal = false;
@@ -107,11 +111,11 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
             var result = await DeleteItemAsync(deleteTarget);
             if (result.Success)
             {
-                ShowUndoToast($"{EntityName} deleted", deleted);
+                ShowUndoToast(ToastDeleted, deleted);
             }
             else
             {
-                Toast.Show(result.ErrorMessage ?? $"Cannot delete this {EntityName.ToLowerInvariant()}.", ToastLevel.Error);
+                Toast.Show(DeleteRefusalMessage(result), ToastLevel.Error);
             }
         }
         catch (Exception ex)
@@ -125,13 +129,28 @@ public abstract class CrudPageBase<TItem> : ComponentBase where TItem : class, n
     }
 
     /// <summary>
+    /// The store reports refusals with stable codes so the UI can localize
+    /// them; the English ErrorMessage is the fallback for unknown codes.
+    /// </summary>
+    private string DeleteRefusalMessage(DeleteResult result)
+    {
+        return result.ErrorCode switch
+        {
+            "WorkerHasRecords" => L["Error_WorkerHasRecords"],
+            "ServiceHasRecords" => L["Error_ServiceHasRecords"],
+            "ProductHasSales" => L["Error_ProductHasSales"],
+            _ => result.ErrorMessage ?? L["Error_CannotDelete"]
+        };
+    }
+
+    /// <summary>
     /// Deletable items are guaranteed unreferenced (referential-integrity
     /// checks refuse otherwise), so undo can simply re-add the clone. The
     /// restored item gets a fresh id, which nothing else points at.
     /// </summary>
     private void ShowUndoToast(string message, TItem deleted)
     {
-        Toast.Show(message, ToastLevel.Success, "Undo", async () =>
+        Toast.Show(message, ToastLevel.Success, L["Common_Undo"], async () =>
         {
             await AddItemAsync(deleted);
             await InvokeAsync(async () =>

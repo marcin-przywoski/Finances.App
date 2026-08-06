@@ -10,11 +10,16 @@
     <!-- GitHub Pages never serves the precompressed .br/.gz files (it applies
          its own gzip), so publishing them only bloats the artifact. -->
     <CompressionEnabled>false</CompressionEnabled>
+    <!-- Polish is outside the default EFIGS ICU shard, and the user can pick a
+         UI language different from the browser's, so ship full ICU data
+         (~1.5 MB more wasm payload, cached once by the PWA). -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

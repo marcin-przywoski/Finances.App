@@ -151,7 +151,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
         if (_snapshot.ServiceRecords.Any(record => record.WorkerId == id))
         {
-            return new DeleteResult(false, "Cannot delete worker with existing service records.");
+            return new DeleteResult(false, "Cannot delete worker with existing service records.", "WorkerHasRecords");
         }
 
         _snapshot.Workers.Remove(worker);
@@ -204,7 +204,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
         if (_snapshot.ServiceRecords.Any(record => record.ServiceId == id))
         {
-            return new DeleteResult(false, "Cannot delete service with existing service records.");
+            return new DeleteResult(false, "Cannot delete service with existing service records.", "ServiceHasRecords");
         }
 
         _snapshot.Services.Remove(service);
@@ -256,7 +256,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
         if (_snapshot.ProductSales.Any(sale => sale.ProductId == id))
         {
-            return new DeleteResult(false, "Cannot delete product with existing sales.");
+            return new DeleteResult(false, "Cannot delete product with existing sales.", "ProductHasSales");
         }
 
         _snapshot.Products.Remove(product);
@@ -289,7 +289,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
 
         if (product.StockQuantity < sale.Quantity)
         {
-            throw new InvalidDataException($"Only {product.StockQuantity} of \"{product.Name}\" in stock — cannot sell {sale.Quantity}.");
+            throw new InsufficientStockException(product.Name, product.StockQuantity, sale.Quantity);
         }
 
         var stored = new ProductSale
@@ -338,7 +338,7 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         var available = newProduct.StockQuantity + (ReferenceEquals(oldProduct, newProduct) ? existing.Quantity : 0);
         if (available < sale.Quantity)
         {
-            throw new InvalidDataException($"Only {available} of \"{newProduct.Name}\" in stock — cannot sell {sale.Quantity}.");
+            throw new InsufficientStockException(newProduct.Name, available, sale.Quantity);
         }
 
         if (oldProduct is not null)
@@ -516,6 +516,11 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         if (!MoneyFormat.IsSupported(stored.CurrencyCode))
         {
             stored.CurrencyCode = null;
+        }
+
+        if (stored.Language is not ("pl" or "en"))
+        {
+            stored.Language = null;
         }
 
         _snapshot!.Settings = stored;
@@ -780,7 +785,8 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
     {
         return new AppSettings
         {
-            CurrencyCode = settings.CurrencyCode
+            CurrencyCode = settings.CurrencyCode,
+            Language = settings.Language
         };
     }
 
@@ -887,6 +893,11 @@ public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
         if (!MoneyFormat.IsSupported(snapshot.Settings.CurrencyCode))
         {
             snapshot.Settings.CurrencyCode = null;
+        }
+
+        if (snapshot.Settings.Language is not ("pl" or "en"))
+        {
+            snapshot.Settings.Language = null;
         }
 
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);

@@ -195,6 +195,29 @@ public sealed class SmokeTests
     }
 
     [Fact]
+    public async Task Language_switch_to_polish_persists_and_localizes_the_ui()
+    {
+        var (server, playwright, browser, page) = await StartAppAsync();
+        await using var _ = server;
+        using var __ = playwright;
+        await using var ___ = browser;
+
+        await page.GotoAsync("/data");
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Data & Backups" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+
+        // Selecting Polish persists the setting and reloads the app; the
+        // published (trimmed) build must ship the pl satellite assembly and
+        // ICU data for this to render.
+        await page.Locator("#settings-language").SelectOptionAsync("pl");
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Pulpit" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+        await Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Dane i kopie" })).ToBeVisibleAsync();
+
+        // The setting survives an independent reload.
+        await page.ReloadAsync();
+        await Expect(page.GetByRole(AriaRole.Link, new() { Name = "Pulpit" })).ToBeVisibleAsync(new() { Timeout = 30000 });
+    }
+
+    [Fact]
     public async Task Theme_toggle_switches_to_dark_and_persists_across_reload()
     {
         var (server, playwright, browser, page) = await StartAppAsync();

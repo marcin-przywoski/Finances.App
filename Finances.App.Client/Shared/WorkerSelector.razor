@@ -3,17 +3,18 @@
 @implements IDisposable
 @inject IFinanceStore Store
 @inject WorkerContextService WorkerContext
+@inject IStringLocalizer<AppStrings> L
 
 <div class="d-flex align-items-center gap-2">
-    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;" for="global-worker-filter">Worker:</label>
+    <label class="form-label mb-0" style="white-space: nowrap; font-size: 0.8125rem;" for="global-worker-filter">@L["WorkerFilter_Label"]</label>
     @if (WorkerContext.SelectedWorkerId.HasValue)
     {
-        <span class="badge badge-tint badge-tint-primary" title="Dashboards and lists show only this worker's records">Filtered</span>
+        <span class="badge badge-tint badge-tint-primary" title="@L["WorkerFilter_ActiveTitle"]">@L["WorkerFilter_Active"]</span>
     }
     <select id="global-worker-filter" class="form-select form-select-sm @(WorkerContext.SelectedWorkerId.HasValue ? "worker-filter-active" : null)"
             style="width: auto; min-width: 160px;"
             value="@WorkerContext.SelectedWorkerId" @onchange="OnWorkerChanged">
-        <option value="">All workers</option>
+        <option value="">@L["WorkerFilter_All"]</option>
         @if (workers != null)
         {
             @foreach (var w in workers)

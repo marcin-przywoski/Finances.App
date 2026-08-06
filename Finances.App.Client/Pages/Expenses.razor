@@ -2,17 +2,18 @@
 @inject IFinanceStore Store
 @inject MoneyFormat Money
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Expenses</PageTitle>
+<PageTitle>@L["Exp_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Expenses</h1>
-        <p class="text-muted mb-0">Track business costs like rent, supplies, and utilities.</p>
+        <h1 class="page-title mb-1">@L["Exp_Title"]</h1>
+        <p class="text-muted mb-0">@L["Exp_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Add Expense
+        @L["Exp_Add"]
     </button>
 </div>
 
@@ -25,8 +26,8 @@
 else if (filtered.Count == 0)
 {
     <div class="card p-5 text-center mt-3">
-        <p class="text-muted mb-3">No expenses found for the selected period.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Expense</button></div>
+        <p class="text-muted mb-3">@L["Exp_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Exp_Add"]</button></div>
     </div>
 }
 else
@@ -37,16 +38,16 @@ else
                 <thead>
                     <tr>
                         <th aria-sort="@sort.AriaSort("date")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>Date <span aria-hidden="true">@sort.Icon("date")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
                         </th>
                         <th aria-sort="@sort.AriaSort("category")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("category")'>Category <span aria-hidden="true">@sort.Icon("category")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("category")'>@L["Exp_Category"] <span aria-hidden="true">@sort.Icon("category")</span></button>
                         </th>
                         <th aria-sort="@sort.AriaSort("amount")">
-                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>Amount <span aria-hidden="true">@sort.Icon("amount")</span></button>
+                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>@L["Common_Amount"] <span aria-hidden="true">@sort.Icon("amount")</span></button>
                         </th>
-                        <th>Note</th>
-                        <th style="width: 100px;">Actions</th>
+                        <th>@L["Exp_Note"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -58,15 +59,15 @@ else
                             <td>@Money.Format(e.Amount)</td>
                             <td class="text-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(e.Note ?? "")</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(e)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(e)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(e)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(e)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     }
                 </tbody>
                 <tfoot>
                     <tr class="fw-bold" style="background-color: var(--body-bg);">
-                        <td colspan="2">Total</td>
+                        <td colspan="2">@L["Common_Total"]</td>
                         <td>@Money.Format(filtered.Sum(e => e.Amount))</td>
                         <td colspan="2"></td>
                     </tr>
@@ -76,24 +77,24 @@ else
     </div>
 }
 
-<ModalDialog IsVisible="showModal" Title="@(isEditing ? "Edit Expense" : "Add Expense")" OnClose="CloseModal">
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Exp_EditTitle"] : L["Exp_Add"])" OnClose="CloseModal">
     <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <div class="modal-body">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label" for="expense-date">Date</label>
+                    <label class="form-label" for="expense-date">@L["Common_Date"]</label>
                     <InputDate id="expense-date" class="form-control" @bind-Value="formModel.Date" />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label" for="expense-amount">Amount</label>
+                    <label class="form-label" for="expense-amount">@L["Common_Amount"]</label>
                     <InputNumber id="expense-amount" class="form-control" @bind-Value="formModel.Amount" />
                     <ValidationMessage For="() => formModel.Amount" />
                 </div>
                 <div class="col-12">
-                    <label class="form-label" for="expense-category">Category</label>
+                    <label class="form-label" for="expense-category">@L["Exp_Category"]</label>
                     <InputText id="expense-category" class="form-control" @bind-Value="formModel.Category"
-                               list="expense-category-options" placeholder="e.g. Rent, Supplies, Utilities" />
+                               list="expense-category-options" placeholder="@L["Exp_CategoryPlaceholder"]" />
                     <datalist id="expense-category-options">
                         @foreach (var category in knownCategories)
                         {
@@ -103,24 +104,24 @@ else
                     <ValidationMessage For="() => formModel.Category" />
                 </div>
                 <div class="col-12">
-                    <label class="form-label" for="expense-note">Note</label>
+                    <label class="form-label" for="expense-note">@L["Exp_Note"]</label>
                     <InputTextArea id="expense-note" class="form-control" @bind-Value="formModel.Note" rows="2" />
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
             <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "Saving..." : (isEditing ? "Update" : "Save"))
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Save"]))
             </button>
         </div>
     </EditForm>
 </ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Expense"
-               Message="@($"Delete this {deleteTarget?.Category} expense from {deleteTarget?.Date.ToDateKey()}? You can undo right after deleting.")"
-               ConfirmText="Delete"
+               Title="@L["Exp_DeleteTitle"]"
+               Message="@L["Exp_DeleteMessage", deleteTarget?.Category ?? "", deleteTarget?.Date.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
@@ -231,12 +232,12 @@ else
             if (isEditing)
             {
                 await Store.UpdateExpenseAsync(editId, formModel);
-                Toast.Show("Expense updated");
+                Toast.Show(L["Exp_Updated"]);
             }
             else
             {
                 await Store.AddExpenseAsync(formModel);
-                Toast.Show("Expense added");
+                Toast.Show(L["Exp_Added"]);
             }
             allExpenses = (await Store.GetExpensesAsync()).ToList();
             RefreshCategories();
@@ -263,7 +264,7 @@ else
         try
         {
             await Store.DeleteExpenseAsync(deleted.Id);
-            Toast.Show("Expense deleted", ToastLevel.Success, "Undo", async () =>
+            Toast.Show(L["Exp_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
             {
                 await Store.AddExpenseAsync(deleted);
                 await InvokeAsync(async () =>

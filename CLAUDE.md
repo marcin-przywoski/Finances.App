@@ -18,9 +18,19 @@ records, product sales, expenses, analytics with a linear-regression forecast).
   `settings`). Bump the version only for breaking shape changes and add a
   step in `MigrateSnapshot`; a new *optional* property whose default is filled
   in `NormalizeSnapshot` is additive and must NOT bump the version.
-- User preferences (currency, later language) live in the snapshot's
-  `settings` object so they travel with backups; money display goes through
-  the `MoneyFormat` service, never `ToString("C")` directly in pages.
+- User preferences (currency, language) live in the snapshot's `settings`
+  object so they travel with backups; money display goes through the
+  `MoneyFormat` service, never `ToString("C")` directly in pages.
+- **Localization**: UI strings come from `IStringLocalizer<AppStrings>`
+  (`Resources/AppStrings.resx` neutral English + `AppStrings.pl.resx`; keys
+  are `Page_Element` with a `Common_` prefix). Validation messages use
+  `ValidationStrings` in Shared (hand-written accessor — the resx code
+  generator does not run under `dotnet build`). Every key must exist in both
+  files — `LocalizationTests` pins the key sets. The language is applied at
+  boot in `Program.Main`; the client ships full ICU
+  (`BlazorWebAssemblyLoadAllGlobalizationData`) because Polish is outside the
+  EFIGS shard. `DateKey.ToDateKey()` stays invariant — it is a storage
+  contract, not a display format; do not "fix" it to the current culture.
 - Related storage keys: `.quarantine` (preserved unreadable data), `.pre-reset`
   (backup written before both reset and import; surfaced as "Restore previous
   data" on the Data page), `.rev` (multi-tab write guard), `selectedWorkerId`,

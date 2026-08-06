@@ -8,6 +8,10 @@ using Finances.App.Client.Tests.TestDoubles;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
+// Components inject IStringLocalizer<AppStrings>, so every render context
+// needs localization registered; tests run under the invariant culture and
+// therefore assert the neutral (English) resources.
+
 namespace Finances.App.Client.Tests;
 
 public class ModalDialogTests : BunitContext
@@ -15,6 +19,7 @@ public class ModalDialogTests : BunitContext
     public ModalDialogTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization(options => options.ResourcesPath = "Resources");
     }
 
     [Fact]
@@ -61,6 +66,7 @@ public class ConfirmDialogTests : BunitContext
     public ConfirmDialogTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization(options => options.ResourcesPath = "Resources");
     }
 
     [Fact]
@@ -89,6 +95,7 @@ public class WorkerSelectorTests : BunitContext
     public void Empty_choice_reads_all_workers_and_active_filter_is_flagged()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization(options => options.ResourcesPath = "Resources");
         var storage = TestData.CreateSeededStorage();
         Services.AddSingleton<IKeyValueStorage>(storage);
         Services.AddSingleton<IFinanceStore>(new LocalFinanceStore(storage));
@@ -108,6 +115,11 @@ public class WorkerSelectorTests : BunitContext
 
 public class StatCardTests : BunitContext
 {
+    public StatCardTests()
+    {
+        Services.AddLocalization(options => options.ResourcesPath = "Resources");
+    }
+
     [Fact]
     public void Variant_resolves_to_semantic_icon_class()
     {
@@ -149,6 +161,7 @@ public class WorkersPageTests : BunitContext
     public WorkersPageTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddLocalization(options => options.ResourcesPath = "Resources");
         var store = new LocalFinanceStore(TestData.CreateSeededStorage());
         Services.AddSingleton<IFinanceStore>(store);
         Services.AddSingleton(new ToastService());

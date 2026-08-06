@@ -12,4 +12,10 @@ public class AppSettings
     /// null means "use the browser culture's currency format".
     /// </summary>
     public string? CurrencyCode { get; set; }
+
+    /// <summary>
+    /// UI language: "pl", "en", or null/"auto" for the browser's language.
+    /// Applied at boot in Program.Main; changing it reloads the app.
+    /// </summary>
+    public string? Language { get; set; }
 }

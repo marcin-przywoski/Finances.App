@@ -3,16 +3,16 @@
 @inject IFinanceStore Store
 @inject MoneyFormat Money
 
-<PageTitle>Products</PageTitle>
+<PageTitle>@L["Prod_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title mb-1">Products</h1>
-        <p class="text-muted mb-0">Manage retail products your shop sells (shampoo, styling products, etc.).</p>
+        <h1 class="page-title mb-1">@L["Prod_Title"]</h1>
+        <p class="text-muted mb-0">@L["Prod_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Add Product
+        @L["Prod_Add"]
     </button>
 </div>
 
@@ -23,8 +23,8 @@
 else if (items.Count == 0)
 {
     <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No products yet. Add your first product to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Product</button></div>
+        <p class="text-muted mb-3">@L["Prod_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Prod_Add"]</button></div>
     </div>
 }
 else
@@ -34,11 +34,11 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Product Name</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th style="width: 140px;">Actions</th>
+                        <th>@L["Prod_Name"]</th>
+                        <th>@L["Exp_Category"]</th>
+                        <th>@L["Prod_Price"]</th>
+                        <th>@L["Prod_Stock"]</th>
+                        <th style="width: 140px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,7 +51,7 @@ else
                             <td>
                                 @if (p.StockQuantity <= LowStockThreshold)
                                 {
-                                    <span class="badge bg-danger">@p.StockQuantity — low stock</span>
+                                    <span class="badge bg-danger">@L["Prod_LowStock", p.StockQuantity]</span>
                                 }
                                 else
                                 {
@@ -59,8 +59,8 @@ else
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     }
@@ -70,52 +70,54 @@ else
     </div>
 }
 
-<ModalDialog IsVisible="showModal" Title="@(isEditing ? "Edit Product" : "Add Product")" OnClose="CloseModal">
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Prod_EditTitle"] : L["Prod_Add"])" OnClose="CloseModal">
     <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <div class="modal-body">
             <div class="mb-3">
-                <label class="form-label" for="product-name">Product Name</label>
+                <label class="form-label" for="product-name">@L["Prod_Name"]</label>
                 <InputText id="product-name" class="form-control" @bind-Value="formModel.Name" />
                 <ValidationMessage For="() => formModel.Name" />
             </div>
             <div class="mb-3">
-                <label class="form-label" for="product-category">Category</label>
-                <InputText id="product-category" class="form-control" @bind-Value="formModel.Category" placeholder="e.g. Hair Care, Styling, Tools" />
+                <label class="form-label" for="product-category">@L["Exp_Category"]</label>
+                <InputText id="product-category" class="form-control" @bind-Value="formModel.Category" placeholder="@L["Prod_CategoryPlaceholder"]" />
             </div>
             <div class="row g-3">
                 <div class="col-6">
-                    <label class="form-label" for="product-price">Price</label>
+                    <label class="form-label" for="product-price">@L["Prod_Price"]</label>
                     <InputNumber id="product-price" class="form-control" @bind-Value="formModel.Price" />
                     <ValidationMessage For="() => formModel.Price" />
                 </div>
                 <div class="col-6">
-                    <label class="form-label" for="product-stock">Stock Quantity</label>
+                    <label class="form-label" for="product-stock">@L["Prod_StockQuantity"]</label>
                     <InputNumber id="product-stock" class="form-control" @bind-Value="formModel.StockQuantity" />
                     <ValidationMessage For="() => formModel.StockQuantity" />
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
             <button type="submit" class="btn btn-primary" disabled="@saving">
-                @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Add"]))
             </button>
         </div>
     </EditForm>
 </ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Product"
-               Message="@($"Delete {deleteTarget?.Name}? You can undo right after deleting.")"
-               ConfirmText="Delete"
+               Title="@L["Prod_DeleteTitle"]"
+               Message="@L["Crud_DeleteMessage", deleteTarget?.Name ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
 @code {
     private const int LowStockThreshold = 3;
 
-    protected override string EntityName => "Product";
+    protected override string ToastAdded => L["Prod_Added"];
+    protected override string ToastUpdated => L["Prod_Updated"];
+    protected override string ToastDeleted => L["Prod_Deleted"];
 
     protected override async Task<IReadOnlyList<Product>> LoadItemsAsync() => await Store.GetProductsAsync();
 
