@@ -40,8 +40,10 @@ jobs:
 
   e2e:
     # E2E publishes the app twice and drives a real browser; run it where it
-    # gates something (PRs and the deployed branches), not on every push.
-    if: github.event_name == 'pull_request' || contains(fromJSON('["wasm-standalone", "main"]'), github.ref_name)
+    # gates something (PRs, the deployed branches, and manual dispatches —
+    # the latter are how CI is kicked off for pushes GitHub attributes to a
+    # bot actor, which do not fire push events).
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(fromJSON('["wasm-standalone", "main"]'), github.ref_name)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
