@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="An_AddExpensesLink" xml:space="preserve"><value>Dodaj wydatki</value></data>
+  <data name="An_AddExpensesSuffix" xml:space="preserve"><value>aby zobaczyć zysk po kosztach.</value></data>
+  <data name="An_CommissionReport" xml:space="preserve"><value>Raport prowizji</value></data>
+  <data name="An_DailyRevenue" xml:space="preserve"><value>Przychód dzienny</value></data>
+  <data name="An_ExpenseEntries" xml:space="preserve"><value>pozycji: {0}</value></data>
+  <data name="An_ExpensesSubtitle" xml:space="preserve"><value>Koszty działalności w wybranym okresie — filtr pracownika nie ma tu zastosowania.</value></data>
+  <data name="An_ExpensesTitle" xml:space="preserve"><value>Wydatki</value></data>
+  <data name="An_Fit" xml:space="preserve"><value>Dopasowanie: {0}</value></data>
+  <data name="An_FitModerate" xml:space="preserve"><value>umiarkowane</value></data>
+  <data name="An_FitStrong" xml:space="preserve"><value>silne</value></data>
+  <data name="An_FitWeak" xml:space="preserve"><value>słabe</value></data>
+  <data name="An_ForecastDays" xml:space="preserve"><value>Dni prognozy:</value></data>
+  <data name="An_ForecastEmpty" xml:space="preserve"><value>Za mało danych do prognozy — zapisz usługi z co najmniej dwóch różnych dni.</value></data>
+  <data name="An_ForecastSubtitle" xml:space="preserve"><value>Regresja liniowa na podstawie {0} · prognoza na {1} dni</value></data>
+  <data name="An_ForecastTitle" xml:space="preserve"><value>Prognoza przychodów</value></data>
+  <data name="An_Last90Days" xml:space="preserve"><value>ostatnich 90 dni</value></data>
+  <data name="An_NetAfterExpenses" xml:space="preserve"><value>Zysk po kosztach</value></data>
+  <data name="An_NetFormula" xml:space="preserve"><value>Udział salonu + sprzedaż produktów − wydatki</value></data>
+  <data name="An_NoExpensesPeriod" xml:space="preserve"><value>Brak wydatków w tym okresie.</value></data>
+  <data name="An_NoProductSalesPeriod" xml:space="preserve"><value>Brak sprzedaży produktów w tym okresie.</value></data>
+  <data name="An_NoRevenuePeriod" xml:space="preserve"><value>Brak przychodów w tym okresie.</value></data>
+  <data name="An_PerDay" xml:space="preserve"><value>{0} dziennie</value></data>
+  <data name="An_RevenueByDay" xml:space="preserve"><value>Przychód wg dnia tygodnia</value></data>
+  <data name="An_RevenueByWorker" xml:space="preserve"><value>Przychód wg pracownika</value></data>
+  <data name="An_SelectedRange" xml:space="preserve"><value>wybranego zakresu</value></data>
+  <data name="An_ServiceCount" xml:space="preserve"><value>usług: {0}</value></data>
+  <data name="An_ServicePopularity" xml:space="preserve"><value>Popularność usług</value></data>
+  <data name="An_ServicesVsProducts" xml:space="preserve"><value>Usługi vs produkty</value></data>
+  <data name="An_Share" xml:space="preserve"><value>Udział</value></data>
+  <data name="An_Subtitle" xml:space="preserve"><value>Trendy przychodów, prognozy i szczegółowe zestawienia.</value></data>
+  <data name="An_Title" xml:space="preserve"><value>Analizy</value></data>
+  <data name="An_TopServices" xml:space="preserve"><value>Najlepsze usługi wg przychodu</value></data>
+  <data name="An_TotalExpenses" xml:space="preserve"><value>Suma wydatków</value></data>
+  <data name="An_TrendDownward" xml:space="preserve"><value>Trend: malejący</value></data>
+  <data name="An_TrendFlat" xml:space="preserve"><value>Trend: stabilny</value></data>
+  <data name="An_TrendUpward" xml:space="preserve"><value>Trend: rosnący</value></data>
+  <data name="Chart_ActualRevenue" xml:space="preserve"><value>Rzeczywisty przychód</value></data>
+  <data name="Chart_Forecast" xml:space="preserve"><value>Prognoza</value></data>
+  <data name="Chart_Products" xml:space="preserve"><value>Produkty</value></data>
+  <data name="Chart_Revenue" xml:space="preserve"><value>Przychód</value></data>
+  <data name="Chart_Services" xml:space="preserve"><value>Usługi</value></data>
+  <data name="Chart_Tips" xml:space="preserve"><value>Napiwki</value></data>
+  <data name="Chart_TrendLine" xml:space="preserve"><value>Trend</value></data>
+  <data name="Common_Actions" xml:space="preserve"><value>Akcje</value></data>
+  <data name="Common_Add" xml:space="preserve"><value>Dodaj</value></data>
+  <data name="Common_Amount" xml:space="preserve"><value>Kwota</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Anuluj</value></data>
+  <data name="Common_Client" xml:space="preserve"><value>Klient</value></data>
+  <data name="Common_ClientName" xml:space="preserve"><value>Imię klienta</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Zamknij</value></data>
+  <data name="Common_Commission" xml:space="preserve"><value>Prowizja %</value></data>
+  <data name="Common_Date" xml:space="preserve"><value>Data</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Usuń</value></data>
+  <data name="Common_Edit" xml:space="preserve"><value>Edytuj</value></data>
+  <data name="Common_NoDataPeriod" xml:space="preserve"><value>Brak danych w tym okresie.</value></data>
+  <data name="Common_Notes" xml:space="preserve"><value>Notatki</value></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Opcjonalnie</value></data>
+  <data name="Common_Save" xml:space="preserve"><value>Zapisz</value></data>
+  <data name="Common_Saving" xml:space="preserve"><value>Zapisywanie…</value></data>
+  <data name="Common_Service" xml:space="preserve"><value>Usługa</value></data>
+  <data name="Common_Tips" xml:space="preserve"><value>Napiwki</value></data>
+  <data name="Common_Total" xml:space="preserve"><value>Razem</value></data>
+  <data name="Common_Totals" xml:space="preserve"><value>Suma</value></data>
+  <data name="Common_Undo" xml:space="preserve"><value>Cofnij</value></data>
+  <data name="Common_Update" xml:space="preserve"><value>Zapisz zmiany</value></data>
+  <data name="Common_Worker" xml:space="preserve"><value>Pracownik</value></data>
+  <data name="Common_Working" xml:space="preserve"><value>Pracuję…</value></data>
+  <data name="Crud_DeleteMessage" xml:space="preserve"><value>Usunąć {0}? Zaraz po usunięciu możesz cofnąć.</value></data>
+  <data name="Dash_AvgTicket" xml:space="preserve"><value>Średni paragon</value></data>
+  <data name="Dash_BusiestDays" xml:space="preserve"><value>Najbardziej ruchliwe dni</value></data>
+  <data name="Dash_ImportHint" xml:space="preserve"><value>Przenosisz się z innego urządzenia?</value></data>
+  <data name="Dash_ImportInstead" xml:space="preserve"><value>zamiast tego.</value></data>
+  <data name="Dash_ImportLink" xml:space="preserve"><value>Zaimportuj kopię zapasową</value></data>
+  <data name="Dash_NoProductSales" xml:space="preserve"><value>Brak sprzedaży produktów.</value></data>
+  <data name="Dash_NoRecentActivity" xml:space="preserve"><value>Brak ostatniej aktywności.</value></data>
+  <data name="Dash_NoRevenueThisMonth" xml:space="preserve"><value>W tym miesiącu nie zapisano jeszcze przychodów.</value></data>
+  <data name="Dash_NoServicesThisMonth" xml:space="preserve"><value>W tym miesiącu nie zapisano jeszcze usług.</value></data>
+  <data name="Dash_QuantitySold" xml:space="preserve"><value>sprzedano: {0}</value></data>
+  <data name="Dash_RecentActivity" xml:space="preserve"><value>Ostatnia aktywność</value></data>
+  <data name="Dash_RevenueBreakdown" xml:space="preserve"><value>Struktura przychodów</value></data>
+  <data name="Dash_RevenueSources" xml:space="preserve"><value>Źródła przychodów</value></data>
+  <data name="Dash_ServicesDone" xml:space="preserve"><value>Wykonane usługi</value></data>
+  <data name="Dash_Step1Body" xml:space="preserve"><value>Imiona i podział prowizji.</value></data>
+  <data name="Dash_Step1Title" xml:space="preserve"><value>Dodaj pracowników</value></data>
+  <data name="Dash_Step2Body" xml:space="preserve"><value>Twój cennik — strzyżenie, koloryzacja i inne.</value></data>
+  <data name="Dash_Step2Title" xml:space="preserve"><value>Dodaj usługi</value></data>
+  <data name="Dash_Step3Body" xml:space="preserve"><value>Tu zaczynają się przychody, prowizje i analizy.</value></data>
+  <data name="Dash_Step3Title" xml:space="preserve"><value>Zapisz pierwszą wizytę</value></data>
+  <data name="Dash_Subtitle" xml:space="preserve"><value>Przegląd finansów Twojego salonu.</value></data>
+  <data name="Dash_Title" xml:space="preserve"><value>Pulpit</value></data>
+  <data name="Dash_TopProducts" xml:space="preserve"><value>Najlepsze produkty</value></data>
+  <data name="Dash_TotalRevenue" xml:space="preserve"><value>Przychód łącznie</value></data>
+  <data name="Dash_TotalTips" xml:space="preserve"><value>Napiwki łącznie</value></data>
+  <data name="Dash_VsLastMonth" xml:space="preserve"><value>vs poprzedni miesiąc</value></data>
+  <data name="Dash_WelcomeIntro" xml:space="preserve"><value>Wszystko, co zapiszesz, zostaje tylko w tej przeglądarce — bez konta i bez serwera. Trzy szybkie kroki i pulpit ożyje:</value></data>
+  <data name="Dash_WelcomeTitle" xml:space="preserve"><value>Witaj! Skonfigurujmy Twój salon.</value></data>
+  <data name="Data_AccountantBody" xml:space="preserve"><value>Pliki CSV gotowe do arkusza kalkulacyjnego (wszystkie dane, w formacie Twojego Excela).</value></data>
+  <data name="Data_AccountantTitle" xml:space="preserve"><value>Eksport dla księgowości</value></data>
+  <data name="Data_AvailableBuild" xml:space="preserve"><value>Dostępna wersja</value></data>
+  <data name="Data_Backup" xml:space="preserve"><value>Kopia zapasowa</value></data>
+  <data name="Data_BackupBody" xml:space="preserve"><value>Eksport zapisuje dane jako kopię JSON. Import przywraca wcześniejszą kopię w tej przeglądarce lub przenosi dane na inne urządzenie.</value></data>
+  <data name="Data_BackupSchema" xml:space="preserve"><value>Schemat kopii</value></data>
+  <data name="Data_BackupTitle" xml:space="preserve"><value>Kopia zapasowa i przywracanie</value></data>
+  <data name="Data_BrowserDefault" xml:space="preserve"><value>Domyślna przeglądarki</value></data>
+  <data name="Data_CheckUpdates" xml:space="preserve"><value>Sprawdź aktualizacje</value></data>
+  <data name="Data_Checking" xml:space="preserve"><value>Sprawdzanie…</value></data>
+  <data name="Data_CsvExpenses" xml:space="preserve"><value>Wydatki (CSV)</value></data>
+  <data name="Data_CsvSales" xml:space="preserve"><value>Sprzedaż (CSV)</value></data>
+  <data name="Data_CsvServices" xml:space="preserve"><value>Wizyty (CSV)</value></data>
+  <data name="Data_Currency" xml:space="preserve"><value>Waluta</value></data>
+  <data name="Data_CurrencyHint" xml:space="preserve"><value>Dotyczy wszystkich kwot w aplikacji i przenosi się z kopiami zapasowymi.</value></data>
+  <data name="Data_CurrentRelease" xml:space="preserve"><value>Bieżące wydanie</value></data>
+  <data name="Data_Detecting" xml:space="preserve"><value>Wykrywanie…</value></data>
+  <data name="Data_EraseAll" xml:space="preserve"><value>Wymaż wszystkie dane</value></data>
+  <data name="Data_EraseConfirm" xml:space="preserve"><value>Wymaż dane</value></data>
+  <data name="Data_EraseMessage" xml:space="preserve"><value>Wymazać wszystkie dane w tej przeglądarce i zacząć od zera? Kopia bieżących danych zostanie zachowana i można ją przywrócić na tej stronie.</value></data>
+  <data name="Data_EraseTitle" xml:space="preserve"><value>Wymaż lokalne dane</value></data>
+  <data name="Data_Expenses" xml:space="preserve"><value>Wydatki</value></data>
+  <data name="Data_ExportJson" xml:space="preserve"><value>Eksportuj JSON</value></data>
+  <data name="Data_ImportJson" xml:space="preserve"><value>Importuj JSON</value></data>
+  <data name="Data_InstallApp" xml:space="preserve"><value>Zainstaluj aplikację</value></data>
+  <data name="Data_InstallError" xml:space="preserve"><value>Ostatniej aktualizacji nie udało się zainstalować, więc urządzenie zostaje na bieżącej wersji. Sprawdź połączenie i spróbuj ponownie. ({0})</value></data>
+  <data name="Data_InstalledBuild" xml:space="preserve"><value>Zainstalowana wersja</value></data>
+  <data name="Data_Language" xml:space="preserve"><value>Język</value></data>
+  <data name="Data_LanguageAuto" xml:space="preserve"><value>Automatycznie (język przeglądarki)</value></data>
+  <data name="Data_LanguageHint" xml:space="preserve"><value>Zmiana języka przeładuje aplikację.</value></data>
+  <data name="Data_LastApplied" xml:space="preserve"><value>Ostatnia aktualizacja</value></data>
+  <data name="Data_LastChecked" xml:space="preserve"><value>Ostatnie sprawdzenie</value></data>
+  <data name="Data_NoPendingUpdate" xml:space="preserve"><value>Brak oczekującej aktualizacji</value></data>
+  <data name="Data_NotYet" xml:space="preserve"><value>Jeszcze nie</value></data>
+  <data name="Data_Preferences" xml:space="preserve"><value>Preferencje</value></data>
+  <data name="Data_Privacy1" xml:space="preserve"><value>Dane są przechowywane wyłącznie w pamięci tej przeglądarki.</value></data>
+  <data name="Data_Privacy2" xml:space="preserve"><value>Aplikacja nie używa konta ani bazy danych na serwerze.</value></data>
+  <data name="Data_Privacy3" xml:space="preserve"><value>PWA zachowuje pamięć offline po pierwszym udanym załadowaniu online i może sprawdzać aktualizacje bez czyszczenia danych.</value></data>
+  <data name="Data_Privacy4" xml:space="preserve"><value>Używaj eksportowanych kopii, aby przenosić dane między urządzeniami i przeglądarkami.</value></data>
+  <data name="Data_Privacy5" xml:space="preserve"><value>Ostatnia lokalna zmiana:</value></data>
+  <data name="Data_PrivacyTitle" xml:space="preserve"><value>Prywatność i instalacja</value></data>
+  <data name="Data_ProductSales" xml:space="preserve"><value>Sprzedaże</value></data>
+  <data name="Data_Products" xml:space="preserve"><value>Produkty</value></data>
+  <data name="Data_PwaChecking" xml:space="preserve"><value>Sprawdzanie</value></data>
+  <data name="Data_PwaInitializing" xml:space="preserve"><value>Uruchamianie</value></data>
+  <data name="Data_PwaUpToDate" xml:space="preserve"><value>Aktualne</value></data>
+  <data name="Data_PwaUpdateReady" xml:space="preserve"><value>Aktualizacja gotowa</value></data>
+  <data name="Data_PwaUpdated" xml:space="preserve"><value>Zaktualizowano</value></data>
+  <data name="Data_QuarantineBody" xml:space="preserve"><value>Poprzednich danych nie udało się odczytać (mogą być uszkodzone lub pochodzić z nowszej wersji aplikacji), więc aplikacja zaczęła od nowa. Oryginalna zawartość została zachowana — pobierz ją, zanim zamkniesz to powiadomienie.</value></data>
+  <data name="Data_QuarantineDismiss" xml:space="preserve"><value>Zamknij i usuń kopię</value></data>
+  <data name="Data_QuarantineDownload" xml:space="preserve"><value>Pobierz zachowaną kopię</value></data>
+  <data name="Data_QuarantineTitle" xml:space="preserve"><value>Zachowano nieczytelne dane</value></data>
+  <data name="Data_RecordedServices" xml:space="preserve"><value>Zapisane wizyty</value></data>
+  <data name="Data_ReloadToUpdate" xml:space="preserve"><value>Odśwież, aby zaktualizować</value></data>
+  <data name="Data_RestoreConfirm" xml:space="preserve"><value>Przywróć</value></data>
+  <data name="Data_RestoreHint" xml:space="preserve"><value>Przywraca dane sprzed ostatniego wymazania lub importu.</value></data>
+  <data name="Data_RestoreMessage" xml:space="preserve"><value>Zastąpić bieżące dane kopią zapisaną przed ostatnim wymazaniem lub importem?</value></data>
+  <data name="Data_RestorePrevious" xml:space="preserve"><value>Przywróć poprzednie dane</value></data>
+  <data name="Data_RestoreTitle" xml:space="preserve"><value>Przywróć poprzednie dane</value></data>
+  <data name="Data_Services" xml:space="preserve"><value>Usługi</value></data>
+  <data name="Data_StorageFull" xml:space="preserve"><value>— pamięć jest prawie pełna. Wyeksportuj kopię i usuń stare wpisy.</value></data>
+  <data name="Data_StorageOf5MB" xml:space="preserve"><value>{0} z ~5 MB</value></data>
+  <data name="Data_StorageUsed" xml:space="preserve"><value>Zajęta pamięć przeglądarki: ~{0}</value></data>
+  <data name="Data_Subtitle" xml:space="preserve"><value>Wszystko jest zapisywane tylko w bieżącym profilu przeglądarki.</value></data>
+  <data name="Data_Title" xml:space="preserve"><value>Dane i kopie</value></data>
+  <data name="Data_ToastCurrencySaved" xml:space="preserve"><value>Ustawienie waluty zapisane.</value></data>
+  <data name="Data_ToastErased" xml:space="preserve"><value>Lokalne dane wymazane. Poprzednie dane można przywrócić na tej stronie.</value></data>
+  <data name="Data_ToastExported" xml:space="preserve"><value>{0} — wyeksportowano.</value></data>
+  <data name="Data_ToastImported" xml:space="preserve"><value>Kopia zaimportowana.</value></data>
+  <data name="Data_ToastNoInstallPrompt" xml:space="preserve"><value>Instalacja nie jest teraz dostępna.</value></data>
+  <data name="Data_ToastNoPrevious" xml:space="preserve"><value>Nie znaleziono poprzedniej kopii danych.</value></data>
+  <data name="Data_ToastNoUpdate" xml:space="preserve"><value>Nie znaleziono oczekującej aktualizacji.</value></data>
+  <data name="Data_ToastQuarantineDownloaded" xml:space="preserve"><value>Zachowana kopia pobrana.</value></data>
+  <data name="Data_ToastQuarantineRemoved" xml:space="preserve"><value>Zachowana kopia usunięta.</value></data>
+  <data name="Data_ToastRestored" xml:space="preserve"><value>Poprzednie dane przywrócone.</value></data>
+  <data name="Data_ToastShared" xml:space="preserve"><value>{0} — udostępniono.</value></data>
+  <data name="Data_ToastUpToDate" xml:space="preserve"><value>Masz już najnowszą dostępną wersję offline.</value></data>
+  <data name="Data_ToastUpdateReady" xml:space="preserve"><value>Nowsza wersja offline jest gotowa. Odśwież, aby ją zastosować.</value></data>
+  <data name="Data_UpdatesBody" xml:space="preserve"><value>Sprawdź, czy jest nowsza wersja offline, a potem odśwież raz, aby na nią przełączyć.</value></data>
+  <data name="Data_UpdatesTitle" xml:space="preserve"><value>Aktualizacje aplikacji</value></data>
+  <data name="Data_WhatChanged" xml:space="preserve"><value>Co się zmieniło</value></data>
+  <data name="Data_Workers" xml:space="preserve"><value>Pracownicy</value></data>
+  <data name="Error_CannotDelete" xml:space="preserve"><value>Nie można usunąć tego elementu.</value></data>
+  <data name="Error_ConcurrentUpdate" xml:space="preserve"><value>Dane zmieniły się w innej karcie. Widok odświeżono — spróbuj ponownie.</value></data>
+  <data name="Error_Generic" xml:space="preserve"><value>Coś poszło nie tak. Spróbuj ponownie.</value></data>
+  <data name="Error_InsufficientStock" xml:space="preserve"><value>Na stanie jest tylko {0} szt. „{1}” — nie można sprzedać {2}.</value></data>
+  <data name="Error_ItemGone" xml:space="preserve"><value>Ten element już nie istnieje — mógł zostać usunięty w innej karcie.</value></data>
+  <data name="Error_ProductHasSales" xml:space="preserve"><value>Nie można usunąć produktu, który ma zapisane sprzedaże.</value></data>
+  <data name="Error_ServiceHasRecords" xml:space="preserve"><value>Nie można usunąć usługi, która ma zapisane wizyty.</value></data>
+  <data name="Error_StorageWrite" xml:space="preserve"><value>Nie udało się zapisać zmiany — pamięć przeglądarki może być pełna. Wyeksportuj dane, a potem usuń stare wpisy.</value></data>
+  <data name="Error_WorkerHasRecords" xml:space="preserve"><value>Nie można usunąć pracownika, który ma zapisane wizyty.</value></data>
+  <data name="Exp_Add" xml:space="preserve"><value>Dodaj wydatek</value></data>
+  <data name="Exp_Added" xml:space="preserve"><value>Wydatek dodany</value></data>
+  <data name="Exp_Category" xml:space="preserve"><value>Kategoria</value></data>
+  <data name="Exp_CategoryPlaceholder" xml:space="preserve"><value>np. czynsz, materiały, media</value></data>
+  <data name="Exp_DeleteMessage" xml:space="preserve"><value>Usunąć wydatek ({0}) z {1}? Zaraz po usunięciu możesz cofnąć.</value></data>
+  <data name="Exp_DeleteTitle" xml:space="preserve"><value>Usuń wydatek</value></data>
+  <data name="Exp_Deleted" xml:space="preserve"><value>Wydatek usunięty</value></data>
+  <data name="Exp_EditTitle" xml:space="preserve"><value>Edytuj wydatek</value></data>
+  <data name="Exp_Empty" xml:space="preserve"><value>Brak wydatków w wybranym okresie.</value></data>
+  <data name="Exp_Note" xml:space="preserve"><value>Notatka</value></data>
+  <data name="Exp_Subtitle" xml:space="preserve"><value>Śledź koszty działalności: czynsz, materiały, media.</value></data>
+  <data name="Exp_Title" xml:space="preserve"><value>Wydatki</value></data>
+  <data name="Exp_Updated" xml:space="preserve"><value>Wydatek zaktualizowany</value></data>
+  <data name="Hist_AmountPaid" xml:space="preserve"><value>Zapłacona kwota</value></data>
+  <data name="Hist_DeleteMessage" xml:space="preserve"><value>Usunąć wizytę z {0}? Zaraz po usunięciu możesz cofnąć.</value></data>
+  <data name="Hist_DeleteTitle" xml:space="preserve"><value>Usuń wizytę</value></data>
+  <data name="Hist_Deleted" xml:space="preserve"><value>Wizyta usunięta</value></data>
+  <data name="Hist_EditTitle" xml:space="preserve"><value>Edytuj wizytę</value></data>
+  <data name="Hist_Empty" xml:space="preserve"><value>Brak wizyt w wybranym okresie.</value></data>
+  <data name="Hist_SearchLabel" xml:space="preserve"><value>Szukaj w historii</value></data>
+  <data name="Hist_SearchPlaceholder" xml:space="preserve"><value>Szukaj: klient, pracownik, usługa, notatki…</value></data>
+  <data name="Hist_Subtitle" xml:space="preserve"><value>Przeglądaj i edytuj zapisane wizyty.</value></data>
+  <data name="Hist_Title" xml:space="preserve"><value>Historia usług</value></data>
+  <data name="Hist_Updated" xml:space="preserve"><value>Wizyta zaktualizowana</value></data>
+  <data name="Hist_WorkerShare" xml:space="preserve"><value>Udział pracownika</value></data>
+  <data name="Layout_DismissError" xml:space="preserve"><value>Zamknij komunikat</value></data>
+  <data name="Layout_ErrorOccurred" xml:space="preserve"><value>Wystąpił nieoczekiwany błąd.</value></data>
+  <data name="Layout_OpenDataPage" xml:space="preserve"><value>Otwórz Dane i kopie</value></data>
+  <data name="Layout_RecoveryBody" xml:space="preserve"><value>Kopia została zachowana — pobierz ją ze strony Dane i kopie, zanim zdecydujesz, co dalej.</value></data>
+  <data name="Layout_RecoveryTitle" xml:space="preserve"><value>Nie udało się odczytać zapisanych danych.</value></data>
+  <data name="Layout_Reload" xml:space="preserve"><value>Odśwież</value></data>
+  <data name="Layout_StoredLocally" xml:space="preserve"><value>Dane tylko w tej przeglądarce</value></data>
+  <data name="Layout_ThemeAuto" xml:space="preserve"><value>Motyw: automatyczny — kliknij, aby zmienić</value></data>
+  <data name="Layout_ThemeDark" xml:space="preserve"><value>Motyw: ciemny — kliknij, aby zmienić</value></data>
+  <data name="Layout_ThemeLight" xml:space="preserve"><value>Motyw: jasny — kliknij, aby zmienić</value></data>
+  <data name="Layout_ToggleNav" xml:space="preserve"><value>Przełącz nawigację</value></data>
+  <data name="Nav_Analytics" xml:space="preserve"><value>Analizy</value></data>
+  <data name="Nav_Dashboard" xml:space="preserve"><value>Pulpit</value></data>
+  <data name="Nav_Data" xml:space="preserve"><value>Dane i kopie</value></data>
+  <data name="Nav_Expenses" xml:space="preserve"><value>Wydatki</value></data>
+  <data name="Nav_MainNavigation" xml:space="preserve"><value>Nawigacja główna</value></data>
+  <data name="Nav_ProductSales" xml:space="preserve"><value>Sprzedaż produktów</value></data>
+  <data name="Nav_Products" xml:space="preserve"><value>Produkty</value></data>
+  <data name="Nav_RecordService" xml:space="preserve"><value>Dodaj wizytę</value></data>
+  <data name="Nav_SectionBackups" xml:space="preserve"><value>Kopie zapasowe</value></data>
+  <data name="Nav_SectionMain" xml:space="preserve"><value>Główne</value></data>
+  <data name="Nav_SectionManage" xml:space="preserve"><value>Zarządzanie</value></data>
+  <data name="Nav_ServiceHistory" xml:space="preserve"><value>Historia usług</value></data>
+  <data name="Nav_Services" xml:space="preserve"><value>Usługi</value></data>
+  <data name="Nav_Workers" xml:space="preserve"><value>Pracownicy</value></data>
+  <data name="Prod_Add" xml:space="preserve"><value>Dodaj produkt</value></data>
+  <data name="Prod_Added" xml:space="preserve"><value>Produkt dodany</value></data>
+  <data name="Prod_CategoryPlaceholder" xml:space="preserve"><value>np. pielęgnacja, stylizacja, akcesoria</value></data>
+  <data name="Prod_DeleteTitle" xml:space="preserve"><value>Usuń produkt</value></data>
+  <data name="Prod_Deleted" xml:space="preserve"><value>Produkt usunięty</value></data>
+  <data name="Prod_EditTitle" xml:space="preserve"><value>Edytuj produkt</value></data>
+  <data name="Prod_Empty" xml:space="preserve"><value>Brak produktów. Dodaj pierwszy produkt, aby zacząć.</value></data>
+  <data name="Prod_LowStock" xml:space="preserve"><value>{0} — niski stan</value></data>
+  <data name="Prod_Name" xml:space="preserve"><value>Nazwa produktu</value></data>
+  <data name="Prod_Price" xml:space="preserve"><value>Cena</value></data>
+  <data name="Prod_Stock" xml:space="preserve"><value>Stan</value></data>
+  <data name="Prod_StockQuantity" xml:space="preserve"><value>Ilość na stanie</value></data>
+  <data name="Prod_Subtitle" xml:space="preserve"><value>Zarządzaj produktami sprzedawanymi w salonie (szampony, kosmetyki itp.).</value></data>
+  <data name="Prod_Title" xml:space="preserve"><value>Produkty</value></data>
+  <data name="Prod_Updated" xml:space="preserve"><value>Produkt zaktualizowany</value></data>
+  <data name="Pwa_InstallBody" xml:space="preserve"><value>Miej finanse salonu pod ręką — aplikacja otworzy się z ekranu głównego lub pulpitu.</value></data>
+  <data name="Pwa_InstallButton" xml:space="preserve"><value>Zainstaluj</value></data>
+  <data name="Pwa_InstallTitle" xml:space="preserve"><value>Zainstaluj aplikację na urządzeniu</value></data>
+  <data name="Pwa_Later" xml:space="preserve"><value>Później</value></data>
+  <data name="Pwa_ReloadNow" xml:space="preserve"><value>Odśwież teraz</value></data>
+  <data name="Pwa_UpdateBadge" xml:space="preserve"><value>Aktualizacja</value></data>
+  <data name="Pwa_UpdateBodyGeneric" xml:space="preserve"><value>Odśwież raz, aby przełączyć się na najnowsze pliki offline.</value></data>
+  <data name="Pwa_UpdateBodyVersion" xml:space="preserve"><value>Odśwież raz, aby przełączyć przeglądarkę na wersję offline {0}.</value></data>
+  <data name="Pwa_UpdateTitle" xml:space="preserve"><value>Nowsza wersja offline jest gotowa</value></data>
+  <data name="Range_Custom" xml:space="preserve"><value>Własny</value></data>
+  <data name="Range_From" xml:space="preserve"><value>Data od</value></data>
+  <data name="Range_Month" xml:space="preserve"><value>Ten miesiąc</value></data>
+  <data name="Range_To" xml:space="preserve"><value>Data do</value></data>
+  <data name="Range_ToSeparator" xml:space="preserve"><value>do</value></data>
+  <data name="Range_Today" xml:space="preserve"><value>Dzisiaj</value></data>
+  <data name="Range_Week" xml:space="preserve"><value>Ten tydzień</value></data>
+  <data name="Rec_AddServices" xml:space="preserve"><value>Dodaj usługi</value></data>
+  <data name="Rec_AddWorkers" xml:space="preserve"><value>Dodaj pracowników</value></data>
+  <data name="Rec_NeedsSetup" xml:space="preserve"><value>Aby zapisać wizytę, dodaj najpierw pracownika i usługę.</value></data>
+  <data name="Rec_NotesPlaceholder" xml:space="preserve"><value>Opcjonalne notatki…</value></data>
+  <data name="Rec_SalonShareLabel" xml:space="preserve"><value>Salon</value></data>
+  <data name="Rec_SaveRecord" xml:space="preserve"><value>Zapisz wizytę</value></data>
+  <data name="Rec_SelectBoth" xml:space="preserve"><value>Wybierz pracownika i usługę.</value></data>
+  <data name="Rec_SelectService" xml:space="preserve"><value>— wybierz usługę —</value></data>
+  <data name="Rec_SelectWorker" xml:space="preserve"><value>— wybierz pracownika —</value></data>
+  <data name="Rec_Subtitle" xml:space="preserve"><value>Zapisz wykonaną usługę dla klienta.</value></data>
+  <data name="Rec_Success" xml:space="preserve"><value>Wizyta zapisana!</value></data>
+  <data name="Rec_Title" xml:space="preserve"><value>Dodaj wizytę</value></data>
+  <data name="Rec_ViewHistory" xml:space="preserve"><value>Zobacz historię</value></data>
+  <data name="Rec_WorkerShareLabel" xml:space="preserve"><value>Pracownik</value></data>
+  <data name="Sales_AddTitle" xml:space="preserve"><value>Dodaj sprzedaż</value></data>
+  <data name="Sales_DeleteMessage" xml:space="preserve"><value>Usunąć sprzedaż z {0}? Sztuki wrócą na stan, a zaraz po usunięciu możesz cofnąć.</value></data>
+  <data name="Sales_DeleteTitle" xml:space="preserve"><value>Usuń sprzedaż</value></data>
+  <data name="Sales_Deleted" xml:space="preserve"><value>Sprzedaż usunięta</value></data>
+  <data name="Sales_EditTitle" xml:space="preserve"><value>Edytuj sprzedaż</value></data>
+  <data name="Sales_Empty" xml:space="preserve"><value>Brak sprzedaży w wybranym okresie.</value></data>
+  <data name="Sales_NoWorker" xml:space="preserve"><value>— brak —</value></data>
+  <data name="Sales_Product" xml:space="preserve"><value>Produkt</value></data>
+  <data name="Sales_Qty" xml:space="preserve"><value>Ilość</value></data>
+  <data name="Sales_Quantity" xml:space="preserve"><value>Ilość</value></data>
+  <data name="Sales_RecordSale" xml:space="preserve"><value>Dodaj sprzedaż</value></data>
+  <data name="Sales_Recorded" xml:space="preserve"><value>Sprzedaż zapisana!</value></data>
+  <data name="Sales_SearchLabel" xml:space="preserve"><value>Szukaj w sprzedaży</value></data>
+  <data name="Sales_SearchPlaceholder" xml:space="preserve"><value>Szukaj: klient, pracownik, produkt, notatki…</value></data>
+  <data name="Sales_SelectProduct" xml:space="preserve"><value>— wybierz produkt —</value></data>
+  <data name="Sales_SelectProductError" xml:space="preserve"><value>Wybierz produkt.</value></data>
+  <data name="Sales_Subtitle" xml:space="preserve"><value>Zapisuj i zarządzaj sprzedażą produktów.</value></data>
+  <data name="Sales_Title" xml:space="preserve"><value>Sprzedaż produktów</value></data>
+  <data name="Sales_TotalLabel" xml:space="preserve"><value>Razem:</value></data>
+  <data name="Sales_UnitPrice" xml:space="preserve"><value>Cena jedn.</value></data>
+  <data name="Sales_UnitPriceFull" xml:space="preserve"><value>Cena jednostkowa</value></data>
+  <data name="Sales_Updated" xml:space="preserve"><value>Sprzedaż zaktualizowana</value></data>
+  <data name="Sales_WorkerOptional" xml:space="preserve"><value>Pracownik (opcjonalnie)</value></data>
+  <data name="Svc_Add" xml:space="preserve"><value>Dodaj usługę</value></data>
+  <data name="Svc_Added" xml:space="preserve"><value>Usługa dodana</value></data>
+  <data name="Svc_BasePrice" xml:space="preserve"><value>Cena podstawowa</value></data>
+  <data name="Svc_DeleteTitle" xml:space="preserve"><value>Usuń usługę</value></data>
+  <data name="Svc_Deleted" xml:space="preserve"><value>Usługa usunięta</value></data>
+  <data name="Svc_EditTitle" xml:space="preserve"><value>Edytuj usługę</value></data>
+  <data name="Svc_Empty" xml:space="preserve"><value>Brak usług. Dodaj pierwszą usługę, aby zacząć.</value></data>
+  <data name="Svc_Name" xml:space="preserve"><value>Nazwa usługi</value></data>
+  <data name="Svc_Subtitle" xml:space="preserve"><value>Zarządzaj usługami salonu i ich cenami.</value></data>
+  <data name="Svc_Title" xml:space="preserve"><value>Usługi</value></data>
+  <data name="Svc_Updated" xml:space="preserve"><value>Usługa zaktualizowana</value></data>
+  <data name="Trend_Down" xml:space="preserve"><value>spadek</value></data>
+  <data name="Trend_Up" xml:space="preserve"><value>wzrost</value></data>
+  <data name="WorkerFilter_Active" xml:space="preserve"><value>Filtr aktywny</value></data>
+  <data name="WorkerFilter_ActiveTitle" xml:space="preserve"><value>Pulpit i listy pokazują tylko wpisy tego pracownika</value></data>
+  <data name="WorkerFilter_All" xml:space="preserve"><value>Wszyscy pracownicy</value></data>
+  <data name="WorkerFilter_Label" xml:space="preserve"><value>Pracownik:</value></data>
+  <data name="Workers_Add" xml:space="preserve"><value>Dodaj pracownika</value></data>
+  <data name="Workers_Added" xml:space="preserve"><value>Pracownik dodany</value></data>
+  <data name="Workers_DefaultCommission" xml:space="preserve"><value>Domyślna prowizja (%)</value></data>
+  <data name="Workers_DeleteTitle" xml:space="preserve"><value>Usuń pracownika</value></data>
+  <data name="Workers_Deleted" xml:space="preserve"><value>Pracownik usunięty</value></data>
+  <data name="Workers_EditTitle" xml:space="preserve"><value>Edytuj pracownika</value></data>
+  <data name="Workers_Empty" xml:space="preserve"><value>Brak pracowników. Dodaj pierwszą osobę z zespołu, aby zacząć.</value></data>
+  <data name="Workers_Name" xml:space="preserve"><value>Imię i nazwisko</value></data>
+  <data name="Workers_Subtitle" xml:space="preserve"><value>Zarządzaj zespołem i stawkami prowizji.</value></data>
+  <data name="Workers_Title" xml:space="preserve"><value>Pracownicy</value></data>
+  <data name="Workers_Updated" xml:space="preserve"><value>Dane pracownika zapisane</value></data>
+</root>

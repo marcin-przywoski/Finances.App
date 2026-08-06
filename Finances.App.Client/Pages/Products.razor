@@ -1,29 +1,30 @@
 @page "/products"
-@inject HttpClient Http
-@inject ToastService Toast
+@inherits CrudPageBase<Product>
+@inject IFinanceStore Store
+@inject MoneyFormat Money
 
-<PageTitle>Products</PageTitle>
+<PageTitle>@L["Prod_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Products</h2>
-        <p class="text-muted mb-0">Manage retail products your shop sells (shampoo, styling products, etc.).</p>
+        <h1 class="page-title mb-1">@L["Prod_Title"]</h1>
+        <p class="text-muted mb-0">@L["Prod_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Product
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        @L["Prod_Add"]
     </button>
 </div>
 
-@if (products == null)
+@if (items == null)
 {
     <LoadingSpinner />
 }
-else if (products.Count == 0)
+else if (items.Count == 0)
 {
     <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No products yet. Add your first product to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Product</button></div>
+        <p class="text-muted mb-3">@L["Prod_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Prod_Add"]</button></div>
     </div>
 }
 else
@@ -33,24 +34,24 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Product Name</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th style="width: 140px;">Actions</th>
+                        <th>@L["Prod_Name"]</th>
+                        <th>@L["Exp_Category"]</th>
+                        <th>@L["Prod_Price"]</th>
+                        <th>@L["Prod_Stock"]</th>
+                        <th style="width: 140px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var p in products)
+                    @foreach (var p in items)
                     {
                         <tr>
                             <td class="fw-semibold">@p.Name</td>
                             <td class="text-muted">@(p.Category ?? "—")</td>
-                            <td>@p.Price.ToString("C")</td>
+                            <td>@Money.Format(p.Price)</td>
                             <td>
-                                @if (p.StockQuantity <= 3)
+                                @if (p.StockQuantity <= LowStockThreshold)
                                 {
-                                    <span class="badge bg-danger">@p.StockQuantity</span>
+                                    <span class="badge bg-danger">@L["Prod_LowStock", p.StockQuantity]</span>
                                 }
                                 else
                                 {
@@ -58,8 +59,8 @@ else
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(p)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(p)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     }
@@ -69,132 +70,71 @@ else
     </div>
 }
 
-@if (showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Product" : "Add Product")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Prod_EditTitle"] : L["Prod_Add"])" OnClose="CloseModal">
+    <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label" for="product-name">@L["Prod_Name"]</label>
+                <InputText id="product-name" class="form-control" @bind-Value="formModel.Name" />
+                <ValidationMessage For="() => formModel.Name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="product-category">@L["Exp_Category"]</label>
+                <InputText id="product-category" class="form-control" @bind-Value="formModel.Category" placeholder="@L["Prod_CategoryPlaceholder"]" />
+            </div>
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="form-label" for="product-price">@L["Prod_Price"]</label>
+                    <InputNumber id="product-price" class="form-control" @bind-Value="formModel.Price" />
+                    <ValidationMessage For="() => formModel.Price" />
                 </div>
-                <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Product Name</label>
-                            <InputText class="form-control" @bind-Value="formModel.Name" />
-                            <ValidationMessage For="() => formModel.Name" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Category</label>
-                            <InputText class="form-control" @bind-Value="formModel.Category" placeholder="e.g. Hair Care, Styling, Tools" />
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <label class="form-label">Price</label>
-                                <InputNumber class="form-control" @bind-Value="formModel.Price" />
-                                <ValidationMessage For="() => formModel.Price" />
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Stock Quantity</label>
-                                <InputNumber class="form-control" @bind-Value="formModel.StockQuantity" />
-                                <ValidationMessage For="() => formModel.StockQuantity" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
-                        </button>
-                    </div>
-                </EditForm>
+                <div class="col-6">
+                    <label class="form-label" for="product-stock">@L["Prod_StockQuantity"]</label>
+                    <InputNumber id="product-stock" class="form-control" @bind-Value="formModel.StockQuantity" />
+                    <ValidationMessage For="() => formModel.StockQuantity" />
+                </div>
             </div>
         </div>
-    </div>
-}
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Add"]))
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Product"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}?")"
-               ConfirmText="Delete"
+               Title="@L["Prod_DeleteTitle"]"
+               Message="@L["Crud_DeleteMessage", deleteTarget?.Name ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
-    private List<Product>? products;
-    private Product formModel = new();
-    private Product? deleteTarget;
-    private bool showModal, isEditing, saving, showDeleteConfirm;
-    private int editId;
+    private const int LowStockThreshold = 3;
 
-    protected override async Task OnInitializedAsync()
+    protected override string ToastAdded => L["Prod_Added"];
+    protected override string ToastUpdated => L["Prod_Updated"];
+    protected override string ToastDeleted => L["Prod_Deleted"];
+
+    protected override async Task<IReadOnlyList<Product>> LoadItemsAsync() => await Store.GetProductsAsync();
+
+    protected override Task AddItemAsync(Product item) => Store.AddProductAsync(item);
+
+    protected override Task UpdateItemAsync(int id, Product item) => Store.UpdateProductAsync(id, item);
+
+    protected override Task<DeleteResult> DeleteItemAsync(Product item) => Store.DeleteProductAsync(item.Id);
+
+    protected override int GetId(Product item) => item.Id;
+
+    protected override Product CloneItem(Product item) => new()
     {
-        await LoadProducts();
-    }
-
-    private async Task LoadProducts()
-    {
-        products = await Http.GetFromJsonAsync<List<Product>>("api/products");
-    }
-
-    private void OpenAddModal()
-    {
-        formModel = new Product();
-        isEditing = false;
-        showModal = true;
-    }
-
-    private void OpenEditModal(Product p)
-    {
-        formModel = new Product { Id = p.Id, Name = p.Name, Price = p.Price, StockQuantity = p.StockQuantity, Category = p.Category };
-        editId = p.Id;
-        isEditing = true;
-        showModal = true;
-    }
-
-    private void CloseModal() => showModal = false;
-
-    private async Task HandleSubmit()
-    {
-        saving = true;
-        try
-        {
-            if (isEditing)
-            {
-                var resp = await Http.PutAsJsonAsync($"api/products/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Product updated");
-                else Toast.Show("Failed to update product", ToastLevel.Error);
-            }
-            else
-            {
-                var resp = await Http.PostAsJsonAsync("api/products", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Product added");
-                else Toast.Show("Failed to add product", ToastLevel.Error);
-            }
-            await LoadProducts();
-            showModal = false;
-        }
-        finally { saving = false; }
-    }
-
-    private void ConfirmDelete(Product p)
-    {
-        deleteTarget = p;
-        showDeleteConfirm = true;
-    }
-
-    private async Task HandleDelete()
-    {
-        if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/products/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Product deleted");
-        else Toast.Show("Failed to delete product", ToastLevel.Error);
-        showDeleteConfirm = false;
-        deleteTarget = null;
-        await LoadProducts();
-    }
+        Id = item.Id,
+        Name = item.Name,
+        Price = item.Price,
+        StockQuantity = item.StockQuantity,
+        Category = item.Category
+    };
 }

@@ -1,22 +1,61 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject IFinanceStore Store
+@inject MoneyFormat Money
+@inject ThemeService Theme
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AppStrings> L
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar @(sidebarOpen ? "open" : null)">
         <NavMenu />
     </div>
 
+    @if (sidebarOpen)
+    {
+        <div class="sidebar-backdrop d-md-none" @onclick="CloseSidebar"></div>
+    }
+
     <main>
         <div class="top-bar">
-            <button class="sidebar-toggle d-md-none" @onclick="ToggleSidebar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            <button class="sidebar-toggle d-md-none" @onclick="ToggleSidebar"
+                    aria-label="@L["Layout_ToggleNav"]" aria-expanded="@(sidebarOpen ? "true" : "false")">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <div class="top-bar-right">
-                <span class="top-bar-user">Stored only in this browser</span>
+                <span class="top-bar-user">@L["Layout_StoredLocally"]</span>
+                <button type="button" class="theme-toggle" data-testid="theme-toggle"
+                        title="@ThemeLabel" aria-label="@ThemeLabel" @onclick="CycleThemeAsync">
+                    @if (Theme.Preference == ThemeService.Dark)
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    }
+                    else if (Theme.Preference == ThemeService.Light)
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    }
+                    else
+                    {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg>
+                    }
+                </button>
                 <WorkerSelector />
             </div>
         </div>
 
         <PwaBanner />
+
+        @if (showRecoveryBanner)
+        {
+            <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mx-4 mt-3 mb-0" role="alert">
+                <div>
+                    <strong>@L["Layout_RecoveryTitle"]</strong>
+                    @L["Layout_RecoveryBody"]
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="GoToDataPage">@L["Layout_OpenDataPage"]</button>
+            </div>
+        }
 
         <article class="content px-4 py-3">
             @Body
@@ -24,17 +63,115 @@
     </main>
 </div>
 
+<Toast />
+
+@* Raw JS onclick on purpose: when this shows, Blazor may be dead and C#
+   handlers would never fire. *@
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">x</span>
+    @L["Layout_ErrorOccurred"]
+    <a href="." class="reload">@L["Layout_Reload"]</a>
+    <button type="button" class="dismiss" aria-label="@L["Layout_DismissError"]"
+            onclick="this.parentElement.style.display='none'">&times;</button>
 </div>
 
 @code {
     private bool sidebarOpen;
+    private bool showRecoveryBanner;
+    private DotNetObjectReference<MainLayout>? selfRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.OnChange += HandleStoreChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
+        await RefreshRecoveryStateAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        selfRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("financeStorageSync.register", selfRef, LocalFinanceStore.StorageKey);
+
+        await Theme.InitializeAsync();
+        StateHasChanged();
+    }
+
+    private string ThemeLabel => Theme.Preference switch
+    {
+        ThemeService.Dark => L["Layout_ThemeDark"],
+        ThemeService.Light => L["Layout_ThemeLight"],
+        _ => L["Layout_ThemeAuto"]
+    };
+
+    private async Task CycleThemeAsync()
+    {
+        await Theme.CycleAsync();
+    }
+
+    [JSInvokable]
+    public void OnExternalStorageChange()
+    {
+        Store.HandleExternalDataChange();
+    }
+
+    private void HandleStoreChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await RefreshRecoveryStateAsync();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Layout refresh failed: {ex.Message}");
+            }
+        });
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (sidebarOpen)
+        {
+            sidebarOpen = false;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshRecoveryStateAsync()
+    {
+        showRecoveryBanner = await Store.GetLoadStatusAsync() == SnapshotLoadStatus.RecoveredFromCorruptData;
+
+        // Keep the money formatter in sync with the persisted currency setting;
+        // pages re-render on the same store change and pick it up.
+        var settings = await Store.GetSettingsAsync();
+        Money.SetCurrency(settings.CurrencyCode);
+    }
+
+    private void GoToDataPage()
+    {
+        Navigation.NavigateTo("data");
+    }
 
     private void ToggleSidebar()
     {
         sidebarOpen = !sidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        sidebarOpen = false;
+    }
+
+    public void Dispose()
+    {
+        Store.OnChange -= HandleStoreChanged;
+        Navigation.LocationChanged -= HandleLocationChanged;
+        selfRef?.Dispose();
     }
 }

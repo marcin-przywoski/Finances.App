@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,10 +26,48 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Build solution
+        run: dotnet build Finances.App.sln -c Release
+
+      - name: Unit tests
+        run: dotnet test Finances.App.sln -c Release --no-build --filter "Category!=E2E"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
 
       - name: Restore dependencies
         run: dotnet restore Finances.App.Client/Finances.App.Client.csproj
+
+      - name: Stamp release metadata
+        # Hand-written title/summary/changes stay authored in the repo; the id
+        # and timestamp come from the commit so they can never go stale.
+        run: |
+          release_file=Finances.App.Client/wwwroot/pwa-release.json
+          jq --arg id "${GITHUB_SHA::7}-$(date -u +%Y-%m-%d)" \
+             --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+             '.releaseId = $id | .publishedUtc = $ts' \
+             "$release_file" > "$release_file.tmp"
+          mv "$release_file.tmp" "$release_file"
 
       - name: Publish standalone client
         run: dotnet publish Finances.App.Client/Finances.App.Client.csproj -c Release -o artifacts/publish

@@ -1,19 +1,39 @@
 @page "/record"
-@inject HttpClient Http
+@inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject ToastService Toast
 @inject WorkerContextService WorkerContext
 @inject NavigationManager Nav
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Record Service</PageTitle>
+<PageTitle>@L["Rec_Title"]</PageTitle>
 
 <div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Record a Service</h2>
-    <p class="text-muted mb-0">Log a completed service for a client.</p>
+    <h1 class="page-title mb-1">@L["Rec_Title"]</h1>
+    <p class="text-muted mb-0">@L["Rec_Subtitle"]</p>
 </div>
 
 @if (workers == null || services == null)
 {
     <LoadingSpinner />
+}
+else if (workers.Count == 0 || services.Count == 0)
+{
+    <div class="card p-5 text-center" style="max-width: 640px;">
+        <p class="text-muted mb-3">
+            @L["Rec_NeedsSetup"]
+        </p>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            @if (workers.Count == 0)
+            {
+                <a class="btn btn-primary" href="workers">@L["Rec_AddWorkers"]</a>
+            }
+            @if (services.Count == 0)
+            {
+                <a class="btn btn-primary" href="services">@L["Rec_AddServices"]</a>
+            }
+        </div>
+    </div>
 }
 else
 {
@@ -23,9 +43,9 @@ else
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Worker</label>
-                    <select class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
-                        <option value="0">-- Select Worker --</option>
+                    <label class="form-label" for="record-worker">@L["Common_Worker"]</label>
+                    <select id="record-worker" class="form-select" value="@record.WorkerId" @onchange="OnWorkerChanged">
+                        <option value="0">@L["Rec_SelectWorker"]</option>
                         @foreach (var w in workers)
                         {
                             <option value="@w.Id">@w.Name</option>
@@ -34,47 +54,47 @@ else
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Service</label>
-                    <select class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
-                        <option value="0">-- Select Service --</option>
+                    <label class="form-label" for="record-service">@L["Common_Service"]</label>
+                    <select id="record-service" class="form-select" value="@record.ServiceId" @onchange="OnServiceChanged">
+                        <option value="0">@L["Rec_SelectService"]</option>
                         @foreach (var s in services)
                         {
-                            <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
+                            <option value="@s.Id">@s.Name (@Money.Format(s.BasePrice))</option>
                         }
                     </select>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Date</label>
-                    <InputDate class="form-control" @bind-Value="record.DatePerformed" />
+                    <label class="form-label" for="record-date">@L["Common_Date"]</label>
+                    <InputDate id="record-date" class="form-control" @bind-Value="record.DatePerformed" />
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Client Name</label>
-                    <InputText class="form-control" @bind-Value="record.ClientName" placeholder="Optional" />
+                    <label class="form-label" for="record-client">@L["Common_ClientName"]</label>
+                    <InputText id="record-client" class="form-control" @bind-Value="record.ClientName" placeholder="@L["Common_Optional"]" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Amount Paid</label>
-                    <InputNumber class="form-control" @bind-Value="record.AmountPaid" />
+                    <label class="form-label" for="record-amount">@L["Hist_AmountPaid"]</label>
+                    <InputNumber id="record-amount" class="form-control" @bind-Value="record.AmountPaid" />
                     <ValidationMessage For="() => record.AmountPaid" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Commission %</label>
-                    <InputNumber class="form-control" @bind-Value="record.CommissionPercentageApplied" />
+                    <label class="form-label" for="record-commission">@L["Common_Commission"]</label>
+                    <InputNumber id="record-commission" class="form-control" @bind-Value="record.CommissionPercentageApplied" />
                     <ValidationMessage For="() => record.CommissionPercentageApplied" />
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label">Tips</label>
-                    <InputNumber class="form-control" @bind-Value="record.Tips" />
+                    <label class="form-label" for="record-tips">@L["Common_Tips"]</label>
+                    <InputNumber id="record-tips" class="form-control" @bind-Value="record.Tips" />
                     <ValidationMessage For="() => record.Tips" />
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label">Notes</label>
-                    <InputTextArea class="form-control" @bind-Value="record.Notes" rows="2" placeholder="Optional notes..." />
+                    <label class="form-label" for="record-notes">@L["Common_Notes"]</label>
+                    <InputTextArea id="record-notes" class="form-control" @bind-Value="record.Notes" rows="2" placeholder="@L["Rec_NotesPlaceholder"]" />
                 </div>
             </div>
 
@@ -84,22 +104,19 @@ else
                 <div>
                     @if (record.AmountPaid > 0 && record.CommissionPercentageApplied > 0)
                     {
-                        var workerShare = record.AmountPaid * (record.CommissionPercentageApplied / 100);
-                        var salonShare = record.AmountPaid - workerShare;
                         <span class="text-muted" style="font-size: 0.875rem;">
-                            Worker: <strong>@workerShare.ToString("C")</strong> &middot; Salon: <strong>@salonShare.ToString("C")</strong>
+                            @L["Rec_WorkerShareLabel"]: <strong>@Money.Format(record.WorkerShare)</strong> &middot; @L["Rec_SalonShareLabel"]: <strong>@Money.Format(record.SalonShare)</strong>
                         </span>
                     }
                 </div>
                 <button type="submit" class="btn btn-primary" disabled="@saving">
-                    @(saving ? "Saving..." : "Save Record")
+                    @(saving ? L["Common_Saving"] : L["Rec_SaveRecord"])
                 </button>
             </div>
         </EditForm>
     </div>
 }
 
-<Toast />
 
 @code {
     private List<Worker>? workers;
@@ -109,8 +126,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        workers = (await Store.GetWorkersAsync()).ToList();
+        services = (await Store.GetServicesAsync()).ToList();
 
         await WorkerContext.InitializeAsync();
         if (WorkerContext.SelectedWorkerId.HasValue && workers != null)
@@ -150,28 +167,35 @@ else
     {
         if (record.WorkerId == 0 || record.ServiceId == 0)
         {
-            Toast.Show("Please select a worker and a service.", ToastLevel.Error);
+            Toast.Show(L["Rec_SelectBoth"], ToastLevel.Error);
             return;
         }
 
         saving = true;
         try
         {
-            var resp = await Http.PostAsJsonAsync("api/servicerecords", record);
-            if (resp.IsSuccessStatusCode)
+            await Store.AddServiceRecordAsync(record);
+            Toast.Show(L["Rec_Success"], ToastLevel.Success, L["Rec_ViewHistory"], () =>
             {
-                Toast.Show("Service recorded successfully!");
-                record = new ServiceRecord
-                {
-                    DatePerformed = DateTime.Today,
-                    WorkerId = record.WorkerId,
-                    CommissionPercentageApplied = record.CommissionPercentageApplied
-                };
-            }
-            else
+                Nav.NavigateTo("history");
+                return Task.CompletedTask;
+            });
+
+            // Keep worker, commission, and service: a salon logging a run of
+            // identical visits should not re-pick the service every time.
+            var service = services?.FirstOrDefault(s => s.Id == record.ServiceId);
+            record = new ServiceRecord
             {
-                Toast.Show("Failed to save record.", ToastLevel.Error);
-            }
+                DatePerformed = DateTime.Today,
+                WorkerId = record.WorkerId,
+                CommissionPercentageApplied = record.CommissionPercentageApplied,
+                ServiceId = record.ServiceId,
+                AmountPaid = service?.BasePrice ?? 0
+            };
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }

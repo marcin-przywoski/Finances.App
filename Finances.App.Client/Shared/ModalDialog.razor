@@ -1,0 +1,60 @@
+@inject IStringLocalizer<AppStrings> L
+
+@* Accessible modal shell shared by all edit/create dialogs: labelled dialog
+   semantics, Escape-to-close, initial focus, and a labelled close button. *@
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" style="background-color: var(--backdrop);"
+         role="dialog" aria-modal="true" aria-labelledby="@titleId"
+         @onkeydown="HandleKeyDown">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" tabindex="-1" @ref="contentRef">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="@titleId">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="@L["Common_Close"]" @onclick="CloseAsync"></button>
+                </div>
+                @ChildContent
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private readonly string titleId = $"modal-title-{Guid.NewGuid():N}";
+    private ElementReference contentRef;
+    private bool wasVisible;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !wasVisible)
+        {
+            // Move focus into the dialog when it opens so keyboard and
+            // screen-reader users land inside it.
+            try
+            {
+                await contentRef.FocusAsync();
+            }
+            catch
+            {
+                // Element may already be gone if the dialog closed immediately.
+            }
+        }
+
+        wasVisible = IsVisible;
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        return e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+    }
+
+    private Task CloseAsync()
+    {
+        return OnClose.InvokeAsync();
+    }
+}

@@ -1,5 +1,6 @@
 @implements IDisposable
 @inject PwaUpdateService PwaUpdate
+@inject IStringLocalizer<AppStrings> L
 
 @if (ShowInstallBanner || ShowUpdateBanner)
 {
@@ -10,13 +11,13 @@
                 <div class="pwa-banner-copy">
                     <span class="pwa-banner-badge">PWA</span>
                     <div>
-                        <h2>Install this app on the device</h2>
-                        <p>Keep the finance tracker in a native-looking window and reopen it from your home screen or desktop.</p>
+                        <h2>@L["Pwa_InstallTitle"]</h2>
+                        <p>@L["Pwa_InstallBody"]</p>
                     </div>
                 </div>
                 <div class="pwa-banner-actions">
-                    <button type="button" class="btn btn-primary" @onclick="PromptInstallAsync">Install app</button>
-                    <button type="button" class="btn btn-light" @onclick="DismissInstall">Later</button>
+                    <button type="button" class="btn btn-primary" @onclick="PromptInstallAsync">@L["Pwa_InstallButton"]</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="DismissInstall">@L["Pwa_Later"]</button>
                 </div>
             </section>
         }
@@ -25,9 +26,9 @@
         {
             <section class="pwa-banner pwa-banner-update" role="status" aria-live="polite">
                 <div class="pwa-banner-copy">
-                    <span class="pwa-banner-badge">Update</span>
+                    <span class="pwa-banner-badge">@L["Pwa_UpdateBadge"]</span>
                     <div>
-                        <h2>A newer offline version is ready</h2>
+                        <h2>@L["Pwa_UpdateTitle"]</h2>
                         <p>@GetUpdateMessage()</p>
 
                         @if (!string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableRelease?.Title))
@@ -37,8 +38,8 @@
                     </div>
                 </div>
                 <div class="pwa-banner-actions">
-                    <button type="button" class="btn btn-primary" @onclick="ApplyUpdateAsync">Reload now</button>
-                    <button type="button" class="btn btn-light" @onclick="DismissUpdate">Later</button>
+                    <button type="button" class="btn btn-primary" @onclick="ApplyUpdateAsync">@L["Pwa_ReloadNow"]</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="DismissUpdate">@L["Pwa_Later"]</button>
                 </div>
             </section>
         }
@@ -108,8 +109,8 @@
     private string GetUpdateMessage()
     {
         return string.IsNullOrWhiteSpace(PwaUpdate.State.AvailableVersion)
-            ? "Reload once to switch to the latest cached files and keep the installed app in sync."
-            : $"Reload once to switch this browser to offline build {PwaUpdate.State.AvailableVersion}.";
+            ? L["Pwa_UpdateBodyGeneric"].Value
+            : L["Pwa_UpdateBodyVersion", PwaUpdate.State.AvailableVersion!].Value;
     }
 
     private void HandlePwaStateChanged()

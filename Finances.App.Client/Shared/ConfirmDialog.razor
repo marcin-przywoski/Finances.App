@@ -1,19 +1,21 @@
-@inject IJSRuntime JS
+@inject IStringLocalizer<AppStrings> L
 
 @if (IsVisible)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
+    <div class="modal fade show d-block" style="background-color: var(--backdrop);"
+         role="dialog" aria-modal="true" aria-labelledby="@titleId"
+         @onkeydown="HandleKeyDown">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <div class="modal-content" tabindex="-1" @ref="contentRef">
                 <div class="modal-header">
-                    <h5 class="modal-title">@Title</h5>
-                    <button type="button" class="btn-close" @onclick="Cancel"></button>
+                    <h5 class="modal-title" id="@titleId">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="@L["Common_Close"]" @onclick="Cancel"></button>
                 </div>
                 <div class="modal-body">
                     <p>@Message</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">@L["Common_Cancel"]</button>
                     <button type="button" class="btn btn-danger" @onclick="Confirm">@ConfirmText</button>
                 </div>
             </div>
@@ -22,12 +24,38 @@
 }
 
 @code {
-    [Parameter] public string Title { get; set; } = "Confirm";
-    [Parameter] public string Message { get; set; } = "Are you sure?";
-    [Parameter] public string ConfirmText { get; set; } = "Delete";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "";
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    private readonly string titleId = $"confirm-title-{Guid.NewGuid():N}";
+    private ElementReference contentRef;
+    private bool wasVisible;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsVisible && !wasVisible)
+        {
+            try
+            {
+                await contentRef.FocusAsync();
+            }
+            catch
+            {
+                // Element may already be gone if the dialog closed immediately.
+            }
+        }
+
+        wasVisible = IsVisible;
+    }
+
+    private Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        return e.Key == "Escape" ? Cancel() : Task.CompletedTask;
+    }
 
     private async Task Confirm()
     {

@@ -1,186 +1,183 @@
 @page "/history"
-@inject HttpClient Http
+@implements IDisposable
+@inject IFinanceStore Store
+@inject MoneyFormat Money
 @inject WorkerContextService WorkerContext
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>History</PageTitle>
+<PageTitle>@L["Hist_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Service History</h2>
-        <p class="text-muted mb-0">View, edit, and manage past service records.</p>
+        <h1 class="page-title mb-1">@L["Hist_Title"]</h1>
+        <p class="text-muted mb-0">@L["Hist_Subtitle"]</p>
     </div>
 </div>
 
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+<div class="d-flex flex-wrap align-items-center gap-3">
+    <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+    <div class="ms-auto" style="min-width: 240px;">
+        <label class="visually-hidden-text" for="history-search">@L["Hist_SearchLabel"]</label>
+        <input id="history-search" type="search" class="form-control form-control-sm"
+               placeholder="@L["Hist_SearchPlaceholder"]" @oninput="OnSearchInput" />
+    </div>
+</div>
 
 @if (allRecords == null)
 {
     <LoadingSpinner />
 }
+else if (filtered.Count == 0)
+{
+    <div class="card p-5 text-center mt-3">
+        <p class="text-muted mb-3">@L["Hist_Empty"]</p>
+        <div><a class="btn btn-primary" href="record">@L["Nav_RecordService"]</a></div>
+    </div>
+}
 else
 {
-    var filtered = GetFilteredRecords();
-
-    @if (filtered.Count == 0)
-    {
-        <div class="card p-5 text-center mt-3">
-            <p class="text-muted mb-0">No records found for the selected period.</p>
-        </div>
-    }
-    else
-    {
-        <div class="card mt-3">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th @onclick='() => SetSort("date")' style="cursor:pointer;">
-                                Date @SortIcon("date")
-                            </th>
-                            <th>Worker</th>
-                            <th>Service</th>
-                            <th>Client</th>
-                            <th @onclick='() => SetSort("amount")' style="cursor:pointer;">
-                                Amount @SortIcon("amount")
-                            </th>
-                            <th>Commission</th>
-                            <th>Tips</th>
-                            <th @onclick='() => SetSort("worker_share")' style="cursor:pointer;">
-                                Worker Share @SortIcon("worker_share")
-                            </th>
-                            <th>Notes</th>
-                            <th style="width: 100px;">Actions</th>
+    <div class="card mt-3">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th aria-sort="@sort.AriaSort("date")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
+                        </th>
+                        <th>@L["Common_Worker"]</th>
+                        <th>@L["Common_Service"]</th>
+                        <th>@L["Common_Client"]</th>
+                        <th aria-sort="@sort.AriaSort("amount")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>@L["Common_Amount"] <span aria-hidden="true">@sort.Icon("amount")</span></button>
+                        </th>
+                        <th>@L["Common_Commission"]</th>
+                        <th>@L["Common_Tips"]</th>
+                        <th aria-sort="@sort.AriaSort("worker_share")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("worker_share")'>@L["Hist_WorkerShare"] <span aria-hidden="true">@sort.Icon("worker_share")</span></button>
+                        </th>
+                        <th>@L["Common_Notes"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <Virtualize Items="filtered" Context="r" SpacerElement="tr">
+                        <tr @key="r.Id">
+                            <td>@r.DatePerformed.ToDateKey()</td>
+                            <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
+                            <td>@(r.Service?.Name ?? "—")</td>
+                            <td class="text-muted">@(r.ClientName ?? "—")</td>
+                            <td>@Money.Format(r.AmountPaid)</td>
+                            <td>@r.CommissionPercentageApplied%</td>
+                            <td>@Money.Format(r.Tips)</td>
+                            <td class="fw-semibold">@Money.Format(r.WorkerShare)</td>
+                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@r.Notes">@(r.Notes ?? "")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">@L["Common_Delete"]</button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var r in filtered)
-                        {
-                            <tr>
-                                <td>@r.DatePerformed.ToString("yyyy-MM-dd")</td>
-                                <td class="fw-semibold">@(r.Worker?.Name ?? "—")</td>
-                                <td>@(r.Service?.Name ?? "—")</td>
-                                <td class="text-muted">@(r.ClientName ?? "—")</td>
-                                <td>@r.AmountPaid.ToString("C")</td>
-                                <td>@r.CommissionPercentageApplied%</td>
-                                <td>@r.Tips.ToString("C")</td>
-                                <td class="fw-semibold">@r.WorkerShare.ToString("C")</td>
-                                <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(r.Notes ?? "")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(r)">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(r)">Delete</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold" style="background-color: var(--body-bg);">
-                            <td colspan="4">Totals</td>
-                            <td>@filtered.Sum(r => r.AmountPaid).ToString("C")</td>
-                            <td></td>
-                            <td>@filtered.Sum(r => r.Tips).ToString("C")</td>
-                            <td>@filtered.Sum(r => r.WorkerShare).ToString("C")</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-    }
-}
-
-@if (showEditModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Service Record</h5>
-                    <button type="button" class="btn-close" @onclick="CloseEditModal"></button>
-                </div>
-                <EditForm Model="@editModel" OnValidSubmit="HandleEditSubmit">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Worker</label>
-                                <select class="form-select" value="@editModel.WorkerId" @onchange="OnEditWorkerChanged">
-                                    @if (workers != null)
-                                    {
-                                        @foreach (var w in workers)
-                                        {
-                                            <option value="@w.Id">@w.Name</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Service</label>
-                                <select class="form-select" value="@editModel.ServiceId" @onchange="OnEditServiceChanged">
-                                    @if (services != null)
-                                    {
-                                        @foreach (var s in services)
-                                        {
-                                            <option value="@s.Id">@s.Name (@s.BasePrice.ToString("C"))</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Date</label>
-                                <InputDate class="form-control" @bind-Value="editModel.DatePerformed" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Client Name</label>
-                                <InputText class="form-control" @bind-Value="editModel.ClientName" placeholder="Optional" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Amount Paid</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.AmountPaid" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Commission %</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.CommissionPercentageApplied" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Tips</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.Tips" />
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Notes</label>
-                                <InputTextArea class="form-control" @bind-Value="editModel.Notes" rows="2" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : "Update")
-                        </button>
-                    </div>
-                </EditForm>
-            </div>
+                    </Virtualize>
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold" style="background-color: var(--body-bg);">
+                        <td colspan="4">@L["Common_Totals"]</td>
+                        <td>@Money.Format(totalAmount)</td>
+                        <td></td>
+                        <td>@Money.Format(totalTips)</td>
+                        <td>@Money.Format(totalWorkerShare)</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 }
 
+<ModalDialog IsVisible="showEditModal" Title="@L["Hist_EditTitle"]" OnClose="CloseEditModal">
+    <EditForm Model="@editModel" OnValidSubmit="HandleEditSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="edit-worker">@L["Common_Worker"]</label>
+                    <select id="edit-worker" class="form-select" value="@editModel.WorkerId" @onchange="OnEditWorkerChanged">
+                        @if (workers != null)
+                        {
+                            @foreach (var w in workers)
+                            {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edit-service">@L["Common_Service"]</label>
+                    <select id="edit-service" class="form-select" value="@editModel.ServiceId" @onchange="OnEditServiceChanged">
+                        @if (services != null)
+                        {
+                            @foreach (var s in services)
+                            {
+                                <option value="@s.Id">@s.Name (@Money.Format(s.BasePrice))</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edit-date">@L["Common_Date"]</label>
+                    <InputDate id="edit-date" class="form-control" @bind-Value="editModel.DatePerformed" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="edit-client">@L["Common_ClientName"]</label>
+                    <InputText id="edit-client" class="form-control" @bind-Value="editModel.ClientName" placeholder="@L["Common_Optional"]" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edit-amount">@L["Hist_AmountPaid"]</label>
+                    <InputNumber id="edit-amount" class="form-control" @bind-Value="editModel.AmountPaid" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edit-commission">@L["Common_Commission"]</label>
+                    <InputNumber id="edit-commission" class="form-control" @bind-Value="editModel.CommissionPercentageApplied" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="edit-tips">@L["Common_Tips"]</label>
+                    <InputNumber id="edit-tips" class="form-control" @bind-Value="editModel.Tips" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="edit-notes">@L["Common_Notes"]</label>
+                    <InputTextArea id="edit-notes" class="form-control" @bind-Value="editModel.Notes" rows="2" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">@L["Common_Cancel"]</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? L["Common_Saving"] : L["Common_Update"])
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
+
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Record"
-               Message="@($"Are you sure you want to delete this service record from {deleteTarget?.DatePerformed.ToString("yyyy-MM-dd")}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["Hist_DeleteTitle"]"
+               Message="@L["Hist_DeleteMessage", deleteTarget?.DatePerformed.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
     private List<ServiceRecord>? allRecords;
+    private List<ServiceRecord> filtered = new();
     private List<Worker>? workers;
     private List<Service>? services;
     private DateTime? dateFrom;
     private DateTime? dateTo;
-    private string sortColumn = "date";
-    private bool sortAsc = false;
+    private string searchTerm = string.Empty;
+    private CancellationTokenSource? searchCts;
+    private decimal totalAmount;
+    private decimal totalTips;
+    private decimal totalWorkerShare;
+    private readonly SortState sort = new("date");
 
     private ServiceRecord editModel = new();
     private bool showEditModal;
@@ -191,21 +188,79 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        WorkerContext.OnChange += HandleWorkerChanged;
         await WorkerContext.InitializeAsync();
-        allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
+        allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+        workers = (await Store.GetWorkersAsync()).ToList();
+        services = (await Store.GetServicesAsync()).ToList();
+        ApplyFilter();
+    }
+
+    private void HandleWorkerChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            ApplyFilter();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerChanged;
+        searchCts?.Cancel();
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
     {
         dateFrom = range.From;
         dateTo = range.To;
+        ApplyFilter();
     }
 
-    private List<ServiceRecord> GetFilteredRecords()
+    private void SetSort(string column)
     {
-        if (allRecords == null) return new();
+        sort.Toggle(column);
+        ApplyFilter();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        _ = DebounceSearchAsync(searchCts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(250, token);
+            ApplyFilter();
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Superseded by newer input.
+        }
+    }
+
+    private static bool Matches(string? value, string term)
+    {
+        return value?.Contains(term, StringComparison.CurrentCultureIgnoreCase) == true;
+    }
+
+    // Recomputed on state changes rather than inside the render body, so the
+    // filter+sort (and the footer totals) do not re-run on every re-render.
+    private void ApplyFilter()
+    {
+        if (allRecords == null)
+        {
+            filtered = new();
+            totalAmount = totalTips = totalWorkerShare = 0;
+            return;
+        }
 
         var q = allRecords.AsEnumerable();
 
@@ -218,32 +273,27 @@ else
         if (dateTo.HasValue)
             q = q.Where(r => r.DatePerformed.Date <= dateTo.Value.Date);
 
-        q = sortColumn switch
+        var term = searchTerm.Trim();
+        if (term.Length > 0)
         {
-            "date" => sortAsc ? q.OrderBy(r => r.DatePerformed) : q.OrderByDescending(r => r.DatePerformed),
-            "amount" => sortAsc ? q.OrderBy(r => r.AmountPaid) : q.OrderByDescending(r => r.AmountPaid),
-            "worker_share" => sortAsc ? q.OrderBy(r => r.WorkerShare) : q.OrderByDescending(r => r.WorkerShare),
+            q = q.Where(r => Matches(r.ClientName, term)
+                || Matches(r.Notes, term)
+                || Matches(r.Worker?.Name, term)
+                || Matches(r.Service?.Name, term));
+        }
+
+        q = sort.Column switch
+        {
+            "date" => sort.Ascending ? q.OrderBy(r => r.DatePerformed) : q.OrderByDescending(r => r.DatePerformed),
+            "amount" => sort.Ascending ? q.OrderBy(r => r.AmountPaid) : q.OrderByDescending(r => r.AmountPaid),
+            "worker_share" => sort.Ascending ? q.OrderBy(r => r.WorkerShare) : q.OrderByDescending(r => r.WorkerShare),
             _ => q.OrderByDescending(r => r.DatePerformed)
         };
 
-        return q.ToList();
-    }
-
-    private void SetSort(string column)
-    {
-        if (sortColumn == column)
-            sortAsc = !sortAsc;
-        else
-        {
-            sortColumn = column;
-            sortAsc = true;
-        }
-    }
-
-    private string SortIcon(string column)
-    {
-        if (sortColumn != column) return "";
-        return sortAsc ? "▲" : "▼";
+        filtered = q.ToList();
+        totalAmount = filtered.Sum(r => r.AmountPaid);
+        totalTips = filtered.Sum(r => r.Tips);
+        totalWorkerShare = filtered.Sum(r => r.WorkerShare);
     }
 
     private void OpenEditModal(ServiceRecord record)
@@ -287,17 +337,15 @@ else
         saving = true;
         try
         {
-            var resp = await Http.PutAsJsonAsync($"api/servicerecords/{editModel.Id}", editModel);
-            if (resp.IsSuccessStatusCode)
-            {
-                Toast.Show("Record updated");
-                allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
-                showEditModal = false;
-            }
-            else
-            {
-                Toast.Show("Failed to update record", ToastLevel.Error);
-            }
+            await Store.UpdateServiceRecordAsync(editModel.Id, editModel);
+            Toast.Show(L["Hist_Updated"]);
+            allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+            ApplyFilter();
+            showEditModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -311,15 +359,28 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/servicerecords/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode)
+        var deleted = deleteTarget;
+        try
         {
-            Toast.Show("Record deleted");
-            allRecords = await Http.GetFromJsonAsync<List<ServiceRecord>>("api/servicerecords");
+            await Store.DeleteServiceRecordAsync(deleted.Id);
+            // Undo re-adds the record under a fresh id; nothing references
+            // service-record ids, so the restore is lossless.
+            Toast.Show(L["Hist_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
+            {
+                await Store.AddServiceRecordAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
+            allRecords = (await Store.GetServiceRecordsAsync()).ToList();
+            ApplyFilter();
         }
-        else
+        catch (Exception ex)
         {
-            Toast.Show("Failed to delete record", ToastLevel.Error);
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         showDeleteConfirm = false;
         deleteTarget = null;

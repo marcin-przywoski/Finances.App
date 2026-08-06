@@ -1,45 +1,85 @@
 @page "/"
-@inject HttpClient Http
+@implements IAsyncDisposable
+@inject IAnalyticsService Analytics
+@inject IFinanceStore Store
+@inject MoneyFormat Money
+@inject ThemeService Theme
 @inject IJSRuntime JS
 @inject WorkerContextService WorkerContext
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>@L["Dash_Title"]</PageTitle>
 
 <div class="mb-4">
-    <h2 class="mb-1" style="font-weight: 700;">Dashboard</h2>
-    <p class="text-muted mb-0">Overview of your salon's financial performance.</p>
+    <h1 class="page-title mb-1">@L["Dash_Title"]</h1>
+    <p class="text-muted mb-0">@L["Dash_Subtitle"]</p>
 </div>
 
 @if (loading)
 {
     <LoadingSpinner />
 }
+else if (isFirstRun)
+{
+    <div class="card p-4 mb-4" data-testid="first-run-card">
+        <h5 class="fw-semibold mb-2">@L["Dash_WelcomeTitle"]</h5>
+        <p class="text-muted mb-4">
+            @L["Dash_WelcomeIntro"]
+        </p>
+        <ol class="list-unstyled d-flex flex-column gap-3 mb-4">
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">1</span>
+                <div>
+                    <a class="fw-semibold" href="workers">@L["Dash_Step1Title"]</a>
+                    <div class="text-muted small">@L["Dash_Step1Body"]</div>
+                </div>
+            </li>
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">2</span>
+                <div>
+                    <a class="fw-semibold" href="services">@L["Dash_Step2Title"]</a>
+                    <div class="text-muted small">@L["Dash_Step2Body"]</div>
+                </div>
+            </li>
+            <li class="d-flex align-items-center gap-3">
+                <span class="badge rounded-pill text-bg-primary">3</span>
+                <div>
+                    <a class="fw-semibold" href="record">@L["Dash_Step3Title"]</a>
+                    <div class="text-muted small">@L["Dash_Step3Body"]</div>
+                </div>
+            </li>
+        </ol>
+        <p class="text-muted small mb-0">
+            @L["Dash_ImportHint"] <a href="data">@L["Dash_ImportLink"]</a> @L["Dash_ImportInstead"]
+        </p>
+    </div>
+}
 else
 {
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@totalRevenue" Label="Total Revenue" TrendPercent="@revenueTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@totalRevenue" Label="@L["Dash_TotalRevenue"]" TrendPercent="@revenueTrend" Subtitle="@L["Dash_VsLastMonth"].Value">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@totalTips" Label="Total Tips" IconBg="#dbeafe" IconColor="#3b82f6" TrendPercent="@tipsTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@totalTips" Label="@L["Dash_TotalTips"]" Variant="StatCardVariant.Info" TrendPercent="@tipsTrend" Subtitle="@L["Dash_VsLastMonth"].Value">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@avgTicket" Label="Avg Ticket" IconBg="#fef3c7" IconColor="#f59e0b" TrendPercent="@avgTicketTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@avgTicket" Label="@L["Dash_AvgTicket"]" Variant="StatCardVariant.Warning" TrendPercent="@avgTicketTrend" Subtitle="@L["Dash_VsLastMonth"].Value">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 </IconContent>
             </StatCard>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <StatCard Value="@recordCount" Label="Services Done" IconBg="#d1fae5" IconColor="#10b981" TrendPercent="@countTrend" Subtitle="@("vs last month")">
+            <StatCard Value="@recordCount" Label="@L["Dash_ServicesDone"]" Variant="StatCardVariant.Success" TrendPercent="@countTrend" Subtitle="@L["Dash_VsLastMonth"].Value">
                 <IconContent>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                 </IconContent>
@@ -50,18 +90,36 @@ else
     <div class="row g-3 mb-4">
         <div class="col-lg-8">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue Breakdown</h6>
-                <div style="height: 300px;">
-                    <canvas id="combinedTimelineChart"></canvas>
-                </div>
+                <h6 class="fw-semibold mb-3">@L["Dash_RevenueBreakdown"]</h6>
+                @if (combinedTimeline?.Points.Count > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="combinedTimelineChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">@L["Dash_NoRevenueThisMonth"]</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Revenue Sources</h6>
-                <div style="height: 300px;">
-                    <canvas id="revenueSourcesChart"></canvas>
-                </div>
+                <h6 class="fw-semibold mb-3">@L["Dash_RevenueSources"]</h6>
+                @if (serviceRevenueTotal > 0 || productRevenueTotal > 0)
+                {
+                    <div style="height: 300px;">
+                        <canvas id="revenueSourcesChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <p class="text-muted mb-0">@L["Dash_NoRevenueThisMonth"]</p>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -69,15 +127,24 @@ else
     <div class="row g-3 mb-4">
         <div class="col-lg-4">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Busiest Days</h6>
-                <div style="height: 240px;">
-                    <canvas id="dayOfWeekChart"></canvas>
-                </div>
+                <h6 class="fw-semibold mb-3">@L["Dash_BusiestDays"]</h6>
+                @if (dayOfWeekData?.Any(d => d.Count > 0) == true)
+                {
+                    <div style="height: 240px;">
+                        <canvas id="dayOfWeekChart"></canvas>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="height: 240px;">
+                        <p class="text-muted mb-0">@L["Dash_NoServicesThisMonth"]</p>
+                    </div>
+                }
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Top Products</h6>
+                <h6 class="fw-semibold mb-3">@L["Dash_TopProducts"]</h6>
                 @if (topProducts != null && topProducts.Length > 0)
                 {
                     <div class="list-group list-group-flush">
@@ -86,10 +153,10 @@ else
                             <div class="list-group-item px-0" style="border-color: var(--border-color);">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="fw-semibold" style="font-size: 0.875rem;">@p.Product</span>
-                                    <span class="fw-semibold" style="color: var(--primary); font-size: 0.875rem;">@p.Revenue.ToString("C")</span>
+                                    <span class="fw-semibold" style="color: var(--primary); font-size: 0.875rem;">@Money.Format(p.Revenue)</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted" style="font-size: 0.75rem;">@p.Quantity sold</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">@L["Dash_QuantitySold", p.Quantity]</span>
                                     @if (topProducts.Length > 0 && topProducts[0].Revenue > 0)
                                     {
                                         var pct = (double)p.Revenue / (double)topProducts[0].Revenue * 100;
@@ -104,13 +171,13 @@ else
                 }
                 else
                 {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No product sales yet.</p>
+                    <p class="text-muted mb-0" style="font-size: 0.875rem;">@L["Dash_NoProductSales"]</p>
                 }
             </div>
         </div>
         <div class="col-lg-4">
             <div class="card p-3">
-                <h6 class="fw-semibold mb-3">Recent Activity</h6>
+                <h6 class="fw-semibold mb-3">@L["Dash_RecentActivity"]</h6>
                 @if (recentRecords != null && recentRecords.Length > 0)
                 {
                     <div class="list-group list-group-flush">
@@ -121,14 +188,14 @@ else
                                     <div class="fw-semibold" style="font-size: 0.875rem;">@r.Service</div>
                                     <div class="text-muted" style="font-size: 0.75rem;">@r.Worker &middot; @r.Date</div>
                                 </div>
-                                <span class="fw-semibold" style="color: var(--primary);">@r.AmountPaid.ToString("C")</span>
+                                <span class="fw-semibold" style="color: var(--primary);">@Money.Format(r.AmountPaid)</span>
                             </div>
                         }
                     </div>
                 }
                 else
                 {
-                    <p class="text-muted mb-0" style="font-size: 0.875rem;">No recent activity.</p>
+                    <p class="text-muted mb-0" style="font-size: 0.875rem;">@L["Dash_NoRecentActivity"]</p>
                 }
             </div>
         </div>
@@ -137,6 +204,7 @@ else
 
 @code {
     private bool loading = true;
+    private bool isFirstRun;
     private string totalRevenue = "0";
     private string totalTips = "0";
     private string avgTicket = "0";
@@ -145,17 +213,63 @@ else
     private decimal? tipsTrend;
     private decimal? avgTicketTrend;
     private decimal? countTrend;
-    private RecentRecord[]? recentRecords;
-    private TopProduct[]? topProducts;
-    private DayOfWeekEntry[]? dayOfWeekData;
-    private CombinedTimeline? combinedTimeline;
+    private RecentRecordResult[]? recentRecords;
+    private TopProductResult[]? topProducts;
+    private DayOfWeekResult[]? dayOfWeekData;
+    private CombinedTimelineResult? combinedTimeline;
     private decimal serviceRevenueTotal;
     private decimal productRevenueTotal;
 
+    private static readonly string[] ChartIds = ["combinedTimelineChart", "revenueSourcesChart", "dayOfWeekChart"];
+
     protected override async Task OnInitializedAsync()
     {
+        WorkerContext.OnChange += HandleWorkerChanged;
+        Theme.OnChange += HandleThemeChanged;
         await WorkerContext.InitializeAsync();
         await LoadData();
+    }
+
+    private void HandleWorkerChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Dashboard reload failed: {ex.Message}");
+            }
+        });
+    }
+
+    private void HandleThemeChanged()
+    {
+        // Charts hold their colors, so a theme change means re-rendering them
+        // to pick up the new token values.
+        _ = InvokeAsync(() =>
+        {
+            needsChartRender = true;
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        WorkerContext.OnChange -= HandleWorkerChanged;
+        Theme.OnChange -= HandleThemeChanged;
+
+        try
+        {
+            await JS.InvokeVoidAsync("financeCharts.destroyMany", (object)ChartIds);
+        }
+        catch (Exception)
+        {
+            // JS runtime may already be gone during teardown.
+        }
     }
 
     private async Task LoadData()
@@ -163,63 +277,41 @@ else
         loading = true;
         try
         {
+            var dataState = await Store.GetDataStateSummaryAsync();
+            isFirstRun = dataState.WorkerCount == 0 && dataState.ServiceCount == 0
+                && dataState.ProductCount == 0 && dataState.ServiceRecordCount == 0
+                && dataState.ProductSaleCount == 0 && dataState.ExpenseCount == 0;
+
             var wId = WorkerContext.SelectedWorkerId;
             var now = DateTime.Today;
             var monthStart = new DateTime(now.Year, now.Month, 1);
-            var qs = $"?from={monthStart:yyyy-MM-dd}&to={now:yyyy-MM-dd}";
-            if (wId.HasValue) qs += $"&workerId={wId.Value}";
 
-            var summary = await Http.GetFromJsonAsync<SummaryDto>($"api/analytics/summary{qs}");
-            if (summary != null)
-            {
-                totalRevenue = summary.TotalRevenue.ToString("C");
-                totalTips = summary.TotalTips.ToString("C");
-                recordCount = summary.RecordCount.ToString();
-                avgTicket = summary.RecordCount > 0
-                    ? (summary.TotalRevenue / summary.RecordCount).ToString("C")
-                    : "$0.00";
-            }
+            var summary = await Analytics.GetSummaryAsync(wId, monthStart, now);
+            totalRevenue = Money.Format(summary.TotalRevenue);
+            totalTips = Money.Format(summary.TotalTips);
+            recordCount = summary.RecordCount.ToString();
+            avgTicket = summary.RecordCount > 0
+                ? Money.Format(summary.TotalRevenue / summary.RecordCount)
+                : Money.Format(0m);
 
-            try
-            {
-                var comparison = await Http.GetFromJsonAsync<MonthComparisonDto>(
-                    $"api/analytics/month-comparison{(wId.HasValue ? $"?workerId={wId.Value}" : "")}");
-                if (comparison != null)
-                {
-                    revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);
-                    tipsTrend = CalcTrend(comparison.CurrentTips, comparison.PreviousTips);
-                    avgTicketTrend = CalcTrend(comparison.CurrentAvgTicket, comparison.PreviousAvgTicket);
-                    countTrend = CalcTrend(comparison.CurrentCount, comparison.PreviousCount);
-                }
-            }
-            catch { }
+            var comparison = await Analytics.GetMonthComparisonAsync(wId);
+            revenueTrend = CalcTrend(comparison.CurrentRevenue, comparison.PreviousRevenue);
+            tipsTrend = CalcTrend(comparison.CurrentTips, comparison.PreviousTips);
+            avgTicketTrend = CalcTrend(comparison.CurrentAvgTicket, comparison.PreviousAvgTicket);
+            countTrend = CalcTrend(comparison.CurrentCount, comparison.PreviousCount);
 
-            recentRecords = await Http.GetFromJsonAsync<RecentRecord[]>("api/analytics/recent?count=5");
+            recentRecords = (await Analytics.GetRecentAsync(5, wId)).ToArray();
+            topProducts = (await Analytics.GetTopProductsAsync(wId, monthStart, now)).ToArray();
+            dayOfWeekData = (await Analytics.GetRevenueByDayOfWeekAsync(wId, monthStart, now)).ToArray();
 
-            try
-            {
-                topProducts = await Http.GetFromJsonAsync<TopProduct[]>($"api/analytics/top-products{qs}");
-            }
-            catch { topProducts = []; }
-
-            try
-            {
-                dayOfWeekData = await Http.GetFromJsonAsync<DayOfWeekEntry[]>($"api/analytics/revenue-by-dayofweek{qs}");
-            }
-            catch { dayOfWeekData = []; }
-
-            try
-            {
-                combinedTimeline = await Http.GetFromJsonAsync<CombinedTimeline>($"api/analytics/combined-timeline{qs}");
-                if (combinedTimeline?.Points != null)
-                {
-                    serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
-                    productRevenueTotal = combinedTimeline.Points.Sum(p => p.ProductRevenue);
-                }
-            }
-            catch { }
+            combinedTimeline = await Analytics.GetCombinedTimelineAsync(wId, monthStart, now);
+            serviceRevenueTotal = combinedTimeline.Points.Sum(p => p.ServiceRevenue);
+            productRevenueTotal = combinedTimeline.Points.Sum(p => p.ProductRevenue);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Dashboard load failed: {ex.Message}");
+        }
         finally
         {
             loading = false;
@@ -246,57 +338,66 @@ else
         }
     }
 
+    // Locale null = browser default; the currency comes from settings.
+    private object MoneyOptions => new { locale = (string?)null, currency = Money.CurrencyCode };
+
     private async Task RenderCharts()
     {
         // Each chart is wrapped individually so one failure doesn't block others
         try
         {
-            if (combinedTimeline?.Points != null && combinedTimeline.Points.Length > 0)
+            if (combinedTimeline?.Points != null && combinedTimeline.Points.Count > 0)
             {
                 var labels = combinedTimeline.Points.Select(p => p.Date).ToArray();
                 var datasets = new object[]
                 {
-                    new { label = "Services", data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray(), color = "#0d9488" },
-                    new { label = "Products", data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray(), color = "#8b5cf6" }
+                    new { label = L["Chart_Services"].Value, data = combinedTimeline.Points.Select(p => p.ServiceRevenue).ToArray() },
+                    new { label = L["Chart_Products"].Value, data = combinedTimeline.Points.Select(p => p.ProductRevenue).ToArray() }
                 };
-                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets);
+                await JS.InvokeVoidAsync("financeCharts.renderStackedBarChart", "combinedTimelineChart", labels, datasets, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "combinedTimelineChart");
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Timeline chart failed: {ex.Message}"); }
 
         try
         {
-            var svcTotal = (decimal)serviceRevenueTotal;
-            var prdTotal = (decimal)productRevenueTotal;
-            if (svcTotal > 0 || prdTotal > 0)
+            if (serviceRevenueTotal > 0 || productRevenueTotal > 0)
             {
                 await JS.InvokeVoidAsync("financeCharts.renderDoughnutChart",
                     "revenueSourcesChart",
-                    new[] { "Services", "Products" },
-                    new[] { svcTotal, prdTotal },
-                    new[] { "#0d9488", "#8b5cf6" });
+                    new[] { L["Chart_Services"].Value, L["Chart_Products"].Value },
+                    new[] { serviceRevenueTotal, productRevenueTotal },
+                    MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "revenueSourcesChart");
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Revenue sources chart failed: {ex.Message}"); }
 
         try
         {
-            if (dayOfWeekData != null && dayOfWeekData.Length > 0)
+            // Guard matches the markup: the canvas only exists when at least
+            // one day has records, which also keeps an all-zero week from
+            // spuriously highlighting Monday as "busiest".
+            if (dayOfWeekData?.Any(d => d.Count > 0) == true)
             {
                 var labels = dayOfWeekData.Select(d => d.Day).ToArray();
                 var data = dayOfWeekData.Select(d => d.Revenue).ToArray();
                 var maxIdx = Array.IndexOf(data, data.Max());
-                await JS.InvokeVoidAsync("financeCharts.renderMiniBarChart", "dayOfWeekChart", labels, data, maxIdx);
+                await JS.InvokeVoidAsync("financeCharts.renderMiniBarChart", "dayOfWeekChart", labels, data, maxIdx, MoneyOptions);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("financeCharts.destroy", "dayOfWeekChart");
             }
         }
-        catch { }
+        catch (Exception ex) { Console.Error.WriteLine($"Day-of-week chart failed: {ex.Message}"); }
     }
 
-    private record SummaryDto(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
-    private record RecentRecord(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
-    private record MonthComparisonDto(decimal CurrentRevenue, decimal PreviousRevenue, decimal CurrentTips, decimal PreviousTips, int CurrentCount, int PreviousCount, decimal CurrentAvgTicket, decimal PreviousAvgTicket);
-    private record TopProduct(string Product, int Quantity, decimal Revenue);
-    private record DayOfWeekEntry(string Day, decimal Revenue, int Count);
-    private record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-    private record CombinedTimeline(CombinedTimelinePoint[] Points);
 }

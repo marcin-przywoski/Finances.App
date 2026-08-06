@@ -1,195 +1,191 @@
 @page "/sales"
-@inject HttpClient Http
+@implements IDisposable
+@inject IFinanceStore Store
+@inject MoneyFormat Money
+@inject WorkerContextService WorkerContext
 @inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>Product Sales</PageTitle>
+<PageTitle>@L["Sales_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Product Sales</h2>
-        <p class="text-muted mb-0">Record and manage retail product sales.</p>
+        <h1 class="page-title mb-1">@L["Sales_Title"]</h1>
+        <p class="text-muted mb-0">@L["Sales_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Record Sale
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        @L["Sales_RecordSale"]
     </button>
 </div>
 
-<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+<div class="d-flex flex-wrap align-items-center gap-3">
+    <DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+    <div class="ms-auto" style="min-width: 240px;">
+        <label class="visually-hidden-text" for="sales-search">@L["Sales_SearchLabel"]</label>
+        <input id="sales-search" type="search" class="form-control form-control-sm"
+               placeholder="@L["Sales_SearchPlaceholder"]" @oninput="OnSearchInput" />
+    </div>
+</div>
 
 @if (allSales == null)
 {
     <LoadingSpinner />
 }
+else if (filtered.Count == 0)
+{
+    <div class="card p-5 text-center mt-3">
+        <p class="text-muted mb-3">@L["Sales_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Sales_RecordSale"]</button></div>
+    </div>
+}
 else
 {
-    var filtered = GetFilteredSales();
-
-    @if (filtered.Count == 0)
-    {
-        <div class="card p-5 text-center mt-3">
-            <p class="text-muted mb-3">No product sales found for the selected period.</p>
-            <div><button class="btn btn-primary" @onclick="OpenAddModal">Record Sale</button></div>
-        </div>
-    }
-    else
-    {
-        <div class="card mt-3">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th @onclick='() => SetSort("date")' style="cursor:pointer;">
-                                Date @SortIcon("date")
-                            </th>
-                            <th>Product</th>
-                            <th>Worker</th>
-                            <th>Client</th>
-                            <th>Qty</th>
-                            <th @onclick='() => SetSort("price")' style="cursor:pointer;">
-                                Unit Price @SortIcon("price")
-                            </th>
-                            <th @onclick='() => SetSort("total")' style="cursor:pointer;">
-                                Total @SortIcon("total")
-                            </th>
-                            <th>Notes</th>
-                            <th style="width: 100px;">Actions</th>
+    <div class="card mt-3">
+        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th aria-sort="@sort.AriaSort("date")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
+                        </th>
+                        <th>@L["Sales_Product"]</th>
+                        <th>@L["Common_Worker"]</th>
+                        <th>@L["Common_Client"]</th>
+                        <th>@L["Sales_Qty"]</th>
+                        <th aria-sort="@sort.AriaSort("price")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("price")'>@L["Sales_UnitPrice"] <span aria-hidden="true">@sort.Icon("price")</span></button>
+                        </th>
+                        <th aria-sort="@sort.AriaSort("total")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("total")'>@L["Common_Total"] <span aria-hidden="true">@sort.Icon("total")</span></button>
+                        </th>
+                        <th>@L["Common_Notes"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <Virtualize Items="filtered" Context="s" SpacerElement="tr">
+                        <tr @key="s.Id">
+                            <td>@s.DateSold.ToDateKey()</td>
+                            <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
+                            <td>@(s.Worker?.Name ?? "—")</td>
+                            <td class="text-muted">@(s.ClientName ?? "—")</td>
+                            <td>@s.Quantity</td>
+                            <td>@Money.Format(s.UnitPrice)</td>
+                            <td class="fw-semibold">@Money.Format(s.TotalPrice)</td>
+                            <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@s.Notes">@(s.Notes ?? "")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">@L["Common_Delete"]</button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var s in filtered)
-                        {
-                            <tr>
-                                <td>@s.DateSold.ToString("yyyy-MM-dd")</td>
-                                <td class="fw-semibold">@(s.Product?.Name ?? "—")</td>
-                                <td>@(s.Worker?.Name ?? "—")</td>
-                                <td class="text-muted">@(s.ClientName ?? "—")</td>
-                                <td>@s.Quantity</td>
-                                <td>@s.UnitPrice.ToString("C")</td>
-                                <td class="fw-semibold">@s.TotalPrice.ToString("C")</td>
-                                <td class="text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(s.Notes ?? "")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(s)">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(s)">Delete</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold" style="background-color: var(--body-bg);">
-                            <td colspan="4">Totals</td>
-                            <td>@filtered.Sum(s => s.Quantity)</td>
-                            <td></td>
-                            <td>@filtered.Sum(s => s.TotalPrice).ToString("C")</td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-    }
-}
-
-@if (showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Sale" : "Record Product Sale")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Product</label>
-                                <select class="form-select" value="@formModel.ProductId" @onchange="OnProductChanged">
-                                    <option value="0">-- Select Product --</option>
-                                    @if (products != null)
-                                    {
-                                        @foreach (var p in products)
-                                        {
-                                            <option value="@p.Id">@p.Name (@p.Price.ToString("C"))</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Worker (optional)</label>
-                                <select class="form-select" value="@(formModel.WorkerId ?? 0)" @onchange="OnWorkerChanged">
-                                    <option value="0">— None —</option>
-                                    @if (workers != null)
-                                    {
-                                        @foreach (var w in workers)
-                                        {
-                                            <option value="@w.Id">@w.Name</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Date</label>
-                                <InputDate class="form-control" @bind-Value="formModel.DateSold" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Quantity</label>
-                                <InputNumber class="form-control" @bind-Value="formModel.Quantity" />
-                                <ValidationMessage For="() => formModel.Quantity" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Unit Price</label>
-                                <InputNumber class="form-control" @bind-Value="formModel.UnitPrice" />
-                                <ValidationMessage For="() => formModel.UnitPrice" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Client Name</label>
-                                <InputText class="form-control" @bind-Value="formModel.ClientName" placeholder="Optional" />
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Notes</label>
-                                <InputTextArea class="form-control" @bind-Value="formModel.Notes" rows="2" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <div class="me-auto">
-                            @if (formModel.Quantity > 0 && formModel.UnitPrice > 0)
-                            {
-                                <span class="text-muted" style="font-size: 0.875rem;">
-                                    Total: <strong>@((formModel.UnitPrice * formModel.Quantity).ToString("C"))</strong>
-                                </span>
-                            }
-                        </div>
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Save"))
-                        </button>
-                    </div>
-                </EditForm>
-            </div>
+                    </Virtualize>
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold" style="background-color: var(--body-bg);">
+                        <td colspan="4">@L["Common_Totals"]</td>
+                        <td>@totalQuantity</td>
+                        <td></td>
+                        <td>@Money.Format(totalRevenue)</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 }
 
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Sales_EditTitle"] : L["Sales_AddTitle"])" OnClose="CloseModal">
+    <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="sale-product">@L["Sales_Product"]</label>
+                    <select id="sale-product" class="form-select" value="@formModel.ProductId" @onchange="OnProductChanged">
+                        <option value="0">@L["Sales_SelectProduct"]</option>
+                        @if (products != null)
+                        {
+                            @foreach (var p in products)
+                            {
+                                <option value="@p.Id">@p.Name (@Money.Format(p.Price))</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="sale-worker">@L["Sales_WorkerOptional"]</label>
+                    <select id="sale-worker" class="form-select" value="@(formModel.WorkerId ?? 0)" @onchange="OnWorkerChanged">
+                        <option value="0">@L["Sales_NoWorker"]</option>
+                        @if (workers != null)
+                        {
+                            @foreach (var w in workers)
+                            {
+                                <option value="@w.Id">@w.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sale-date">@L["Common_Date"]</label>
+                    <InputDate id="sale-date" class="form-control" @bind-Value="formModel.DateSold" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sale-quantity">@L["Sales_Quantity"]</label>
+                    <InputNumber id="sale-quantity" class="form-control" @bind-Value="formModel.Quantity" />
+                    <ValidationMessage For="() => formModel.Quantity" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sale-price">@L["Sales_UnitPriceFull"]</label>
+                    <InputNumber id="sale-price" class="form-control" @bind-Value="formModel.UnitPrice" />
+                    <ValidationMessage For="() => formModel.UnitPrice" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="sale-client">@L["Common_ClientName"]</label>
+                    <InputText id="sale-client" class="form-control" @bind-Value="formModel.ClientName" placeholder="@L["Common_Optional"]" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="sale-notes">@L["Common_Notes"]</label>
+                    <InputTextArea id="sale-notes" class="form-control" @bind-Value="formModel.Notes" rows="2" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="me-auto">
+                @if (formModel.Quantity > 0 && formModel.UnitPrice > 0)
+                {
+                    <span class="text-muted" style="font-size: 0.875rem;">
+                        @L["Sales_TotalLabel"] <strong>@(Money.Format(formModel.UnitPrice * formModel.Quantity))</strong>
+                    </span>
+                }
+            </div>
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Save"]))
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
+
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Sale"
-               Message="@($"Are you sure you want to delete this product sale from {deleteTarget?.DateSold.ToString("yyyy-MM-dd")}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["Sales_DeleteTitle"]"
+               Message="@L["Sales_DeleteMessage", deleteTarget?.DateSold.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
     private List<ProductSale>? allSales;
+    private List<ProductSale> filtered = new();
     private List<Product>? products;
     private List<Worker>? workers;
     private DateTime? dateFrom;
     private DateTime? dateTo;
-    private string sortColumn = "date";
-    private bool sortAsc = false;
+    private string searchTerm = string.Empty;
+    private CancellationTokenSource? searchCts;
+    private int totalQuantity;
+    private decimal totalRevenue;
+    private readonly SortState sort = new("date");
 
     private ProductSale formModel = new();
     private bool showModal, isEditing, saving;
@@ -200,22 +196,85 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-        products = await Http.GetFromJsonAsync<List<Product>>("api/products");
-        workers = await Http.GetFromJsonAsync<List<Worker>>("api/workers");
+        WorkerContext.OnChange += HandleWorkerChanged;
+        await WorkerContext.InitializeAsync();
+        allSales = (await Store.GetProductSalesAsync()).ToList();
+        products = (await Store.GetProductsAsync()).ToList();
+        workers = (await Store.GetWorkersAsync()).ToList();
+        ApplyFilter();
+    }
+
+    private void HandleWorkerChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            ApplyFilter();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        WorkerContext.OnChange -= HandleWorkerChanged;
+        searchCts?.Cancel();
     }
 
     private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
     {
         dateFrom = range.From;
         dateTo = range.To;
+        ApplyFilter();
     }
 
-    private List<ProductSale> GetFilteredSales()
+    private void SetSort(string column)
     {
-        if (allSales == null) return new();
+        sort.Toggle(column);
+        ApplyFilter();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        searchCts?.Cancel();
+        searchCts = new CancellationTokenSource();
+        _ = DebounceSearchAsync(searchCts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(250, token);
+            ApplyFilter();
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Superseded by newer input.
+        }
+    }
+
+    private static bool Matches(string? value, string term)
+    {
+        return value?.Contains(term, StringComparison.CurrentCultureIgnoreCase) == true;
+    }
+
+    // Recomputed on state changes rather than inside the render body, so the
+    // filter+sort (and the footer totals) do not re-run on every re-render.
+    private void ApplyFilter()
+    {
+        if (allSales == null)
+        {
+            filtered = new();
+            totalQuantity = 0;
+            totalRevenue = 0;
+            return;
+        }
 
         var q = allSales.AsEnumerable();
+
+        if (WorkerContext.SelectedWorkerId.HasValue)
+            q = q.Where(s => s.WorkerId == WorkerContext.SelectedWorkerId.Value);
 
         if (dateFrom.HasValue)
             q = q.Where(s => s.DateSold.Date >= dateFrom.Value.Date);
@@ -223,32 +282,26 @@ else
         if (dateTo.HasValue)
             q = q.Where(s => s.DateSold.Date <= dateTo.Value.Date);
 
-        q = sortColumn switch
+        var term = searchTerm.Trim();
+        if (term.Length > 0)
         {
-            "date" => sortAsc ? q.OrderBy(s => s.DateSold) : q.OrderByDescending(s => s.DateSold),
-            "price" => sortAsc ? q.OrderBy(s => s.UnitPrice) : q.OrderByDescending(s => s.UnitPrice),
-            "total" => sortAsc ? q.OrderBy(s => s.TotalPrice) : q.OrderByDescending(s => s.TotalPrice),
+            q = q.Where(s => Matches(s.ClientName, term)
+                || Matches(s.Notes, term)
+                || Matches(s.Worker?.Name, term)
+                || Matches(s.Product?.Name, term));
+        }
+
+        q = sort.Column switch
+        {
+            "date" => sort.Ascending ? q.OrderBy(s => s.DateSold) : q.OrderByDescending(s => s.DateSold),
+            "price" => sort.Ascending ? q.OrderBy(s => s.UnitPrice) : q.OrderByDescending(s => s.UnitPrice),
+            "total" => sort.Ascending ? q.OrderBy(s => s.TotalPrice) : q.OrderByDescending(s => s.TotalPrice),
             _ => q.OrderByDescending(s => s.DateSold)
         };
 
-        return q.ToList();
-    }
-
-    private void SetSort(string column)
-    {
-        if (sortColumn == column)
-            sortAsc = !sortAsc;
-        else
-        {
-            sortColumn = column;
-            sortAsc = true;
-        }
-    }
-
-    private string SortIcon(string column)
-    {
-        if (sortColumn != column) return "";
-        return sortAsc ? "▲" : "▼";
+        filtered = q.ToList();
+        totalQuantity = filtered.Sum(s => s.Quantity);
+        totalRevenue = filtered.Sum(s => s.TotalPrice);
     }
 
     private void OpenAddModal()
@@ -299,7 +352,7 @@ else
     {
         if (formModel.ProductId == 0)
         {
-            Toast.Show("Please select a product.", ToastLevel.Error);
+            Toast.Show(L["Sales_SelectProductError"], ToastLevel.Error);
             return;
         }
 
@@ -308,26 +361,22 @@ else
         {
             if (isEditing)
             {
-                var resp = await Http.PutAsJsonAsync($"api/productsales/{editId}", formModel);
-                if (resp.IsSuccessStatusCode)
-                {
-                    Toast.Show("Sale updated");
-                    allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-                    showModal = false;
-                }
-                else Toast.Show("Failed to update sale", ToastLevel.Error);
+                await Store.UpdateProductSaleAsync(editId, formModel);
+                Toast.Show(L["Sales_Updated"]);
             }
             else
             {
-                var resp = await Http.PostAsJsonAsync("api/productsales", formModel);
-                if (resp.IsSuccessStatusCode)
-                {
-                    Toast.Show("Sale recorded!");
-                    allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
-                    showModal = false;
-                }
-                else Toast.Show("Failed to record sale", ToastLevel.Error);
+                await Store.AddProductSaleAsync(formModel);
+                Toast.Show(L["Sales_Recorded"]);
             }
+            allSales = (await Store.GetProductSalesAsync()).ToList();
+            products = (await Store.GetProductsAsync()).ToList();
+            ApplyFilter();
+            showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
         }
         finally { saving = false; }
     }
@@ -341,13 +390,32 @@ else
     private async Task HandleDelete()
     {
         if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/productsales/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode)
+        var deleted = deleteTarget;
+        try
         {
-            Toast.Show("Sale deleted");
-            allSales = await Http.GetFromJsonAsync<List<ProductSale>>("api/productsales");
+            await Store.DeleteProductSaleAsync(deleted.Id);
+            // Undo goes back through AddProductSaleAsync, so stock is
+            // re-decremented with the usual sufficiency check; if the stock
+            // was sold meanwhile the undo fails with the real reason.
+            Toast.Show(L["Sales_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
+            {
+                await Store.AddProductSaleAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allSales = (await Store.GetProductSalesAsync()).ToList();
+                    products = (await Store.GetProductsAsync()).ToList();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
+            allSales = (await Store.GetProductSalesAsync()).ToList();
+            products = (await Store.GetProductsAsync()).ToList();
+            ApplyFilter();
         }
-        else Toast.Show("Failed to delete sale", ToastLevel.Error);
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
         showDeleteConfirm = false;
         deleteTarget = null;
     }

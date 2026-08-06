@@ -1,29 +1,30 @@
 @page "/services"
-@inject HttpClient Http
-@inject ToastService Toast
+@inherits CrudPageBase<Service>
+@inject IFinanceStore Store
+@inject MoneyFormat Money
 
-<PageTitle>Services</PageTitle>
+<PageTitle>@L["Svc_Title"]</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1" style="font-weight: 700;">Services</h2>
-        <p class="text-muted mb-0">Manage the services your shop offers and their base prices.</p>
+        <h1 class="page-title mb-1">@L["Svc_Title"]</h1>
+        <p class="text-muted mb-0">@L["Svc_Subtitle"]</p>
     </div>
     <button class="btn btn-primary" @onclick="OpenAddModal">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 5v14M5 12h14"/></svg>
-        Add Service
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        @L["Svc_Add"]
     </button>
 </div>
 
-@if (services == null)
+@if (items == null)
 {
     <LoadingSpinner />
 }
-else if (services.Count == 0)
+else if (items.Count == 0)
 {
     <div class="card p-5 text-center">
-        <p class="text-muted mb-3">No services yet. Add your first service to get started.</p>
-        <div><button class="btn btn-primary" @onclick="OpenAddModal">Add Service</button></div>
+        <p class="text-muted mb-3">@L["Svc_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Svc_Add"]</button></div>
     </div>
 }
 else
@@ -33,20 +34,20 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Service Name</th>
-                        <th>Base Price</th>
-                        <th style="width: 140px;">Actions</th>
+                        <th>@L["Svc_Name"]</th>
+                        <th>@L["Svc_BasePrice"]</th>
+                        <th style="width: 140px;">@L["Common_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var svc in services)
+                    @foreach (var svc in items)
                     {
                         <tr>
                             <td class="fw-semibold">@svc.Name</td>
-                            <td>@svc.BasePrice.ToString("C")</td>
+                            <td>@Money.Format(svc.BasePrice)</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(svc)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(svc)">@L["Common_Delete"]</button>
                             </td>
                         </tr>
                     }
@@ -56,121 +57,56 @@ else
     </div>
 }
 
-@if (showModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditing ? "Edit Service" : "Add Service")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Service Name</label>
-                            <InputText class="form-control" @bind-Value="formModel.Name" />
-                            <ValidationMessage For="() => formModel.Name" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Base Price</label>
-                            <InputNumber class="form-control" @bind-Value="formModel.BasePrice" />
-                            <ValidationMessage For="() => formModel.BasePrice" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Saving..." : (isEditing ? "Update" : "Add"))
-                        </button>
-                    </div>
-                </EditForm>
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Svc_EditTitle"] : L["Svc_Add"])" OnClose="CloseModal">
+    <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label" for="service-name">@L["Svc_Name"]</label>
+                <InputText id="service-name" class="form-control" @bind-Value="formModel.Name" />
+                <ValidationMessage For="() => formModel.Name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="service-price">@L["Svc_BasePrice"]</label>
+                <InputNumber id="service-price" class="form-control" @bind-Value="formModel.BasePrice" />
+                <ValidationMessage For="() => formModel.BasePrice" />
             </div>
         </div>
-    </div>
-}
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Add"]))
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
 
 <ConfirmDialog IsVisible="showDeleteConfirm"
-               Title="Delete Service"
-               Message="@($"Are you sure you want to delete {deleteTarget?.Name}? This cannot be undone.")"
-               ConfirmText="Delete"
+               Title="@L["Svc_DeleteTitle"]"
+               Message="@L["Crud_DeleteMessage", deleteTarget?.Name ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
                OnConfirm="HandleDelete"
                OnCancel="() => { showDeleteConfirm = false; }" />
 
-<Toast />
-
 @code {
-    private List<Service>? services;
-    private Service formModel = new();
-    private Service? deleteTarget;
-    private bool showModal, isEditing, saving, showDeleteConfirm;
-    private int editId;
+    protected override string ToastAdded => L["Svc_Added"];
+    protected override string ToastUpdated => L["Svc_Updated"];
+    protected override string ToastDeleted => L["Svc_Deleted"];
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task<IReadOnlyList<Service>> LoadItemsAsync() => await Store.GetServicesAsync();
+
+    protected override Task AddItemAsync(Service item) => Store.AddServiceAsync(item);
+
+    protected override Task UpdateItemAsync(int id, Service item) => Store.UpdateServiceAsync(id, item);
+
+    protected override Task<DeleteResult> DeleteItemAsync(Service item) => Store.DeleteServiceAsync(item.Id);
+
+    protected override int GetId(Service item) => item.Id;
+
+    protected override Service CloneItem(Service item) => new()
     {
-        await LoadServices();
-    }
-
-    private async Task LoadServices()
-    {
-        services = await Http.GetFromJsonAsync<List<Service>>("api/services");
-    }
-
-    private void OpenAddModal()
-    {
-        formModel = new Service();
-        isEditing = false;
-        showModal = true;
-    }
-
-    private void OpenEditModal(Service s)
-    {
-        formModel = new Service { Id = s.Id, Name = s.Name, BasePrice = s.BasePrice };
-        editId = s.Id;
-        isEditing = true;
-        showModal = true;
-    }
-
-    private void CloseModal() => showModal = false;
-
-    private async Task HandleSubmit()
-    {
-        saving = true;
-        try
-        {
-            if (isEditing)
-            {
-                var resp = await Http.PutAsJsonAsync($"api/services/{editId}", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service updated");
-                else Toast.Show("Failed to update service", ToastLevel.Error);
-            }
-            else
-            {
-                var resp = await Http.PostAsJsonAsync("api/services", formModel);
-                if (resp.IsSuccessStatusCode) Toast.Show("Service added");
-                else Toast.Show("Failed to add service", ToastLevel.Error);
-            }
-            await LoadServices();
-            showModal = false;
-        }
-        finally { saving = false; }
-    }
-
-    private void ConfirmDelete(Service s)
-    {
-        deleteTarget = s;
-        showDeleteConfirm = true;
-    }
-
-    private async Task HandleDelete()
-    {
-        if (deleteTarget == null) return;
-        var resp = await Http.DeleteAsync($"api/services/{deleteTarget.Id}");
-        if (resp.IsSuccessStatusCode) Toast.Show("Service deleted");
-        else Toast.Show("Failed to delete service. It may have related records.", ToastLevel.Error);
-        showDeleteConfirm = false;
-        deleteTarget = null;
-        await LoadServices();
-    }
+        Id = item.Id,
+        Name = item.Name,
+        BasePrice = item.BasePrice
+    };
 }

@@ -5,8 +5,12 @@
 <div class="toast-container">
     @foreach (var toast in ToastService.Toasts)
     {
-        <div class="toast-item @(toast.Level == ToastLevel.Success ? "toast-success" : "toast-error") @(toast.FadingOut ? "toast-fadeout" : "")">
-            @toast.Message
+        <div @key="toast.Id" class="toast-item @(toast.Level == ToastLevel.Success ? "toast-success" : "toast-error") @(toast.FadingOut ? "toast-fadeout" : "")">
+            <span>@toast.Message</span>
+            @if (toast.ActionLabel is not null)
+            {
+                <button type="button" class="toast-action" @onclick="() => ToastService.RunActionAsync(toast)">@toast.ActionLabel</button>
+            }
         </div>
     }
 </div>
@@ -14,11 +18,16 @@
 @code {
     protected override void OnInitialized()
     {
-        ToastService.OnChange += StateHasChanged;
+        ToastService.OnChange += HandleChange;
+    }
+
+    private void HandleChange()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        ToastService.OnChange -= StateHasChanged;
+        ToastService.OnChange -= HandleChange;
     }
 }

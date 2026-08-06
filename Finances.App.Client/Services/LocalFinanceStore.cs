@@ -1,61 +1,81 @@
 using System.Text.Json;
 using Finances.App.Client.Models;
+using Finances.App.Client.Services.Storage;
 using Finances.App.Shared;
-using Microsoft.JSInterop;
 
 namespace Finances.App.Client.Services;
 
-public sealed record DeleteResult(bool Success, string? ErrorMessage = null);
-
-public sealed record SummaryResult(decimal TotalRevenue, decimal TotalTips, decimal TotalWorkerShare, decimal TotalSalonShare, int RecordCount);
-
-public sealed record DailyEarningResult(string Date, decimal Revenue, decimal Tips);
-
-public sealed record WorkerRevenueResult(string Worker, decimal Revenue, decimal Tips);
-
-public sealed record ServicePopularityResult(string Service, int Count, decimal Revenue);
-
-public sealed record HistoricalPointResult(string Date, double Actual, double Trend);
-
-public sealed record ForecastPointResult(string Date, double Predicted);
-
-public sealed record ForecastResult(HistoricalPointResult[] Historical, ForecastPointResult[] Forecast, double Slope, double Intercept, double RSquared);
-
-public sealed record RecentRecordResult(int Id, string Date, string Worker, string Service, decimal AmountPaid, decimal Tips, string? ClientName);
-
-public sealed record DataStateSummary(int WorkerCount, int ServiceCount, int ProductCount, int ServiceRecordCount, int ProductSaleCount, int SchemaVersion, DateTime LastUpdatedUtc);
-
-public sealed record MonthComparisonResult(
-    decimal CurrentRevenue, decimal PreviousRevenue,
-    decimal CurrentTips, decimal PreviousTips,
-    int CurrentCount, int PreviousCount,
-    decimal CurrentAvgTicket, decimal PreviousAvgTicket);
-
-public sealed record DayOfWeekResult(string Day, decimal Revenue, int Count);
-
-public sealed record TopProductResult(string Product, int Quantity, decimal Revenue);
-
-public sealed record CombinedTimelinePoint(string Date, decimal ServiceRevenue, decimal ProductRevenue);
-
-public sealed record CombinedTimelineResult(IReadOnlyList<CombinedTimelinePoint> Points);
-
-public sealed class LocalFinanceStore
+public enum SnapshotLoadStatus
 {
-    private const int CurrentSchemaVersion = 1;
-    private const string StorageKey = "Finances.App.snapshot";
-    private readonly IJSRuntime _js;
-    private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
+    Ok,
+    RecoveredFromCorruptData
+}
+
+public sealed partial class LocalFinanceStore : IFinanceStore, IAnalyticsService
+{
+    private const int CurrentSchemaVersion = 2;
+    public const string StorageKey = "Finances.App.snapshot";
+    public const string QuarantineKey = "Finances.App.snapshot.quarantine";
+    public const string PreResetKey = "Finances.App.snapshot.pre-reset";
+    public const string RevisionKey = "Finances.App.snapshot.rev";
+
+    private static readonly JsonSerializerOptions CompactJson = new()
     {
+        TypeInfoResolver = FinanceJsonContext.Default,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly JsonSerializerOptions IndentedJson = new()
+    {
+        TypeInfoResolver = FinanceJsonContext.Default,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         WriteIndented = true
     };
 
+    private readonly IKeyValueStorage _storage;
+
     private FinanceSnapshot? _snapshot;
+    private Task? _loadTask;
+    private string? _loadedRevision;
 
     public event Action? OnChange;
 
-    public LocalFinanceStore(IJSRuntime js)
+    public SnapshotLoadStatus LoadStatus { get; private set; } = SnapshotLoadStatus.Ok;
+
+    public LocalFinanceStore(IKeyValueStorage storage)
     {
-        _js = js;
+        _storage = storage;
+    }
+
+    public async Task<SnapshotLoadStatus> GetLoadStatusAsync()
+    {
+        await EnsureLoadedAsync();
+        return LoadStatus;
+    }
+
+    /// <summary>
+    /// Called when another tab wrote to the snapshot key. Drops the cached
+    /// snapshot so the next read reloads the newest persisted data.
+    /// </summary>
+    public void HandleExternalDataChange()
+    {
+        _snapshot = null;
+        _loadTask = null;
+        NotifyChanged();
+    }
+
+    public ValueTask<string?> GetQuarantinedJsonAsync()
+    {
+        return _storage.GetItemAsync(QuarantineKey);
+    }
+
+    public async Task ClearQuarantineAsync()
+    {
+        await _storage.RemoveItemAsync(QuarantineKey);
+        LoadStatus = SnapshotLoadStatus.Ok;
+        NotifyChanged();
     }
 
     public async Task<IReadOnlyList<Worker>> GetWorkersAsync()
@@ -95,7 +115,6 @@ public sealed class LocalFinanceStore
         var created = CloneWorker(worker);
         created.Id = _snapshot!.NextWorkerId++;
         created.Name = created.Name.Trim();
-        created.ApplicationUserId = NormalizeOptionalText(created.ApplicationUserId);
 
         _snapshot.Workers.Add(created);
         await PersistAsync();
@@ -116,7 +135,6 @@ public sealed class LocalFinanceStore
         var existing = _snapshot!.Workers.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
         existing.Name = worker.Name.Trim();
         existing.DefaultCommissionPercentage = worker.DefaultCommissionPercentage;
-        existing.ApplicationUserId = NormalizeOptionalText(worker.ApplicationUserId);
 
         await PersistAsync();
     }
@@ -133,7 +151,7 @@ public sealed class LocalFinanceStore
 
         if (_snapshot.ServiceRecords.Any(record => record.WorkerId == id))
         {
-            return new DeleteResult(false, "Cannot delete worker with existing service records.");
+            return new DeleteResult(false, "Cannot delete worker with existing service records.", "WorkerHasRecords");
         }
 
         _snapshot.Workers.Remove(worker);
@@ -186,7 +204,7 @@ public sealed class LocalFinanceStore
 
         if (_snapshot.ServiceRecords.Any(record => record.ServiceId == id))
         {
-            return new DeleteResult(false, "Cannot delete service with existing service records.");
+            return new DeleteResult(false, "Cannot delete service with existing service records.", "ServiceHasRecords");
         }
 
         _snapshot.Services.Remove(service);
@@ -230,13 +248,20 @@ public sealed class LocalFinanceStore
         await PersistAsync();
     }
 
-    public async Task DeleteProductAsync(int id)
+    public async Task<DeleteResult> DeleteProductAsync(int id)
     {
         await EnsureLoadedAsync();
 
         var product = _snapshot!.Products.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+
+        if (_snapshot.ProductSales.Any(sale => sale.ProductId == id))
+        {
+            return new DeleteResult(false, "Cannot delete product with existing sales.", "ProductHasSales");
+        }
+
         _snapshot.Products.Remove(product);
         await PersistAsync();
+        return new DeleteResult(true);
     }
 
     public async Task<IReadOnlyList<ProductSale>> GetProductSalesAsync()
@@ -262,6 +287,11 @@ public sealed class LocalFinanceStore
             throw new InvalidDataException("The selected worker does not exist.");
         }
 
+        if (product.StockQuantity < sale.Quantity)
+        {
+            throw new InsufficientStockException(product.Name, product.StockQuantity, sale.Quantity);
+        }
+
         var stored = new ProductSale
         {
             Id = _snapshot.NextProductSaleId++,
@@ -275,14 +305,11 @@ public sealed class LocalFinanceStore
         };
 
         _snapshot.ProductSales.Add(stored);
+        product.StockQuantity -= stored.Quantity;
 
-        if (product.StockQuantity >= stored.Quantity)
-        {
-            product.StockQuantity -= stored.Quantity;
-        }
-
+        var enriched = EnrichProductSale(stored);
         await PersistAsync();
-        return EnrichProductSale(stored);
+        return enriched;
     }
 
     public async Task UpdateProductSaleAsync(int id, ProductSale sale)
@@ -297,15 +324,28 @@ public sealed class LocalFinanceStore
 
         var existing = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
 
-        if (_snapshot.Products.All(product => product.Id != sale.ProductId))
-        {
-            throw new InvalidDataException("The selected product does not exist.");
-        }
+        var newProduct = _snapshot.Products.FirstOrDefault(product => product.Id == sale.ProductId)
+            ?? throw new InvalidDataException("The selected product does not exist.");
 
         if (sale.WorkerId.HasValue && sale.WorkerId.Value != 0 && _snapshot.Workers.All(worker => worker.Id != sale.WorkerId.Value))
         {
             throw new InvalidDataException("The selected worker does not exist.");
         }
+
+        // Stock check before any mutation: the old quantity returns to the old
+        // product, so when the product is unchanged it counts as available.
+        var oldProduct = _snapshot.Products.FirstOrDefault(product => product.Id == existing.ProductId);
+        var available = newProduct.StockQuantity + (ReferenceEquals(oldProduct, newProduct) ? existing.Quantity : 0);
+        if (available < sale.Quantity)
+        {
+            throw new InsufficientStockException(newProduct.Name, available, sale.Quantity);
+        }
+
+        if (oldProduct is not null)
+        {
+            oldProduct.StockQuantity += existing.Quantity;
+        }
+        newProduct.StockQuantity -= sale.Quantity;
 
         existing.ProductId = sale.ProductId;
         existing.WorkerId = sale.WorkerId == 0 ? null : sale.WorkerId;
@@ -324,18 +364,15 @@ public sealed class LocalFinanceStore
 
         var sale = _snapshot!.ProductSales.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
         _snapshot.ProductSales.Remove(sale);
+
+        // Deleting a sale returns its units to stock (if the product still exists).
+        var product = _snapshot.Products.FirstOrDefault(item => item.Id == sale.ProductId);
+        if (product is not null)
+        {
+            product.StockQuantity += sale.Quantity;
+        }
+
         await PersistAsync();
-    }
-
-    public async Task<decimal> GetProductSalesRevenueAsync(DateTime? from, DateTime? to)
-    {
-        await EnsureLoadedAsync();
-
-        var query = _snapshot!.ProductSales.AsEnumerable();
-        if (from.HasValue) query = query.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) query = query.Where(s => s.DateSold.Date <= to.Value.Date);
-
-        return query.Sum(s => s.UnitPrice * s.Quantity);
     }
 
     public async Task<ServiceRecord> AddServiceRecordAsync(ServiceRecord record)
@@ -365,9 +402,10 @@ public sealed class LocalFinanceStore
         };
 
         _snapshot.ServiceRecords.Add(stored);
-        await PersistAsync();
 
-        return EnrichRecord(stored);
+        var enriched = EnrichRecord(stored);
+        await PersistAsync();
+        return enriched;
     }
 
     public async Task UpdateServiceRecordAsync(int id, ServiceRecord record)
@@ -408,242 +446,85 @@ public sealed class LocalFinanceStore
         await PersistAsync();
     }
 
-    public async Task<SummaryResult> GetSummaryAsync(int? workerId, DateTime? from, DateTime? to)
+    public async Task<IReadOnlyList<Expense>> GetExpensesAsync()
     {
         await EnsureLoadedAsync();
-
-        var records = FilterStoredRecords(workerId, from, to).ToList();
-        var totalRevenue = records.Sum(record => record.AmountPaid);
-        var totalTips = records.Sum(record => record.Tips);
-        var totalWorkerShare = records.Sum(record => record.AmountPaid * (record.CommissionPercentageApplied / 100));
-        var totalSalonShare = totalRevenue - totalWorkerShare;
-
-        return new SummaryResult(totalRevenue, totalTips, totalWorkerShare, totalSalonShare, records.Count);
-    }
-
-    public async Task<IReadOnlyList<DailyEarningResult>> GetDailyEarningsAsync(int? workerId, DateTime? from, DateTime? to)
-    {
-        await EnsureLoadedAsync();
-
-        return FilterStoredRecords(workerId, from, to)
-            .GroupBy(record => record.DatePerformed.Date)
-            .Select(group => new DailyEarningResult(
-                group.Key.ToString("yyyy-MM-dd"),
-                group.Sum(record => record.AmountPaid),
-                group.Sum(record => record.Tips)))
-            .OrderBy(item => item.Date, StringComparer.Ordinal)
+        return _snapshot!.Expenses
+            .OrderByDescending(expense => expense.Date)
+            .ThenByDescending(expense => expense.Id)
+            .Select(CloneExpense)
             .ToList();
     }
 
-    public async Task<IReadOnlyList<WorkerRevenueResult>> GetRevenueByWorkerAsync(DateTime? from, DateTime? to)
+    public async Task<Expense> AddExpenseAsync(Expense expense)
     {
+        ArgumentNullException.ThrowIfNull(expense);
         await EnsureLoadedAsync();
 
-        var workerNames = _snapshot!.Workers.ToDictionary(worker => worker.Id, worker => worker.Name);
+        var created = CloneExpense(expense);
+        created.Id = _snapshot!.NextExpenseId++;
+        created.Category = created.Category.Trim();
+        created.Note = NormalizeOptionalText(created.Note);
+        created.Date = created.Date == default ? DateTime.Today : created.Date.Date;
 
-        return FilterStoredRecords(null, from, to)
-            .GroupBy(record => workerNames.GetValueOrDefault(record.WorkerId, "Unknown"))
-            .Select(group => new WorkerRevenueResult(
-                group.Key,
-                group.Sum(record => record.AmountPaid),
-                group.Sum(record => record.Tips)))
-            .OrderByDescending(item => item.Revenue)
-            .ToList();
+        _snapshot.Expenses.Add(created);
+        await PersistAsync();
+
+        return CloneExpense(created);
     }
 
-    public async Task<IReadOnlyList<ServicePopularityResult>> GetServicePopularityAsync(DateTime? from, DateTime? to)
+    public async Task UpdateExpenseAsync(int id, Expense expense)
     {
+        ArgumentNullException.ThrowIfNull(expense);
         await EnsureLoadedAsync();
 
-        var serviceNames = _snapshot!.Services.ToDictionary(service => service.Id, service => service.Name);
-
-        return FilterStoredRecords(null, from, to)
-            .GroupBy(record => serviceNames.GetValueOrDefault(record.ServiceId, "Unknown"))
-            .Select(group => new ServicePopularityResult(
-                group.Key,
-                group.Count(),
-                group.Sum(record => record.AmountPaid)))
-            .OrderByDescending(item => item.Count)
-            .ToList();
-    }
-
-    public async Task<ForecastResult> GetForecastAsync(int? workerId, int forecastDays)
-    {
-        await EnsureLoadedAsync();
-
-        var cutoff = DateTime.Today.AddDays(-90);
-        var dailyRevenue = _snapshot!.ServiceRecords
-            .Where(record => (!workerId.HasValue || record.WorkerId == workerId.Value) && record.DatePerformed.Date >= cutoff)
-            .GroupBy(record => record.DatePerformed.Date)
-            .Select(group => new
-            {
-                Date = group.Key,
-                Revenue = (double)group.Sum(record => record.AmountPaid)
-            })
-            .OrderBy(item => item.Date)
-            .ToList();
-
-        if (dailyRevenue.Count < 2)
+        if (id != expense.Id)
         {
-            return new ForecastResult([], [], 0, 0, 0);
+            throw new InvalidDataException("Expense identifier mismatch.");
         }
 
-        var baseDate = dailyRevenue[0].Date;
-        var xs = dailyRevenue.Select(item => (double)(item.Date - baseDate).Days).ToArray();
-        var ys = dailyRevenue.Select(item => item.Revenue).ToArray();
-        var count = xs.Length;
+        var existing = _snapshot!.Expenses.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+        existing.Category = expense.Category.Trim();
+        existing.Amount = expense.Amount;
+        existing.Note = NormalizeOptionalText(expense.Note);
+        existing.Date = expense.Date == default ? DateTime.Today : expense.Date.Date;
 
-        var sumX = xs.Sum();
-        var sumY = ys.Sum();
-        var sumXY = xs.Zip(ys, (x, y) => x * y).Sum();
-        var sumX2 = xs.Sum(x => x * x);
-        var denominator = count * sumX2 - sumX * sumX;
+        await PersistAsync();
+    }
 
-        var slope = denominator == 0 ? 0 : (count * sumXY - sumX * sumY) / denominator;
-        var intercept = denominator == 0 ? sumY / count : (sumY - slope * sumX) / count;
+    public async Task DeleteExpenseAsync(int id)
+    {
+        await EnsureLoadedAsync();
 
-        var meanY = sumY / count;
-        var ssTotal = ys.Sum(y => (y - meanY) * (y - meanY));
-        var ssResidual = xs.Zip(ys, (x, y) =>
+        var expense = _snapshot!.Expenses.FirstOrDefault(item => item.Id == id) ?? throw new KeyNotFoundException();
+        _snapshot.Expenses.Remove(expense);
+        await PersistAsync();
+    }
+
+    public async Task<AppSettings> GetSettingsAsync()
+    {
+        await EnsureLoadedAsync();
+        return CloneSettings(_snapshot!.Settings ?? new AppSettings());
+    }
+
+    public async Task UpdateSettingsAsync(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        await EnsureLoadedAsync();
+
+        var stored = CloneSettings(settings);
+        if (!MoneyFormat.IsSupported(stored.CurrencyCode))
         {
-            var predicted = slope * x + intercept;
-            return (y - predicted) * (y - predicted);
-        }).Sum();
-        var rSquared = ssTotal > 0 ? 1.0 - ssResidual / ssTotal : 0.0;
+            stored.CurrencyCode = null;
+        }
 
-        var historical = dailyRevenue.Select(item =>
+        if (stored.Language is not ("pl" or "en"))
         {
-            var dayIndex = (item.Date - baseDate).Days;
-            return new HistoricalPointResult(
-                item.Date.ToString("yyyy-MM-dd"),
-                item.Revenue,
-                Math.Max(0, slope * dayIndex + intercept));
-        }).ToArray();
+            stored.Language = null;
+        }
 
-        var lastDate = dailyRevenue[^1].Date;
-        var forecast = Enumerable.Range(1, Math.Max(1, forecastDays)).Select(offset =>
-        {
-            var futureDate = lastDate.AddDays(offset);
-            var dayIndex = (futureDate - baseDate).Days;
-            return new ForecastPointResult(
-                futureDate.ToString("yyyy-MM-dd"),
-                Math.Max(0, slope * dayIndex + intercept));
-        }).ToArray();
-
-        return new ForecastResult(
-            historical,
-            forecast,
-            Math.Round(slope, 2),
-            Math.Round(intercept, 2),
-            Math.Round(rSquared, 4));
-    }
-
-    public async Task<IReadOnlyList<RecentRecordResult>> GetRecentAsync(int count)
-    {
-        await EnsureLoadedAsync();
-
-        var workerNames = _snapshot!.Workers.ToDictionary(worker => worker.Id, worker => worker.Name);
-        var serviceNames = _snapshot.Services.ToDictionary(service => service.Id, service => service.Name);
-
-        return _snapshot.ServiceRecords
-            .OrderByDescending(record => record.DatePerformed)
-            .ThenByDescending(record => record.Id)
-            .Take(Math.Max(1, count))
-            .Select(record => new RecentRecordResult(
-                record.Id,
-                record.DatePerformed.ToString("yyyy-MM-dd"),
-                workerNames.GetValueOrDefault(record.WorkerId, "Unknown"),
-                serviceNames.GetValueOrDefault(record.ServiceId, "Unknown"),
-                record.AmountPaid,
-                record.Tips,
-                record.ClientName))
-            .ToList();
-    }
-
-    public async Task<MonthComparisonResult> GetMonthComparisonAsync(int? workerId)
-    {
-        await EnsureLoadedAsync();
-
-        var today = DateTime.Today;
-        var currentStart = new DateTime(today.Year, today.Month, 1);
-        var previousStart = currentStart.AddMonths(-1);
-        var previousEnd = currentStart.AddDays(-1);
-
-        var currentRecords = FilterStoredRecords(workerId, currentStart, today).ToList();
-        var previousRecords = FilterStoredRecords(workerId, previousStart, previousEnd).ToList();
-
-        var currentRevenue = currentRecords.Sum(r => r.AmountPaid);
-        var previousRevenue = previousRecords.Sum(r => r.AmountPaid);
-        var currentTips = currentRecords.Sum(r => r.Tips);
-        var previousTips = previousRecords.Sum(r => r.Tips);
-        var currentCount = currentRecords.Count;
-        var previousCount = previousRecords.Count;
-        var currentAvgTicket = currentCount > 0 ? currentRevenue / currentCount : 0;
-        var previousAvgTicket = previousCount > 0 ? previousRevenue / previousCount : 0;
-
-        return new MonthComparisonResult(
-            currentRevenue, previousRevenue,
-            currentTips, previousTips,
-            currentCount, previousCount,
-            currentAvgTicket, previousAvgTicket);
-    }
-
-    public async Task<IReadOnlyList<DayOfWeekResult>> GetRevenueByDayOfWeekAsync(int? workerId, DateTime? from, DateTime? to)
-    {
-        await EnsureLoadedAsync();
-
-        var dayNames = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        var records = FilterStoredRecords(workerId, from, to).ToList();
-
-        return dayNames.Select((name, i) =>
-        {
-            var dow = i == 6 ? DayOfWeek.Sunday : (DayOfWeek)(i + 1);
-            var dayRecords = records.Where(r => r.DatePerformed.DayOfWeek == dow).ToList();
-            return new DayOfWeekResult(name, dayRecords.Sum(r => r.AmountPaid), dayRecords.Count);
-        }).ToList();
-    }
-
-    public async Task<IReadOnlyList<TopProductResult>> GetTopProductsAsync(DateTime? from, DateTime? to, int count = 5)
-    {
-        await EnsureLoadedAsync();
-
-        var productNames = _snapshot!.Products.ToDictionary(p => p.Id, p => p.Name);
-        var query = _snapshot.ProductSales.AsEnumerable();
-        if (from.HasValue) query = query.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) query = query.Where(s => s.DateSold.Date <= to.Value.Date);
-
-        return query
-            .GroupBy(s => productNames.GetValueOrDefault(s.ProductId, "Unknown"))
-            .Select(g => new TopProductResult(g.Key, g.Sum(s => s.Quantity), g.Sum(s => s.UnitPrice * s.Quantity)))
-            .OrderByDescending(r => r.Revenue)
-            .Take(Math.Max(1, count))
-            .ToList();
-    }
-
-    public async Task<CombinedTimelineResult> GetCombinedTimelineAsync(int? workerId, DateTime? from, DateTime? to)
-    {
-        await EnsureLoadedAsync();
-
-        var servicesByDay = FilterStoredRecords(workerId, from, to)
-            .GroupBy(r => r.DatePerformed.Date)
-            .ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
-
-        var productQuery = _snapshot!.ProductSales.AsEnumerable();
-        if (from.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date >= from.Value.Date);
-        if (to.HasValue) productQuery = productQuery.Where(s => s.DateSold.Date <= to.Value.Date);
-        var productsByDay = productQuery
-            .GroupBy(s => s.DateSold.Date)
-            .ToDictionary(g => g.Key, g => g.Sum(s => s.UnitPrice * s.Quantity));
-
-        var allDates = servicesByDay.Keys.Union(productsByDay.Keys).OrderBy(d => d).ToList();
-
-        var points = allDates.Select(d => new CombinedTimelinePoint(
-            d.ToString("yyyy-MM-dd"),
-            servicesByDay.GetValueOrDefault(d, 0),
-            productsByDay.GetValueOrDefault(d, 0)
-        )).ToList();
-
-        return new CombinedTimelineResult(points);
+        _snapshot!.Settings = stored;
+        await PersistAsync();
     }
 
     public async Task<DataStateSummary> GetDataStateSummaryAsync()
@@ -655,14 +536,16 @@ public sealed class LocalFinanceStore
             _snapshot.Products.Count,
             _snapshot.ServiceRecords.Count,
             _snapshot.ProductSales.Count,
+            _snapshot.Expenses.Count,
             _snapshot.SchemaVersion,
-            _snapshot.LastUpdatedUtc);
+            _snapshot.LastUpdatedUtc,
+            JsonSerializer.Serialize(_snapshot, CompactJson).Length);
     }
 
     public async Task<string> ExportAsync()
     {
         await EnsureLoadedAsync();
-        return JsonSerializer.Serialize(_snapshot, _jsonOptions);
+        return JsonSerializer.Serialize(_snapshot, IndentedJson);
     }
 
     public async Task ImportAsync(string json)
@@ -676,7 +559,7 @@ public sealed class LocalFinanceStore
 
         try
         {
-            imported = JsonSerializer.Deserialize<FinanceSnapshot>(json, _jsonOptions);
+            imported = JsonSerializer.Deserialize<FinanceSnapshot>(json, CompactJson);
         }
         catch (JsonException ex)
         {
@@ -692,6 +575,10 @@ public sealed class LocalFinanceStore
         NormalizeSnapshot(imported);
         ValidateSnapshot(imported);
 
+        await EnsureLoadedAsync();
+
+        await BackupOutgoingSnapshotAsync();
+
         _snapshot = imported;
         _snapshot.LastUpdatedUtc = DateTime.UtcNow;
 
@@ -699,60 +586,145 @@ public sealed class LocalFinanceStore
         NotifyChanged();
     }
 
+    public ValueTask<string?> GetPreResetJsonAsync()
+    {
+        return _storage.GetItemAsync(PreResetKey);
+    }
+
     public async Task ResetAsync()
     {
+        await EnsureLoadedAsync();
+
+        await BackupOutgoingSnapshotAsync();
+
         _snapshot = CreateDefaultSnapshot();
+        LoadStatus = SnapshotLoadStatus.Ok;
         await SaveAsync();
         NotifyChanged();
     }
 
-    private async Task EnsureLoadedAsync()
+    /// <summary>
+    /// Cheap undo for the two whole-snapshot replacements (reset and import):
+    /// keep the outgoing data under one side key, surfaced on the Data page
+    /// as "Restore previous data". Best-effort — a full quota must not block
+    /// the reset/import itself.
+    /// </summary>
+    private async Task BackupOutgoingSnapshotAsync()
     {
-        if (_snapshot is not null)
+        try
         {
-            return;
+            var outgoing = JsonSerializer.Serialize(_snapshot, IndentedJson);
+            await _storage.SetItemAsync(PreResetKey, outgoing);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Could not write pre-reset backup: {ex.Message}");
+        }
+    }
+
+    private Task EnsureLoadedAsync()
+    {
+        // Cached-task latch: concurrent callers (e.g. the worker selector in the
+        // layout and the routed page) await one load instead of racing two.
+        if (_loadTask is null || _loadTask.IsFaulted || _loadTask.IsCanceled)
+        {
+            _loadTask = LoadCoreAsync();
         }
 
-        var json = await _js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+        return _loadTask;
+    }
+
+    private async Task LoadCoreAsync()
+    {
+        var json = await _storage.GetItemAsync(StorageKey);
+        _loadedRevision = await _storage.GetItemAsync(RevisionKey);
+
         if (string.IsNullOrWhiteSpace(json))
         {
             _snapshot = CreateDefaultSnapshot();
+            LoadStatus = SnapshotLoadStatus.Ok;
             await SaveAsync();
             return;
         }
 
+        FinanceSnapshot? loaded;
         try
         {
-            _snapshot = JsonSerializer.Deserialize<FinanceSnapshot>(json, _jsonOptions);
+            loaded = JsonSerializer.Deserialize<FinanceSnapshot>(json, CompactJson);
         }
         catch (JsonException)
         {
-            _snapshot = null;
+            loaded = null;
         }
 
-        if (_snapshot is null)
+        if (loaded is not null)
         {
+            try
+            {
+                MigrateSnapshot(loaded);
+                NormalizeSnapshot(loaded);
+                ValidateSnapshot(loaded);
+            }
+            catch (InvalidDataException)
+            {
+                loaded = null;
+            }
+        }
+
+        if (loaded is null)
+        {
+            // Never overwrite unreadable data: preserve the original bytes
+            // under a quarantine key, then start from defaults and tell the UI.
+            await _storage.SetItemAsync(QuarantineKey, json);
             _snapshot = CreateDefaultSnapshot();
+            LoadStatus = SnapshotLoadStatus.RecoveredFromCorruptData;
             await SaveAsync();
+            NotifyChanged();
             return;
         }
 
-        MigrateSnapshot(_snapshot);
-        NormalizeSnapshot(_snapshot);
+        _snapshot = loaded;
+        LoadStatus = SnapshotLoadStatus.Ok;
     }
 
     private async Task PersistAsync()
     {
+        await AssertNotChangedInAnotherTabAsync();
         _snapshot!.LastUpdatedUtc = DateTime.UtcNow;
         await SaveAsync();
         NotifyChanged();
     }
 
+    private async Task AssertNotChangedInAnotherTabAsync()
+    {
+        var currentRevision = await _storage.GetItemAsync(RevisionKey);
+        if (!string.Equals(currentRevision, _loadedRevision, StringComparison.Ordinal))
+        {
+            HandleExternalDataChange();
+            throw new ConcurrentUpdateException();
+        }
+    }
+
     private async Task SaveAsync()
     {
         _snapshot!.SchemaVersion = CurrentSchemaVersion;
-        var json = JsonSerializer.Serialize(_snapshot, _jsonOptions);
-        await _js.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
+        var json = JsonSerializer.Serialize(_snapshot, CompactJson);
+
+        try
+        {
+            await _storage.SetItemAsync(StorageKey, json);
+            var revision = Guid.NewGuid().ToString("N");
+            await _storage.SetItemAsync(RevisionKey, revision);
+            _loadedRevision = revision;
+        }
+        catch (Exception ex) when (ex is not ConcurrentUpdateException)
+        {
+            // Discard the unsaved in-memory state so the next read reloads the
+            // last successfully persisted snapshot; the UI re-renders that.
+            _snapshot = null;
+            _loadTask = null;
+            throw new StorageWriteException(ex);
+        }
     }
 
     private void NotifyChanged()
@@ -771,8 +743,7 @@ public sealed class LocalFinanceStore
         {
             Id = worker.Id,
             Name = worker.Name,
-            DefaultCommissionPercentage = worker.DefaultCommissionPercentage,
-            ApplicationUserId = worker.ApplicationUserId
+            DefaultCommissionPercentage = worker.DefaultCommissionPercentage
         };
     }
 
@@ -795,6 +766,27 @@ public sealed class LocalFinanceStore
             Price = product.Price,
             StockQuantity = product.StockQuantity,
             Category = product.Category
+        };
+    }
+
+    private static Expense CloneExpense(Expense expense)
+    {
+        return new Expense
+        {
+            Id = expense.Id,
+            Date = expense.Date,
+            Category = expense.Category,
+            Amount = expense.Amount,
+            Note = expense.Note
+        };
+    }
+
+    private static AppSettings CloneSettings(AppSettings settings)
+    {
+        return new AppSettings
+        {
+            CurrencyCode = settings.CurrencyCode,
+            Language = settings.Language
         };
     }
 
@@ -835,50 +827,12 @@ public sealed class LocalFinanceStore
         };
     }
 
-    private IEnumerable<ServiceRecord> FilterStoredRecords(int? workerId, DateTime? from, DateTime? to)
-    {
-        var query = _snapshot!.ServiceRecords.AsEnumerable();
-
-        if (workerId.HasValue)
-        {
-            query = query.Where(record => record.WorkerId == workerId.Value);
-        }
-
-        if (from.HasValue)
-        {
-            query = query.Where(record => record.DatePerformed.Date >= from.Value.Date);
-        }
-
-        if (to.HasValue)
-        {
-            query = query.Where(record => record.DatePerformed.Date <= to.Value.Date);
-        }
-
-        return query;
-    }
-
     private static FinanceSnapshot CreateDefaultSnapshot()
     {
-        var snapshot = new FinanceSnapshot
-        {
-            Workers =
-            [
-                new Worker { Id = 1, Name = "Jan Kowalski", DefaultCommissionPercentage = 50 },
-                new Worker { Id = 2, Name = "Anna Nowak", DefaultCommissionPercentage = 45 },
-                new Worker { Id = 3, Name = "Piotr Wisniewski", DefaultCommissionPercentage = 55 }
-            ],
-            Services =
-            [
-                new Service { Id = 1, Name = "Strzyzenie meskie", BasePrice = 50 },
-                new Service { Id = 2, Name = "Strzyzenie damskie", BasePrice = 80 },
-                new Service { Id = 3, Name = "Broda", BasePrice = 30 },
-                new Service { Id = 4, Name = "Koloryzacja", BasePrice = 150 },
-                new Service { Id = 5, Name = "Strzyzenie + Broda", BasePrice = 70 }
-            ],
-            Products = [],
-            ServiceRecords = []
-        };
-
+        // A brand-new install starts empty; the Dashboard shows a first-run
+        // checklist instead of placeholder people. Tests that need data seed
+        // it explicitly (see TestData.SeedSnapshot in the test project).
+        var snapshot = new FinanceSnapshot();
         NormalizeSnapshot(snapshot);
         return snapshot;
     }
@@ -892,18 +846,17 @@ public sealed class LocalFinanceStore
 
         foreach (var worker in snapshot.Workers)
         {
-            worker.Name = worker.Name.Trim();
-            worker.ApplicationUserId = NormalizeOptionalText(worker.ApplicationUserId);
+            worker.Name = (worker.Name ?? string.Empty).Trim();
         }
 
         foreach (var service in snapshot.Services)
         {
-            service.Name = service.Name.Trim();
+            service.Name = (service.Name ?? string.Empty).Trim();
         }
 
         foreach (var product in snapshot.Products)
         {
-            product.Name = product.Name.Trim();
+            product.Name = (product.Name ?? string.Empty).Trim();
             product.Category = NormalizeOptionalText(product.Category);
         }
 
@@ -927,26 +880,58 @@ public sealed class LocalFinanceStore
             sale.DateSold = sale.DateSold == default ? DateTime.Today : sale.DateSold.Date;
         }
 
-        snapshot.SchemaVersion = Math.Max(CurrentSchemaVersion, snapshot.SchemaVersion);
+        snapshot.Expenses ??= [];
+
+        foreach (var expense in snapshot.Expenses)
+        {
+            expense.Category = (expense.Category ?? string.Empty).Trim();
+            expense.Note = NormalizeOptionalText(expense.Note);
+            expense.Date = expense.Date == default ? DateTime.Today : expense.Date.Date;
+        }
+
+        snapshot.Settings ??= new AppSettings();
+        if (!MoneyFormat.IsSupported(snapshot.Settings.CurrencyCode))
+        {
+            snapshot.Settings.CurrencyCode = null;
+        }
+
+        if (snapshot.Settings.Language is not ("pl" or "en"))
+        {
+            snapshot.Settings.Language = null;
+        }
+
         snapshot.NextWorkerId = Math.Max(snapshot.NextWorkerId, snapshot.Workers.Select(worker => worker.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceId = Math.Max(snapshot.NextServiceId, snapshot.Services.Select(service => service.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductId = Math.Max(snapshot.NextProductId, snapshot.Products.Select(product => product.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextServiceRecordId = Math.Max(snapshot.NextServiceRecordId, snapshot.ServiceRecords.Select(record => record.Id).DefaultIfEmpty().Max() + 1);
         snapshot.NextProductSaleId = Math.Max(snapshot.NextProductSaleId, snapshot.ProductSales.Select(sale => sale.Id).DefaultIfEmpty().Max() + 1);
+        snapshot.NextExpenseId = Math.Max(snapshot.NextExpenseId, snapshot.Expenses.Select(expense => expense.Id).DefaultIfEmpty().Max() + 1);
         snapshot.LastUpdatedUtc = snapshot.LastUpdatedUtc == default ? DateTime.UtcNow : snapshot.LastUpdatedUtc;
     }
 
     private static void MigrateSnapshot(FinanceSnapshot snapshot)
     {
+        if (snapshot.SchemaVersion > CurrentSchemaVersion)
+        {
+            throw new InvalidDataException(
+                $"This backup was created by a newer version of the app (schema v{snapshot.SchemaVersion}; this app supports up to v{CurrentSchemaVersion}). Update the app, then import again.");
+        }
+
         if (snapshot.SchemaVersion <= 0)
         {
             snapshot.SchemaVersion = 1;
         }
 
-        if (snapshot.SchemaVersion < CurrentSchemaVersion)
+        // Per-version transforms, applied in order so any old backup walks the
+        // whole chain to the current schema.
+        if (snapshot.SchemaVersion == 1)
         {
-            snapshot.SchemaVersion = CurrentSchemaVersion;
+            // v2 added expenses and settings; both default to empty.
+            snapshot.Expenses ??= [];
+            snapshot.SchemaVersion = 2;
         }
+
+        snapshot.SchemaVersion = CurrentSchemaVersion;
     }
 
     private static void ValidateSnapshot(FinanceSnapshot snapshot)
@@ -956,6 +941,7 @@ public sealed class LocalFinanceStore
         EnsureDistinctIds(snapshot.Products, product => product.Id, "products");
         EnsureDistinctIds(snapshot.ServiceRecords, record => record.Id, "service records");
         EnsureDistinctIds(snapshot.ProductSales, sale => sale.Id, "product sales");
+        EnsureDistinctIds(snapshot.Expenses, expense => expense.Id, "expenses");
 
         var workerIds = snapshot.Workers.Select(worker => worker.Id).ToHashSet();
         var serviceIds = snapshot.Services.Select(service => service.Id).ToHashSet();
@@ -974,6 +960,68 @@ public sealed class LocalFinanceStore
         if (snapshot.ProductSales.Any(sale => !productIds.Contains(sale.ProductId)))
         {
             throw new InvalidDataException("The backup references a product that does not exist.");
+        }
+
+        if (snapshot.ProductSales.Any(sale => sale.WorkerId.HasValue && !workerIds.Contains(sale.WorkerId.Value)))
+        {
+            throw new InvalidDataException("The backup references a worker that does not exist.");
+        }
+
+        // Money and quantity sanity — mirrors the [Range] attributes that only
+        // EditForm enforces, so bad values cannot arrive via import or old data.
+        if (snapshot.Workers.Any(worker => worker.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a worker without a name.");
+        }
+
+        if (snapshot.Workers.Any(worker => worker.DefaultCommissionPercentage is < 0 or > 100))
+        {
+            throw new InvalidDataException("The backup contains a commission percentage outside 0-100.");
+        }
+
+        if (snapshot.Services.Any(service => service.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a service without a name.");
+        }
+
+        if (snapshot.Services.Any(service => service.BasePrice < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative service price.");
+        }
+
+        if (snapshot.Products.Any(product => product.Name.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains a product without a name.");
+        }
+
+        if (snapshot.Products.Any(product => product.Price < 0 || product.StockQuantity < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative product price or stock quantity.");
+        }
+
+        if (snapshot.ServiceRecords.Any(record => record.AmountPaid < 0 || record.Tips < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative amount or tip.");
+        }
+
+        if (snapshot.ServiceRecords.Any(record => record.CommissionPercentageApplied is < 0 or > 100))
+        {
+            throw new InvalidDataException("The backup contains a commission percentage outside 0-100.");
+        }
+
+        if (snapshot.ProductSales.Any(sale => sale.Quantity < 1 || sale.UnitPrice < 0))
+        {
+            throw new InvalidDataException("The backup contains a product sale with an invalid quantity or price.");
+        }
+
+        if (snapshot.Expenses.Any(expense => expense.Category.Length == 0))
+        {
+            throw new InvalidDataException("The backup contains an expense without a category.");
+        }
+
+        if (snapshot.Expenses.Any(expense => expense.Amount < 0))
+        {
+            throw new InvalidDataException("The backup contains a negative expense amount.");
         }
     }
 

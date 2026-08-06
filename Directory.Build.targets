@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Imported after each project file, so IsTestProject is resolved.
+       Test methods use xUnit's underscore naming convention (CA1707) and
+       test-collection classes end in "Collection" by xUnit convention (CA1711). -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <NoWarn>$(NoWarn);CA1707;CA1711</NoWarn>
+  </PropertyGroup>
+
+</Project>

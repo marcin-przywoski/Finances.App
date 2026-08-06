@@ -1,0 +1,289 @@
+@page "/expenses"
+@inject IFinanceStore Store
+@inject MoneyFormat Money
+@inject ToastService Toast
+@inject IStringLocalizer<AppStrings> L
+
+<PageTitle>@L["Exp_Title"]</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title mb-1">@L["Exp_Title"]</h1>
+        <p class="text-muted mb-0">@L["Exp_Subtitle"]</p>
+    </div>
+    <button class="btn btn-primary" @onclick="OpenAddModal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        @L["Exp_Add"]
+    </button>
+</div>
+
+<DateRangeFilter From="@dateFrom" To="@dateTo" OnRangeChanged="OnDateRangeChanged" />
+
+@if (allExpenses == null)
+{
+    <LoadingSpinner />
+}
+else if (filtered.Count == 0)
+{
+    <div class="card p-5 text-center mt-3">
+        <p class="text-muted mb-3">@L["Exp_Empty"]</p>
+        <div><button class="btn btn-primary" @onclick="OpenAddModal">@L["Exp_Add"]</button></div>
+    </div>
+}
+else
+{
+    <div class="card mt-3">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th aria-sort="@sort.AriaSort("date")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("date")'>@L["Common_Date"] <span aria-hidden="true">@sort.Icon("date")</span></button>
+                        </th>
+                        <th aria-sort="@sort.AriaSort("category")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("category")'>@L["Exp_Category"] <span aria-hidden="true">@sort.Icon("category")</span></button>
+                        </th>
+                        <th aria-sort="@sort.AriaSort("amount")">
+                            <button type="button" class="sort-button" @onclick='() => SetSort("amount")'>@L["Common_Amount"] <span aria-hidden="true">@sort.Icon("amount")</span></button>
+                        </th>
+                        <th>@L["Exp_Note"]</th>
+                        <th style="width: 100px;">@L["Common_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in filtered)
+                    {
+                        <tr>
+                            <td>@e.Date.ToDateKey()</td>
+                            <td class="fw-semibold">@e.Category</td>
+                            <td>@Money.Format(e.Amount)</td>
+                            <td class="text-muted" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@(e.Note ?? "")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="() => OpenEditModal(e)">@L["Common_Edit"]</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(e)">@L["Common_Delete"]</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold" style="background-color: var(--body-bg);">
+                        <td colspan="2">@L["Common_Total"]</td>
+                        <td>@Money.Format(filtered.Sum(e => e.Amount))</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+
+<ModalDialog IsVisible="showModal" Title="@(isEditing ? L["Exp_EditTitle"] : L["Exp_Add"])" OnClose="CloseModal">
+    <EditForm Model="@formModel" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="expense-date">@L["Common_Date"]</label>
+                    <InputDate id="expense-date" class="form-control" @bind-Value="formModel.Date" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="expense-amount">@L["Common_Amount"]</label>
+                    <InputNumber id="expense-amount" class="form-control" @bind-Value="formModel.Amount" />
+                    <ValidationMessage For="() => formModel.Amount" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="expense-category">@L["Exp_Category"]</label>
+                    <InputText id="expense-category" class="form-control" @bind-Value="formModel.Category"
+                               list="expense-category-options" placeholder="@L["Exp_CategoryPlaceholder"]" />
+                    <datalist id="expense-category-options">
+                        @foreach (var category in knownCategories)
+                        {
+                            <option value="@category" />
+                        }
+                    </datalist>
+                    <ValidationMessage For="() => formModel.Category" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="expense-note">@L["Exp_Note"]</label>
+                    <InputTextArea id="expense-note" class="form-control" @bind-Value="formModel.Note" rows="2" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @onclick="CloseModal">@L["Common_Cancel"]</button>
+            <button type="submit" class="btn btn-primary" disabled="@saving">
+                @(saving ? L["Common_Saving"] : (isEditing ? L["Common_Update"] : L["Common_Save"]))
+            </button>
+        </div>
+    </EditForm>
+</ModalDialog>
+
+<ConfirmDialog IsVisible="showDeleteConfirm"
+               Title="@L["Exp_DeleteTitle"]"
+               Message="@L["Exp_DeleteMessage", deleteTarget?.Category ?? "", deleteTarget?.Date.ToDateKey() ?? ""]"
+               ConfirmText="@L["Common_Delete"]"
+               OnConfirm="HandleDelete"
+               OnCancel="() => { showDeleteConfirm = false; }" />
+
+@code {
+    private List<Expense>? allExpenses;
+    private List<Expense> filtered = new();
+    private List<string> knownCategories = new();
+    private DateTime? dateFrom;
+    private DateTime? dateTo;
+    private readonly SortState sort = new("date");
+
+    private Expense formModel = new();
+    private bool showModal, isEditing, saving;
+    private int editId;
+
+    private Expense? deleteTarget;
+    private bool showDeleteConfirm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allExpenses = (await Store.GetExpensesAsync()).ToList();
+        RefreshCategories();
+        ApplyFilter();
+    }
+
+    private void RefreshCategories()
+    {
+        knownCategories = allExpenses?
+            .Select(e => e.Category)
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase)
+            .ToList() ?? new();
+    }
+
+    private void OnDateRangeChanged((DateTime? From, DateTime? To) range)
+    {
+        dateFrom = range.From;
+        dateTo = range.To;
+        ApplyFilter();
+    }
+
+    private void SetSort(string column)
+    {
+        sort.Toggle(column);
+        ApplyFilter();
+    }
+
+    // Recomputed on state changes rather than inside the render body, so the
+    // filter+sort does not re-run on every re-render.
+    private void ApplyFilter()
+    {
+        if (allExpenses == null)
+        {
+            filtered = new();
+            return;
+        }
+
+        var q = allExpenses.AsEnumerable();
+
+        if (dateFrom.HasValue)
+            q = q.Where(e => e.Date.Date >= dateFrom.Value.Date);
+
+        if (dateTo.HasValue)
+            q = q.Where(e => e.Date.Date <= dateTo.Value.Date);
+
+        q = sort.Column switch
+        {
+            "date" => sort.Ascending ? q.OrderBy(e => e.Date) : q.OrderByDescending(e => e.Date),
+            "category" => sort.Ascending
+                ? q.OrderBy(e => e.Category, StringComparer.CurrentCultureIgnoreCase)
+                : q.OrderByDescending(e => e.Category, StringComparer.CurrentCultureIgnoreCase),
+            "amount" => sort.Ascending ? q.OrderBy(e => e.Amount) : q.OrderByDescending(e => e.Amount),
+            _ => q.OrderByDescending(e => e.Date)
+        };
+
+        filtered = q.ToList();
+    }
+
+    private void OpenAddModal()
+    {
+        formModel = new Expense { Date = DateTime.Today };
+        isEditing = false;
+        showModal = true;
+    }
+
+    private void OpenEditModal(Expense expense)
+    {
+        formModel = new Expense
+        {
+            Id = expense.Id,
+            Date = expense.Date,
+            Category = expense.Category,
+            Amount = expense.Amount,
+            Note = expense.Note
+        };
+        editId = expense.Id;
+        isEditing = true;
+        showModal = true;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task HandleSubmit()
+    {
+        saving = true;
+        try
+        {
+            if (isEditing)
+            {
+                await Store.UpdateExpenseAsync(editId, formModel);
+                Toast.Show(L["Exp_Updated"]);
+            }
+            else
+            {
+                await Store.AddExpenseAsync(formModel);
+                Toast.Show(L["Exp_Added"]);
+            }
+            allExpenses = (await Store.GetExpensesAsync()).ToList();
+            RefreshCategories();
+            ApplyFilter();
+            showModal = false;
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
+        finally { saving = false; }
+    }
+
+    private void ConfirmDelete(Expense expense)
+    {
+        deleteTarget = expense;
+        showDeleteConfirm = true;
+    }
+
+    private async Task HandleDelete()
+    {
+        if (deleteTarget == null) return;
+        var deleted = deleteTarget;
+        try
+        {
+            await Store.DeleteExpenseAsync(deleted.Id);
+            Toast.Show(L["Exp_Deleted"], ToastLevel.Success, L["Common_Undo"], async () =>
+            {
+                await Store.AddExpenseAsync(deleted);
+                await InvokeAsync(async () =>
+                {
+                    allExpenses = (await Store.GetExpensesAsync()).ToList();
+                    RefreshCategories();
+                    ApplyFilter();
+                    StateHasChanged();
+                });
+            });
+            allExpenses = (await Store.GetExpensesAsync()).ToList();
+            RefreshCategories();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(UserFacingError.Message(ex), ToastLevel.Error);
+        }
+        showDeleteConfirm = false;
+        deleteTarget = null;
+    }
+}
